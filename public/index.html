@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Angel's Project Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="title-bar" id="title-bar" hidden>
+    <span class="title-bar-drag">
+      <img src="/icon.png" alt="" class="title-bar-icon" />
+      Angel's Project Manager
+    </span>
+    <div class="title-bar-controls">
+      <button type="button" class="title-bar-btn" id="title-bar-minimize" title="Minimize" aria-label="Minimize">−</button>
+      <button type="button" class="title-bar-btn" id="title-bar-maximize" title="Maximize" aria-label="Maximize">□</button>
+      <button type="button" class="title-bar-btn title-bar-close" id="title-bar-close" title="Close" aria-label="Close">×</button>
+    </div>
+  </header>
+  <nav class="menu-bar">
+    <div class="menu-bar-inner">
+      <div class="menu-item menu-dropdown">
+        <button type="button" class="menu-trigger">File</button>
+        <div class="menu-panel" id="menu-file-panel">
+          <button type="button" class="menu-option" id="menu-settings">Settings</button>
+        </div>
+      </div>
+      <div class="menu-item menu-dropdown">
+        <button type="button" class="menu-trigger">View</button>
+        <div class="menu-panel" id="menu-view-panel">
+          <button type="button" class="menu-option" id="menu-view-logs">View Logs</button>
+        </div>
+      </div>
+      <div class="menu-item menu-dropdown">
+        <button type="button" class="menu-trigger">Help</button>
+        <div class="menu-panel" id="menu-help-panel">
+          <button type="button" class="menu-option" id="menu-restart-app">Restart App</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <header class="toolbar-block">
+    <div class="toolbar">
+      <input type="search" id="toolbar-search" class="toolbar-search" placeholder="Search name, description, tags…" />
+      <select id="toolbar-sort" class="toolbar-select" title="Sort by">
+        <option value="alphabetical">Sort: Alphabetical</option>
+        <option value="dateAdded">Sort: Date added</option>
+        <option value="category">Sort: Category</option>
+      </select>
+      <select id="toolbar-view" class="toolbar-select" title="View">
+        <option value="list">List view</option>
+        <option value="grid">Grid view</option>
+      </select>
+      <select id="toolbar-group" class="toolbar-select" title="Group by">
+        <option value="none">Group by: None</option>
+        <option value="name">Group by: Name</option>
+        <option value="dateAdded">Group by: Date added</option>
+        <option value="category">Group by: Category</option>
+      </select>
+      <button type="button" class="btn btn-primary" id="btn-add-project">+ Add project</button>
+    </div>
+  </header>
+  <div class="project-view">
+    <div class="app">
+      <main class="main">
+        <section class="projects-list" id="projects-list"></section>
+      </main>
+      <div id="project-context-menu" class="project-context-menu" hidden>
+        <button type="button" class="project-context-menu-item" id="project-context-open-cursor" data-action="open-cursor"><span class="project-context-menu-icon" aria-hidden="true">&lt;/&gt;</span> Open in Cursor</button>
+        <button type="button" class="project-context-menu-item" id="project-context-open-explorer" data-action="open-explorer"><span class="project-context-menu-icon" aria-hidden="true">&#128194;</span> Open folder</button>
+        <button type="button" class="project-context-menu-item" id="project-context-pin" data-action="pin"><span class="project-context-menu-icon" aria-hidden="true">&#128204;</span> Pin</button>
+        <button type="button" class="project-context-menu-item" id="project-context-unpin" data-action="unpin" hidden><span class="project-context-menu-icon" aria-hidden="true">&#128205;</span> Unpin</button>
+        <button type="button" class="project-context-menu-item" id="project-context-settings" data-action="settings"><span class="project-context-menu-icon" aria-hidden="true">&#x2699;</span> Settings</button>
+        <button type="button" class="project-context-menu-item" id="project-context-sftp" data-action="sftp"><span class="project-context-menu-icon" aria-hidden="true">&#8593;</span> SFTP upload</button>
+        <button type="button" class="project-context-menu-item" id="project-context-add-subproject" data-action="add-subproject"><span class="project-context-menu-icon" aria-hidden="true">+</span> Add subproject</button>
+        <button type="button" class="project-context-menu-item project-context-menu-item-danger" id="project-context-remove" data-action="remove"><span class="project-context-menu-icon" aria-hidden="true">&#x2715;</span> Remove</button>
+      </div>
+      <footer class="footer">
+        <span>Projects root: <code id="projects-root"></code></span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Add/Edit project modal -->
+  <dialog id="modal-project" class="modal">
+    <div class="modal-content">
+      <h2 id="modal-project-title">Add project</h2>
+      <form id="form-project">
+        <input type="hidden" id="project-id" />
+        <input type="hidden" id="project-parent-id" />
+        <div class="field" id="field-project-type">
+          <label>Type</label>
+          <div class="project-type-options">
+            <label class="project-type-option"><input type="radio" name="project-type" value="folder" checked /> Folder path</label>
+            <label class="project-type-option"><input type="radio" name="project-type" value="url" /> URL link</label>
+          </div>
+        </div>
+        <div class="field" id="field-project-path">
+          <label for="project-path">Folder path</label>
+          <div class="path-row">
+            <input type="text" id="project-path" readonly placeholder="Browse to select folder" />
+            <button type="button" class="btn btn-secondary" id="btn-browse">Browse</button>
+          </div>
+        </div>
+        <div class="field" id="field-project-url" hidden>
+          <label for="project-url">URL</label>
+          <input type="url" id="project-url" placeholder="https://…" />
+        </div>
+        <div class="field browse-panel" id="browse-panel" hidden>
+          <label>Select a folder</label>
+          <div class="browse-nav">
+            <button type="button" class="btn btn-small" id="browse-up">↑ Up</button>
+            <span class="browse-current" id="browse-current"></span>
+          </div>
+          <ul class="browse-dirs" id="browse-dirs"></ul>
+          <button type="button" class="btn btn-primary" id="browse-select">Select this folder</button>
+        </div>
+        <div class="field">
+          <label for="project-name">Project name</label>
+          <input type="text" id="project-name" required placeholder="My project" />
+        </div>
+        <div class="field">
+          <label for="project-description">Description</label>
+          <textarea id="project-description" rows="3" placeholder="Brief description of the project(s)…"></textarea>
+        </div>
+        <div class="field">
+          <label for="project-category">Category</label>
+          <input type="text" id="project-category" list="project-category-list" placeholder="One category (optional)" autocomplete="off" />
+          <datalist id="project-category-list"></datalist>
+        </div>
+        <div class="field">
+          <label>Tags</label>
+          <div class="tags-chips-wrap tags-chips-wrap-relative" id="project-tags-wrap">
+            <div class="tags-chips" id="project-tags-chips"></div>
+            <input type="text" id="project-tags-input" class="tags-input" placeholder="Type a tag and press Enter" autocomplete="off" />
+            <div class="tags-suggestions" id="project-tags-suggestions" hidden></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-project">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Image crop modal -->
+  <dialog id="modal-crop-image" class="modal">
+    <div class="modal-content">
+      <h2>Crop image</h2>
+      <p class="hint">Adjust zoom and position. The square shows the crop area.</p>
+      <div class="crop-viewport" id="crop-viewport">
+        <div class="crop-viewport-inner">
+          <img id="crop-image" alt="" />
+        </div>
+      </div>
+      <div class="crop-controls">
+        <label>Zoom: <input type="range" id="crop-zoom" min="0.5" max="4" step="0.1" value="1" /> <span id="crop-zoom-value">100%</span></label>
+        <label>Pan X: <input type="range" id="crop-pan-x" min="-100" max="100" value="0" /></label>
+        <label>Pan Y: <input type="range" id="crop-pan-y" min="-100" max="100" value="0" /></label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-crop-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-crop-apply">Apply</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Add/Edit link modal -->
+  <dialog id="modal-link" class="modal">
+    <div class="modal-content">
+      <h2 id="modal-link-title">Add link</h2>
+      <div class="field">
+        <label for="link-description">Description</label>
+        <input type="text" id="link-description" placeholder="Short description (e.g. Production URL)" />
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <div class="link-type-options">
+          <label class="link-type-option"><input type="radio" name="link-type" value="url" checked /> URL link</label>
+          <label class="link-type-option"><input type="radio" name="link-type" value="file" /> File location</label>
+        </div>
+      </div>
+      <div class="field" id="field-link-url">
+        <label for="link-url">URL</label>
+        <input type="url" id="link-url" placeholder="https://…" />
+      </div>
+      <div class="field" id="field-link-path" hidden>
+        <label for="link-path">Path</label>
+        <input type="text" id="link-path" placeholder="e.g. Goals/MyProject/docs (relative to Projects root)" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-link-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-link-save">Save</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Project settings modal -->
+  <dialog id="modal-project-settings" class="modal">
+    <div class="modal-content">
+      <h2>Project settings</h2>
+      <form id="form-project-settings">
+        <input type="hidden" id="project-settings-id" />
+        <div class="field" id="field-project-settings-path">
+          <label>Folder path</label>
+          <div class="path-row">
+            <input type="text" id="project-settings-path" readonly placeholder="Browse to reselect folder" />
+            <button type="button" class="btn btn-secondary" id="btn-project-settings-browse">Browse</button>
+          </div>
+        </div>
+        <div class="field" id="field-project-settings-url" hidden>
+          <label for="project-settings-url">URL</label>
+          <input type="url" id="project-settings-url" placeholder="https://…" />
+        </div>
+        <div class="field browse-panel" id="project-settings-browse-panel" hidden>
+          <label>Select a folder</label>
+          <div class="browse-nav">
+            <button type="button" class="btn btn-small" id="project-settings-browse-up">↑ Up</button>
+            <span class="browse-current" id="project-settings-browse-current"></span>
+          </div>
+          <ul class="browse-dirs" id="project-settings-browse-dirs"></ul>
+          <button type="button" class="btn btn-primary" id="project-settings-browse-select">Select this folder</button>
+        </div>
+        <div class="field">
+          <label>Project image</label>
+          <div class="image-source-options">
+            <label class="image-source-option"><input type="radio" name="project-image-source" value="local" checked /> Local image</label>
+            <label class="image-source-option"><input type="radio" name="project-image-source" value="url" /> Image URL</label>
+          </div>
+          <div class="field" id="field-project-settings-image-local">
+            <input type="file" id="project-settings-image-file" accept="image/*" hidden />
+            <div class="image-button-row">
+              <button type="button" class="btn btn-secondary" id="btn-project-settings-image">Choose image…</button>
+            </div>
+          </div>
+          <div class="field" id="field-project-settings-image-url" hidden>
+            <input type="url" id="project-settings-image-url" placeholder="https://…" />
+          </div>
+          <div class="image-button-row" style="margin-top: 0.5rem;">
+            <button type="button" class="btn btn-ghost btn-small" id="btn-project-settings-remove-image">Remove image</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="project-settings-description">Description</label>
+          <textarea id="project-settings-description" rows="3" placeholder="Brief description…"></textarea>
+        </div>
+        <div class="field">
+          <label for="project-settings-category">Category</label>
+          <input type="text" id="project-settings-category" list="project-settings-category-list" placeholder="One category (optional)" autocomplete="off" />
+          <datalist id="project-settings-category-list"></datalist>
+        </div>
+        <div class="field">
+          <label>Tags</label>
+          <div class="tags-chips-wrap tags-chips-wrap-relative" id="project-settings-tags-wrap">
+            <div class="tags-chips" id="project-settings-tags-chips"></div>
+            <input type="text" id="project-settings-tags-input" class="tags-input" placeholder="Type a tag and press Enter" autocomplete="off" />
+            <div class="tags-suggestions" id="project-settings-tags-suggestions" hidden></div>
+          </div>
+        </div>
+        <div class="field" id="field-project-settings-cursor">
+          <label>Open in Cursor</label>
+          <div class="cursor-options">
+            <label class="cursor-option"><input type="checkbox" id="project-settings-open-cursor" /> Open in Cursor</label>
+            <label class="cursor-option cursor-option-indent"><input type="checkbox" id="project-settings-open-cursor-admin" disabled /> Open in Admin mode</label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Links</label>
+          <ul class="links-list" id="project-settings-links-list"></ul>
+          <button type="button" class="btn btn-secondary btn-small" id="btn-project-settings-add-link">+ Add link</button>
+        </div>
+        <div class="field">
+          <label for="project-settings-server">SFTP server</label>
+          <select id="project-settings-server">
+            <option value="">— No server —</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-cancel-project-settings">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Settings modal (File → Settings) -->
+  <dialog id="modal-settings" class="modal">
+    <div class="modal-content modal-wide">
+      <h2>Settings</h2>
+      <div class="settings-layout">
+        <nav class="settings-nav">
+          <button type="button" class="settings-nav-item is-active" data-settings-view-nav="appearance">Appearance</button>
+          <button type="button" class="settings-nav-item" data-settings-view-nav="sftp">SFTP servers</button>
+        </nav>
+        <div class="settings-content">
+          <section class="settings-section settings-view is-active" id="settings-view-appearance" data-settings-view="appearance">
+            <h3>Appearance</h3>
+            <div class="field">
+              <label for="settings-color-scheme">Color scheme</label>
+              <select id="settings-color-scheme">
+                <option value="cyan-glow">Cyan Glow</option>
+                <option value="dark-blue">Dark Blue</option>
+                <option value="app-icon">App Icon</option>
+              </select>
+            </div>
+          </section>
+          <section class="settings-section settings-view" id="settings-view-sftp" data-settings-view="sftp">
+            <h3>SFTP servers</h3>
+            <p class="hint">Add servers to use with PuTTY SFTP. You can assign a server to a project in Project settings (gear icon).</p>
+            <div class="settings-sftp-header">
+              <button type="button" class="btn btn-secondary btn-small" id="btn-settings-add-server">+ Add SFTP server</button>
+            </div>
+            <ul class="settings-servers-list" id="settings-servers-list"></ul>
+          </section>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-cancel-settings">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-save-settings">Save</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Add/Edit SFTP server modal -->
+  <dialog id="modal-settings-server" class="modal">
+    <div class="modal-content">
+      <h2 id="modal-settings-server-title">Add SFTP server</h2>
+      <div class="settings-server-form" id="settings-server-form">
+        <input type="hidden" id="settings-cred-id" />
+        <div class="field-row">
+          <div class="field">
+            <label for="settings-cred-name">Short name</label>
+            <input type="text" id="settings-cred-name" placeholder="e.g. Production" />
+          </div>
+          <div class="field">
+            <label for="settings-cred-host">Host</label>
+            <input type="text" id="settings-cred-host" placeholder="host.example.com" />
+          </div>
+          <div class="field">
+            <label for="settings-cred-port">Port</label>
+            <input type="number" id="settings-cred-port" value="22" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="settings-cred-user">Username</label>
+            <input type="text" id="settings-cred-user" placeholder="username" />
+          </div>
+          <div class="field">
+            <label for="settings-cred-password">Password</label>
+            <input type="password" id="settings-cred-password" placeholder="Leave blank to keep current" />
+          </div>
+          <div class="field">
+            <label for="settings-cred-key">Private key path (.ppk)</label>
+            <input type="text" id="settings-cred-key" placeholder="C:\path\to\key.ppk" />
+          </div>
+        </div>
+        <div class="modal-actions modal-actions-spaced">
+          <button type="button" class="btn btn-ghost" id="btn-settings-test-connection">Test connection</button>
+          <span class="modal-actions-fill"></span>
+          <button type="button" class="btn btn-ghost" id="btn-settings-server-cancel">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-settings-save-server">Save server</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- SFTP Upload modal: two-pane local/remote + connection status -->
+  <dialog id="modal-sftp" class="modal">
+    <div class="modal-content modal-sftp">
+      <div class="sftp-header">
+        <span class="sftp-status" id="sftp-status" title="Disconnected" aria-label="Connection status"><span class="sftp-status-dot sftp-status-disconnected"></span></span>
+        <h2 id="sftp-modal-title">SFTP upload</h2>
+      </div>
+      <div class="sftp-panes">
+        <div class="sftp-pane sftp-pane-local">
+          <h3>Local</h3>
+          <div class="sftp-pathbar" id="sftp-local-pathbar"></div>
+          <div class="sftp-list-wrap" id="sftp-list-wrap-local">
+            <table class="sftp-list" id="sftp-list-local">
+              <thead><tr><th class="sftp-col-type">Type</th><th class="sftp-col-name">Name</th></tr></thead>
+              <tbody id="sftp-list-local-body"></tbody>
+            </table>
+          </div>
+          <div class="sftp-selection-actions" id="sftp-local-actions" hidden>
+            <button type="button" class="btn btn-small btn-sftp-send" id="sftp-btn-send" title="Choose destination on the right">→</button>
+          </div>
+        </div>
+        <div class="sftp-pane sftp-pane-remote">
+          <h3>Remote</h3>
+          <div class="sftp-pathbar" id="sftp-remote-pathbar"></div>
+          <div class="sftp-list-wrap" id="sftp-list-wrap-remote">
+            <table class="sftp-list" id="sftp-list-remote">
+              <thead><tr><th class="sftp-col-type">Type</th><th class="sftp-col-name">Name</th></tr></thead>
+              <tbody id="sftp-list-remote-body"></tbody>
+            </table>
+          </div>
+          <div class="sftp-selection-actions" id="sftp-remote-actions" hidden>
+            <button type="button" class="btn btn-small btn-sftp-download" id="sftp-btn-add-download-mapping" title="Add as download mapping (remote → local)">↓</button>
+          </div>
+          <div class="sftp-dest-options" id="sftp-dest-options" hidden>
+            <span class="sftp-dest-label">↓ Save here</span>
+            <label><input type="checkbox" id="sftp-overwrite" /> Overwrite if present</label>
+            <label><input type="checkbox" id="sftp-ask-overwrite" /> Ask before overwriting</label>
+          </div>
+        </div>
+      </div>
+      <div class="sftp-mapping-groups-row">
+        <label for="sftp-group-select">Mapping group</label>
+        <div class="sftp-group-controls">
+          <select id="sftp-group-select" class="sftp-group-select" title="Select mapping group"></select>
+          <button type="button" class="btn btn-small btn-ghost" id="sftp-group-add" title="Add group">+ Add group</button>
+          <button type="button" class="btn btn-small btn-ghost" id="sftp-group-edit" title="Edit group name">Edit</button>
+          <button type="button" class="btn btn-small btn-ghost" id="sftp-group-delete" title="Delete group">Delete</button>
+        </div>
+      </div>
+      <div class="sftp-mappings-list" id="sftp-mappings-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="sftp-btn-cancel">Cancel</button>
+        <button type="button" class="btn btn-secondary" id="sftp-btn-save-mappings">Save mappings</button>
+        <button type="button" class="btn btn-secondary" id="sftp-btn-update-mapping" hidden title="Update the selected mapping with current options">Update mapping</button>
+        <button type="button" class="btn btn-primary" id="sftp-btn-run">Run upload</button>
+        <button type="button" class="btn btn-primary" id="sftp-btn-run-download">Run download</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- SFTP progress modal -->
+  <dialog id="modal-sftp-progress" class="modal">
+    <div class="modal-content">
+      <h2 id="sftp-progress-title">Upload progress</h2>
+      <div class="sftp-progress-log" id="sftp-progress-log"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="sftp-progress-close" disabled>Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Overwrite confirm (inline in progress or separate prompt) -->
+  <dialog id="modal-sftp-overwrite" class="modal">
+    <div class="modal-content">
+      <h2>Overwrite?</h2>
+      <p id="sftp-overwrite-message">File already exists on server. Overwrite?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="sftp-overwrite-no">No</button>
+        <button type="button" class="btn btn-primary" id="sftp-overwrite-yes">Yes</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- SFTP remote context menu (right-click on remote list) -->
+  <div id="sftp-remote-context-menu" class="project-context-menu" hidden>
+    <button type="button" class="project-context-menu-item" id="sftp-remote-context-download" data-action="download"><span class="project-context-menu-icon" aria-hidden="true">&#8595;</span> Download</button>
+    <button type="button" class="project-context-menu-item" id="sftp-remote-context-add-download-mapping" data-action="add-download-mapping"><span class="project-context-menu-icon" aria-hidden="true">+</span> Add as download mapping</button>
+  </div>
+
+  <!-- SFTP download dialog (choose destination, then download) -->
+  <dialog id="modal-sftp-download" class="modal">
+    <div class="modal-content">
+      <h2>Download from server</h2>
+      <p class="hint" id="sftp-download-hint">Save to folder (path relative to projects root):</p>
+      <div class="field">
+        <label for="sftp-download-local-path">Download to folder</label>
+        <div class="path-row">
+          <input type="text" id="sftp-download-local-path" placeholder="e.g. my-project or my-project/downloads" />
+          <button type="button" class="btn btn-secondary" id="sftp-download-browse">Browse</button>
+        </div>
+        <div class="browse-panel" id="sftp-download-browse-panel" hidden>
+          <ul class="browse-dirs" id="sftp-download-browse-dirs"></ul>
+        </div>
+      </div>
+      <p class="hint" id="sftp-download-remote-label">Remote: <code id="sftp-download-remote-path"></code></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="sftp-download-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="sftp-download-run">Download</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Mapping group name (Electron doesn't support window.prompt) -->
+  <dialog id="modal-mapping-group-name" class="modal">
+    <div class="modal-content">
+      <h2 id="modal-mapping-group-name-title">Mapping group name</h2>
+      <div class="field">
+        <label for="mapping-group-name-input">Name</label>
+        <input type="text" id="mapping-group-name-input" placeholder="e.g. Production, Staging" autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="mapping-group-name-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="mapping-group-name-ok">OK</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Test connection: password prompt (Electron doesn't support window.prompt) -->
+  <dialog id="modal-test-connection-password" class="modal">
+    <div class="modal-content">
+      <h2>Test connection</h2>
+      <p class="hint" id="test-connection-label">Enter password (not saved; used only for this test).</p>
+      <div class="field">
+        <label for="test-connection-password-input">Password</label>
+        <input type="password" id="test-connection-password-input" placeholder="Password" autocomplete="off" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-test-connection-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-test-connection-submit">Test</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Credentials modal (legacy - can remove or keep for quick access) -->
+  <dialog id="modal-credentials" class="modal">
+    <div class="modal-content modal-wide">
+      <h2>SFTP credentials</h2>
+      <p class="hint">Saved credentials for PuTTY SFTP. Associate a server with a project in the project card.</p>
+      <ul class="credentials-list" id="credentials-list"></ul>
+      <form id="form-credential" class="form-credential">
+        <div class="field-row">
+          <div class="field">
+            <label for="cred-name">Name</label>
+            <input type="text" id="cred-name" placeholder="My server" />
+          </div>
+          <div class="field">
+            <label for="cred-host">Host</label>
+            <input type="text" id="cred-host" placeholder="host.example.com" />
+          </div>
+          <div class="field">
+            <label for="cred-port">Port</label>
+            <input type="number" id="cred-port" value="22" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="cred-user">User</label>
+            <input type="text" id="cred-user" placeholder="username" />
+          </div>
+          <div class="field">
+            <label for="cred-password">Password</label>
+            <input type="password" id="cred-password" placeholder="Optional if using key" />
+          </div>
+          <div class="field">
+            <label for="cred-key">Key path</label>
+            <input type="text" id="cred-key" placeholder="C:\path\to\key.ppk" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save credential</button>
+      </form>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-close-credentials">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+out/
+*.log
+
+# App data (projects and credentials stay local)
+data/app.log
+data/projects.json
+data/credentials.json
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
