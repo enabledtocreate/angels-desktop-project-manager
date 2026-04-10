@@ -167,9 +167,34 @@ function mapTaskStatusToFeatureStatus(status) {
 
 function mapBugStatusToTaskStatus(status) {
   const normalized = String(status || '').trim().toLowerCase();
-  if (normalized === 'done' || normalized === 'resolved' || normalized === 'closed') return 'done';
-  if (normalized === 'in_progress') return 'in_progress';
+  if (['done', 'resolved', 'closed'].includes(normalized)) return 'done';
+  if (['in_progress', 'blocked', 'fixed', 'verifying', 'regressed'].includes(normalized)) return 'in_progress';
+  if (['open', 'triaged'].includes(normalized)) return 'todo';
   return 'todo';
+}
+
+function normalizeBugStatus(status, fallback = 'open') {
+  const normalized = String(status || '').trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (normalized === 'done') return 'resolved';
+  if (['open', 'triaged', 'in_progress', 'blocked', 'fixed', 'verifying', 'resolved', 'closed', 'regressed'].includes(normalized)) {
+    return normalized;
+  }
+  return fallback;
+}
+
+function isCompletedBugStatus(status) {
+  return ['resolved', 'closed'].includes(normalizeBugStatus(status));
+}
+
+function isRegressedBugStatus(status) {
+  return normalizeBugStatus(status) === 'regressed';
+}
+
+function isArchivedBugState(status, planningBucket, archived = false, completed = false) {
+  if (archived || completed) return true;
+  if (String(planningBucket || '').trim().toLowerCase() === 'archived') return true;
+  return isCompletedBugStatus(status);
 }
 
 function mapTaskStatusToBugStatus(status) {
@@ -635,7 +660,7 @@ async function saveTask(taskInput) {
       task.priority || 'medium',
       task.workItemType,
       task.status === 'done' ? 1 : 0,
-      task.planningBucket === 'archived' ? 1 : 0,
+      (task.planningBucket === 'archived' || task.status === 'done') ? 1 : 0,
       task.updatedAt,
       task.projectId,
       task.id,
@@ -711,7 +736,11 @@ function hydrateBugItem(row) {
   const taskTitle = row.task_title !== undefined ? row.task_title : row.title;
   const taskDescription = row.task_description !== undefined ? row.task_description : (row.current_behavior || row.summary);
   const taskStatus = row.task_status !== undefined ? row.task_status : row.status;
-  const mappedStatus = taskStatus === 'todo' ? 'open' : (taskStatus || 'open');
+  const mappedStatus = normalizeBugStatus(row.status || mapTaskStatusToBugStatus(taskStatus), 'open');
+  const planningBucket = row.task_planning_bucket || row.planning_bucket || 'considered';
+  const completed = row.completed !== undefined && row.completed !== null ? Boolean(row.completed) : isCompletedBugStatus(mappedStatus);
+  const regressed = row.regressed !== undefined && row.regressed !== null ? Boolean(row.regressed) : isRegressedBugStatus(mappedStatus);
+  const archived = isArchivedBugState(mappedStatus, planningBucket, Boolean(row.archived), completed);
   const workItemType = normalizeWorkItemType(row.task_work_item_type || row.work_item_type || row.task_item_type || 'software_bug', 'software_bug');
   return {
     id: row.id,
@@ -731,17 +760,18 @@ function hydrateBugItem(row) {
     taskStatus: taskStatus || 'todo',
     taskId: row.task_id,
     roadmapPhaseId: row.task_roadmap_phase_id || null,
-    planningBucket: row.task_planning_bucket || 'considered',
+    planningBucket: archived ? 'archived' : planningBucket,
     workItemType,
     itemType: legacyItemTypeFromWorkItemType(workItemType),
     dependencyIds: parseJson(row.task_dependency_ids, []),
     affectedModuleKeys: parseJson(row.affected_module_keys, []),
+    associationHints: String(row.association_hints || '').trim(),
     progress: Number(row.task_progress || 0),
     milestone: Boolean(row.task_milestone),
     sortOrder: Number(row.task_sort_order || 0),
-    completed: Boolean(row.completed),
-    regressed: Boolean(row.regressed),
-    archived: Boolean(row.archived),
+    completed,
+    regressed,
+    archived,
     createdAt: row.task_created_at || row.created_at,
     updatedAt: row.task_updated_at || row.updated_at,
   };
@@ -1316,19 +1346,42 @@ async function getBugItemById(projectId, bugId) {
 async function saveBugItem(bugInput) {
   const existing = bugInput.id ? await getBugItemById(bugInput.projectId, bugInput.id) : null;
   const now = new Date().toISOString();
+  const normalizedBugStatus = normalizeBugStatus(
+    bugInput.status ?? bugInput.taskStatus ?? existing?.status ?? existing?.taskStatus ?? 'open',
+    'open'
+  );
   const taskId = existing?.taskId
     || ((bugInput.id && bugInput.taskId) ? bugInput.taskId : null)
     || `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  const archived = bugInput.archived !== undefined ? !!bugInput.archived : !!existing?.archived;
+  const explicitCompleted = bugInput.completed !== undefined ? !!bugInput.completed : undefined;
+  const explicitArchived = bugInput.archived !== undefined ? !!bugInput.archived : undefined;
+  const inputPlanningBucket = bugInput.planningBucket ?? existing?.planningBucket ?? 'considered';
+  const hasExplicitActiveStateChange = (
+    bugInput.status !== undefined
+    || bugInput.taskStatus !== undefined
+    || bugInput.planningBucket !== undefined
+    || bugInput.roadmapPhaseId !== undefined
+  )
+    && !isCompletedBugStatus(normalizedBugStatus)
+    && String(inputPlanningBucket || '').trim().toLowerCase() !== 'archived';
+  const completed = explicitCompleted !== undefined
+    ? explicitCompleted
+    : ((bugInput.status !== undefined || bugInput.taskStatus !== undefined)
+      ? isCompletedBugStatus(normalizedBugStatus)
+      : !!existing?.completed);
+  const archived = explicitArchived !== undefined
+    ? explicitArchived
+    : (hasExplicitActiveStateChange
+      ? false
+      : isArchivedBugState(normalizedBugStatus, inputPlanningBucket, !!existing?.archived, completed));
+  const statusWasExplicitlySet = bugInput.status !== undefined || bugInput.taskStatus !== undefined;
   const planningBucket = archived
     ? 'archived'
-    : (bugInput.planningBucket
-    ?? existing?.planningBucket
-    ?? 'considered');
+    : inputPlanningBucket;
   const roadmapPhaseId = planningBucket === 'phase'
     ? (bugInput.roadmapPhaseId ?? existing?.roadmapPhaseId ?? null)
     : null;
-  const taskStatus = mapBugStatusToTaskStatus(bugInput.status ?? bugInput.taskStatus ?? existing?.status ?? existing?.taskStatus ?? 'open');
+  const taskStatus = mapBugStatusToTaskStatus(normalizedBugStatus);
   await saveTask({
     id: taskId,
     projectId: bugInput.projectId,
@@ -1346,7 +1399,7 @@ async function saveBugItem(bugInput) {
     startDate: bugInput.startDate ?? existing?.startDate ?? null,
     endDate: bugInput.endDate ?? existing?.endDate ?? null,
     dependencyIds: bugInput.dependencyIds ?? existing?.dependencyIds ?? [],
-    progress: bugInput.progress ?? existing?.progress ?? (bugInput.completed ? 100 : (taskStatus === 'in_progress' ? 50 : 0)),
+    progress: bugInput.progress ?? existing?.progress ?? (completed ? 100 : (taskStatus === 'in_progress' ? 50 : 0)),
     milestone: bugInput.milestone ?? existing?.milestone ?? false,
     sortOrder: bugInput.sortOrder ?? existing?.sortOrder ?? 0,
   });
@@ -1359,14 +1412,17 @@ async function saveBugItem(bugInput) {
     currentBehavior: String(bugInput.currentBehavior ?? existing?.currentBehavior ?? bugInput.summary ?? existing?.summary ?? ''),
     expectedBehavior: String(bugInput.expectedBehavior ?? existing?.expectedBehavior ?? ''),
     severity: String(bugInput.severity || existing?.severity || 'medium').trim() || 'medium',
-    status: mapTaskStatusToBugStatus(taskStatus),
+    status: normalizedBugStatus,
     taskId,
     workItemType: 'software_bug',
     affectedModuleKeys: Array.isArray(bugInput.affectedModuleKeys)
       ? bugInput.affectedModuleKeys.map((item) => String(item || '').trim()).filter(Boolean)
       : (existing?.affectedModuleKeys || []),
-    completed: bugInput.completed !== undefined ? !!bugInput.completed : !!existing?.completed,
-    regressed: bugInput.regressed !== undefined ? !!bugInput.regressed : !!existing?.regressed,
+    associationHints: String(bugInput.associationHints ?? existing?.associationHints ?? '').trim(),
+    completed,
+    regressed: bugInput.regressed !== undefined
+      ? !!bugInput.regressed
+      : (statusWasExplicitlySet ? isRegressedBugStatus(normalizedBugStatus) : !!existing?.regressed),
     archived,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
@@ -1374,8 +1430,8 @@ async function saveBugItem(bugInput) {
 
   await dbRun(`
     INSERT INTO bug_items
-    (id, project_id, code, title, summary, current_behavior, expected_behavior, severity, status, task_id, work_item_type, affected_module_keys, completed, regressed, archived, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (id, project_id, code, title, summary, current_behavior, expected_behavior, severity, status, task_id, work_item_type, affected_module_keys, association_hints, completed, regressed, archived, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       title = excluded.title,
       summary = excluded.summary,
@@ -1386,6 +1442,7 @@ async function saveBugItem(bugInput) {
       task_id = excluded.task_id,
       work_item_type = excluded.work_item_type,
       affected_module_keys = excluded.affected_module_keys,
+      association_hints = excluded.association_hints,
       completed = excluded.completed,
       regressed = excluded.regressed,
       archived = excluded.archived,
@@ -1403,6 +1460,7 @@ async function saveBugItem(bugInput) {
     bug.taskId,
     bug.workItemType,
     JSON.stringify(bug.affectedModuleKeys || []),
+    bug.associationHints,
     bug.completed ? 1 : 0,
     bug.regressed ? 1 : 0,
     bug.archived ? 1 : 0,

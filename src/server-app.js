@@ -113,6 +113,7 @@ const {
   getTemplateMetadata,
   readProjectManagedDocument,
   computeMd5,
+  syncArchivedBugWorkspaceNotes,
   renderRoadmapMermaid,
   renderFeaturesMermaid,
   renderBugsMermaid,
@@ -1802,12 +1803,14 @@ function createApp() {
   async function buildBugsState(project) {
     ensureWorkspaceProject(project);
     const stored = await readProjectDocument(project.id, 'bugs');
-    const bugs = await readBugItems(project.id, { includeArchived: true });
-    const mermaid = stored && stored.mermaid
-      ? stored.mermaid
-      : renderBugsMermaid(bugs);
+    const [bugs, phases] = await Promise.all([
+      readBugItems(project.id, { includeArchived: true }),
+      readRoadmapPhases(project.id),
+    ]);
+    const mermaid = renderBugsMermaid(bugs);
     return {
       bugs,
+      phases,
       editorState: stored && stored.editorState ? stored.editorState : { fragmentHistory: [] },
       mermaid,
       markdown: renderBugsMarkdown(project, bugs, mermaid),
@@ -1826,6 +1829,7 @@ function createApp() {
       mermaid: state.mermaid,
       editorState: state.editorState || { fragmentHistory: [] },
     });
+    syncArchivedBugWorkspaceNotes(project, state.bugs);
     config.log(`phase5: bugs document synced for project ${project.id} at ${(syncResult.fileSnapshot && syncResult.fileSnapshot.docPath) || 'no-file'}`);
     return state;
   }

@@ -341,6 +341,70 @@ function syncSoftwareStandardsRegistryForProject(project) {
   return syncSoftwareStandardsForProject(project);
 }
 
+function getArchivedBugWorkspaceNotePath(project, bug) {
+  const workspaceDir = getProjectWorkspaceDir(project);
+  if (!workspaceDir || !bug) return null;
+  const baseName = sanitizeFragmentFolderName(`${bug.code || bug.id}_ARCHIVED`);
+  return path.join(workspaceDir, `${baseName}.md`);
+}
+
+function renderArchivedBugWorkspaceNote(project, bug) {
+  const associationHints = parseAssociationHintTokens(bug.associationHints);
+  return [
+    `# Archived Bug Follow-Up: ${bug.code || bug.id} - ${bug.title || 'Bug'}`,
+    '',
+    'This workspace note exists so AI agents can complete the documentation follow-up for an archived bug fix.',
+    '',
+    '## Required Follow-Up',
+    '',
+    '- Generate the appropriate fragments for the affected canonical documents.',
+    '- Update the canonical documents to reflect the implemented fix.',
+    '- Attach the bug code to the affected document items so the fix is traceable.',
+    '- Update the Change Log with the affected document ids and the bug code.',
+    '- Remove this workspace note automatically if the bug moves back into an active state.',
+    '',
+    '## Bug Summary',
+    '',
+    `- Bug Code: ${bug.code || bug.id}`,
+    `- Lifecycle Status: ${getBugLifecycleMetadata(bug.status).label} (\`${normalizeBugLifecycleStatus(bug.status)}\`)`,
+    `- Planning Bucket: ${formatBugPlanningBucketLabel(bug.planningBucket)} (\`${bug.planningBucket || 'archived'}\`)`,
+    `- Linked Task: ${bug.taskId || 'None'}`,
+    `- Affected Modules: ${Array.isArray(bug.affectedModuleKeys) && bug.affectedModuleKeys.length ? bug.affectedModuleKeys.join(', ') : 'None'}`,
+    `- Association Hints: ${associationHints.length ? associationHints.join(', ') : 'None'}`,
+    `- Last Updated: ${formatDocDateTime(bug.updatedAt)}`,
+    '',
+    '## Current Behavior',
+    '',
+    renderBugLiteralTextBlock(bug.currentBehavior || bug.summary || '', 'No current behavior recorded yet.'),
+    '',
+    '## Expected Behavior',
+    '',
+    renderBugLiteralTextBlock(bug.expectedBehavior || '', 'No expected behavior recorded yet.'),
+    '',
+  ].join('\n');
+}
+
+function syncArchivedBugWorkspaceNotes(project, bugs) {
+  const workspaceDir = getProjectWorkspaceDir(project);
+  if (!workspaceDir) return [];
+  ensureProjectWorkspaceDir(project);
+  const list = Array.isArray(bugs) ? bugs : [];
+  const touchedPaths = [];
+
+  for (const bug of list) {
+    const notePath = getArchivedBugWorkspaceNotePath(project, bug);
+    if (!notePath) continue;
+    if (isArchivedBugLifecycleItem(bug)) {
+      fs.writeFileSync(notePath, renderArchivedBugWorkspaceNote(project, bug), 'utf8');
+      touchedPaths.push(notePath);
+    } else if (fs.existsSync(notePath)) {
+      fs.unlinkSync(notePath);
+    }
+  }
+
+  return touchedPaths;
+}
+
 function syncTemplateForProject(project, docType) {
   const templatesDir = ensureProjectTemplatesDir(project);
   const definition = getDocDefinition(docType);
@@ -468,14 +532,179 @@ function renderFeaturesMermaid(phases, features) {
   return [...new Set(lines)].join('\n');
 }
 
+const BUG_LIFECYCLE_STATES = [
+  { key: 'open', label: 'Open', description: 'Newly reported and awaiting triage.' },
+  { key: 'triaged', label: 'Triaged', description: 'Validated, categorized, and ready for prioritization.' },
+  { key: 'in_progress', label: 'In Progress', description: 'Active investigation or remediation is underway.' },
+  { key: 'blocked', label: 'Blocked', description: 'Work cannot continue until a dependency or decision is resolved.' },
+  { key: 'fixed', label: 'Fixed', description: 'A code or configuration change is ready for validation.' },
+  { key: 'verifying', label: 'Verifying', description: 'The proposed fix is being tested in the target environment.' },
+  { key: 'resolved', label: 'Resolved', description: 'The issue has been verified as fixed.' },
+  { key: 'closed', label: 'Closed', description: 'The record is complete and retained for history.' },
+  { key: 'regressed', label: 'Regressed', description: 'The issue returned after a prior fix and needs renewed attention.' },
+];
+
+function normalizeBugLifecycleStatus(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  if (normalized === 'done') return 'resolved';
+  return BUG_LIFECYCLE_STATES.some((state) => state.key === normalized) ? normalized : 'open';
+}
+
+function getBugLifecycleMetadata(status) {
+  const normalized = normalizeBugLifecycleStatus(status);
+  return BUG_LIFECYCLE_STATES.find((state) => state.key === normalized) || BUG_LIFECYCLE_STATES[0];
+}
+
+function isArchivedBugLifecycleItem(bug) {
+  if (!bug || typeof bug !== 'object') return false;
+  if (bug.archived) return true;
+  const planningBucket = String(bug.planningBucket || '').trim().toLowerCase();
+  if (planningBucket === 'archived') return true;
+  const status = normalizeBugLifecycleStatus(bug.status);
+  return status === 'resolved' || status === 'closed';
+}
+
+function formatBugPlanningBucketLabel(bucket) {
+  const normalized = String(bucket || 'considered').trim().toLowerCase();
+  if (normalized === 'phase') return 'Roadmap Phase';
+  if (normalized === 'planned') return 'Planned';
+  if (normalized === 'archived') return 'Archived';
+  return 'Considered';
+}
+
+function renderBugLiteralTextBlock(value, fallback) {
+  const text = String(value || '').trim() || fallback;
+  return ['```text', text, '```'].join('\n');
+}
+
+function parseAssociationHintTokens(value) {
+  return [...new Set(
+    String(value || '')
+      .split(/[\s,;]+/)
+      .map((part) => part.trim())
+      .filter((part) => /^@[\w:-]+$/i.test(part))
+  )];
+}
+
+function extractMarkdownSectionAnyLevel(markdown, heading) {
+  const lines = String(markdown || '').split(/\r?\n/);
+  const normalizedHeading = String(heading || '').trim().toLowerCase();
+  let startIndex = -1;
+  let startLevel = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^(#{1,6})\s+(.+?)\s*$/);
+    if (!match) continue;
+    if (match[2].trim().toLowerCase() !== normalizedHeading) continue;
+    startIndex = index;
+    startLevel = match[1].length;
+    break;
+  }
+  if (startIndex < 0) return '';
+  const collected = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const nextHeading = lines[index].match(/^(#{1,6})\s+/);
+    if (nextHeading && nextHeading[1].length <= startLevel) break;
+    collected.push(lines[index]);
+  }
+  return collected.join('\n').trim();
+}
+
+function stripMarkdownHeadingSyntax(value) {
+  return String(value || '')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function summarizeBugFragmentBody(value, fallback = '') {
+  const text = String(value || '').trim();
+  if (!text) return fallback;
+  const summary = extractMarkdownSectionAnyLevel(text, 'Executive Summary');
+  if (summary) return stripMarkdownHeadingSyntax(summary);
+  const firstParagraph = text
+    .replace(/^#\s+Bug Fragment:.+$/im, '')
+    .split(/\n\s*\n/)
+    .map((part) => stripMarkdownHeadingSyntax(part))
+    .find(Boolean);
+  return firstParagraph || fallback;
+}
+
+function getBugDisplayFields(bug) {
+  const rawCurrent = String(bug?.currentBehavior || bug?.summary || '').trim();
+  const rawExpected = String(bug?.expectedBehavior || '').trim();
+  const looksLikeFragment = /^#\s+Bug Fragment:/i.test(rawCurrent) || /##\s+Expected vs Current Behavior/i.test(rawCurrent);
+  if (!looksLikeFragment) {
+    return {
+      currentBehavior: rawCurrent,
+      expectedBehavior: rawExpected,
+      summary: String(bug?.summary || rawCurrent || '').trim(),
+    };
+  }
+
+  const extractedCurrent = extractMarkdownSectionAnyLevel(rawCurrent, 'Current Behavior');
+  const extractedExpected = extractMarkdownSectionAnyLevel(rawCurrent, 'Expected Behavior');
+  const fallbackSummary = summarizeBugFragmentBody(rawCurrent, String(bug?.summary || '').trim());
+  return {
+    currentBehavior: stripMarkdownHeadingSyntax(extractedCurrent || fallbackSummary || rawCurrent),
+    expectedBehavior: stripMarkdownHeadingSyntax(
+      extractedExpected
+      || (/^Review expected behavior/i.test(rawExpected) ? '' : rawExpected)
+      || 'No expected behavior recorded yet.'
+    ),
+    summary: fallbackSummary || String(bug?.summary || '').trim(),
+  };
+}
+
+function normalizeBugDedupeText(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function dedupeVisibleBugs(bugs) {
+  const seen = new Set();
+  const list = Array.isArray(bugs) ? bugs : [];
+  return list.filter((bug) => {
+    const display = getBugDisplayFields(bug);
+    const key = [
+      normalizeBugDedupeText(bug?.title),
+      normalizeBugDedupeText(display.currentBehavior),
+      normalizeBugDedupeText(display.expectedBehavior),
+    ].join('::');
+    if (!key.replace(/:/g, '')) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function sanitizeBugForMarkdown(bug) {
+  const display = getBugDisplayFields(bug);
+  return {
+    ...bug,
+    summary: display.summary || bug?.summary || '',
+    currentBehavior: display.currentBehavior || bug?.currentBehavior || bug?.summary || '',
+    expectedBehavior: display.expectedBehavior || bug?.expectedBehavior || '',
+  };
+}
+
 function renderBugsMermaid(bugs) {
   const lines = ['flowchart TD', '  bugs["Active Bugs"]'];
-  for (const bug of bugs.filter((item) => !item.archived)) {
-    const statusNode = `status_${toMermaidNodeId(bug.completed ? 'completed' : (bug.regressed ? 'regressed' : bug.status || 'open'))}`;
-    lines.push(`  bugs --> ${statusNode}["${escapeMermaidLabel(bug.completed ? 'completed' : (bug.regressed ? 'regressed' : bug.status || 'open'))}"]`);
+  for (const bug of dedupeVisibleBugs(bugs.filter((item) => !isArchivedBugLifecycleItem(item)))) {
+    const lifecycle = getBugLifecycleMetadata(bug.status);
+    const statusNode = `status_${toMermaidNodeId(lifecycle.key)}`;
+    lines.push(`  bugs --> ${statusNode}["${escapeMermaidLabel(lifecycle.label)}"]`);
     lines.push(`  ${statusNode} --> bug_${toMermaidNodeId(bug.id)}["${escapeMermaidLabel(`${bug.code}: ${bug.title}`)}"]`);
   }
   return [...new Set(lines)].join('\n');
+}
+
+function formatDocDateTime(value) {
+  if (!value) return 'Unknown';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value);
+  return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, 'Z');
 }
 
 function buildDocumentHeader(docType, project) {
@@ -1094,48 +1323,89 @@ function renderFeaturesMarkdown(project, phases, features, mermaid) {
 }
 
 function renderBugsMarkdown(project, bugs, mermaid) {
+  const sanitizedBugs = (Array.isArray(bugs) ? bugs : []).map(sanitizeBugForMarkdown);
   const managed = {
     docType: 'bugs',
     version: 1,
-    bugs,
+    bugs: sanitizedBugs,
     mermaid,
   };
 
-  const active = bugs.filter((bug) => !bug.archived);
-  const archived = bugs.filter((bug) => bug.archived);
+  const active = dedupeVisibleBugs(sanitizedBugs.filter((bug) => !isArchivedBugLifecycleItem(bug)));
+  const archived = sanitizedBugs.filter((bug) => isArchivedBugLifecycleItem(bug));
+
+  function renderLifecycleSection() {
+    return BUG_LIFECYCLE_STATES.map((state, index) => (
+      `1.1.${index + 1} \`${state.key}\` - ${state.label}: ${state.description}`
+    )).join('\n');
+  }
+
+  function renderArchivedWorkflowNotes() {
+    const workspaceDir = getProjectWorkspaceDir(project);
+    return [
+      'Resolved and closed bugs are automatically archived.',
+      archived.length
+        ? `Archived bug follow-up notes are written to ${workspaceDir} so AI agents can generate the right fragments, update canonical documents, and attach the bug code to the resulting document items.`
+        : `When a bug becomes archived, write a follow-up note to ${workspaceDir} so AI agents can generate the right fragments, update canonical documents, and attach the bug code to the resulting document items.`,
+      'If an archived bug moves back into an active lifecycle state, remove its workspace follow-up note and return it to the active bug list.',
+    ].join('\n\n');
+  }
 
   function renderBugList(list) {
     return list.length
-      ? list.map((bug) => [
-          `### ${bug.code}: ${bug.title}`,
+      ? list.map((bug, index) => {
+          const display = getBugDisplayFields(bug);
+          return [
+          `### 2.${index + 1} ${bug.code}: ${bug.title}`,
           '',
-          `- Status: ${bug.status}`,
+          `- Lifecycle Status: ${getBugLifecycleMetadata(bug.status).label} (\`${normalizeBugLifecycleStatus(bug.status)}\`)`,
+          `- Planning Bucket: ${formatBugPlanningBucketLabel(bug.planningBucket)} (\`${bug.planningBucket || 'considered'}\`)`,
+          `- Roadmap Phase: ${bug.roadmapPhaseId || 'None'}`,
           `- Severity: ${bug.severity}`,
           `- Completed: ${bug.completed ? 'Yes' : 'No'}`,
           `- Regressed: ${bug.regressed ? 'Yes' : 'No'}`,
           `- Linked Task: ${bug.taskId || 'None'}`,
+          `- Last Updated: ${formatDocDateTime(bug.updatedAt)}`,
+          `- Affected Modules: ${Array.isArray(bug.affectedModuleKeys) && bug.affectedModuleKeys.length ? bug.affectedModuleKeys.join(', ') : 'None'}`,
+          `- Association Hints: ${parseAssociationHintTokens(bug.associationHints).length ? parseAssociationHintTokens(bug.associationHints).join(', ') : 'None'}`,
           '',
           '#### Current Behavior',
-          bug.currentBehavior || bug.summary || 'No current behavior recorded yet.',
+          renderBugLiteralTextBlock(display.currentBehavior || bug.summary || '', 'No current behavior recorded yet.'),
           '',
           '#### Expected Behavior',
-          bug.expectedBehavior || 'No expected behavior recorded yet.',
+          renderBugLiteralTextBlock(display.expectedBehavior || '', 'No expected behavior recorded yet.'),
           '',
-        ].join('\n')).join('\n')
-      : 'No entries.\n';
+        ].join('\n');
+        }).join('\n')
+      : 'No active bugs.\n';
   }
 
   return [
     buildDocumentHeader('bugs', project),
     buildManagedBlock(managed),
     '',
-    '## Active Bugs',
+    '## 1. Bug Workflow',
+    '',
+    '### 1.1 Lifecycle States',
+    '',
+    'Use these lifecycle states when tracking software bugs across the project and in generated fragments.',
+    '',
+    renderLifecycleSection(),
+    '',
+    '### 1.2 Active And Archived Rules',
+    '',
+    'Active bugs remain in Considered, Planned, or a roadmap Phase and use one of these lifecycle states: `open`, `triaged`, `in_progress`, `blocked`, `fixed`, `verifying`, or `regressed`.',
+    '',
+    'Resolved and closed bugs are automatically archived. Archived bugs should not remain in the active bug list of this document.',
+    '',
+    '### 1.3 Archived Bug Follow-Up',
+    '',
+    renderArchivedWorkflowNotes(),
+    '',
+    '## 2. Active Bugs',
     '',
     renderBugList(active),
-    '## Archived Bugs',
-    '',
-    renderBugList(archived),
-    '## Mermaid',
+    '## 3. Mermaid',
     '',
     '```mermaid',
     mermaid,
@@ -4499,6 +4769,7 @@ module.exports = {
   getSoftwareStandardsRegistrySourcePath,
   getProjectSoftwareStandardsRegistryPath,
   syncSoftwareStandardsForProject,
+  syncArchivedBugWorkspaceNotes,
   syncTemplateForProject,
   syncSoftwareStandardsRegistryForProject,
   syncPrdFragmentTemplateForProject,

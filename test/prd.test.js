@@ -202,6 +202,8 @@ test('bootstraps SQLite from legacy JSON and preserves schema needed for roadmap
     '023_refresh_generated_titles.js',
     '024_prd_legacy_detail_normalization.js',
     '025_rename_ux_ui_to_experience_design.js',
+    '026_bug_association_hints.js',
+    '027_bug_fragment_body_cleanup.js',
   ]);
   });
 
@@ -2640,6 +2642,164 @@ test('typed work items expose a unified core work-item view while keeping softwa
   assert.equal(byId.get(bug.taskId).item_type, 'bug');
 });
 
+test('bug lifecycle states persist through refresh and regenerate BUGS markdown', async () => {
+  const { body: roots } = await request('/api/roots');
+  const projectFolder = `Gamma-${Date.now()}`;
+  fs.mkdirSync(path.join(roots.projectsRoot, projectFolder), { recursive: true });
+  let result = await request('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'folder',
+      path: projectFolder,
+      name: 'Bug Lifecycle Project',
+      projectType: 'software',
+      enabledModules: ['roadmap', 'board', 'gantt', 'work_items', 'documents', 'integrations', 'bugs'],
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  const project = result.body;
+
+  result = await request(`/api/projects/${project.id}/workspace-plugins`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      enabledPlugins: ['bugs'],
+      cleanupPlugins: [],
+    }),
+  });
+  assert.equal(result.response.status, 200);
+
+  result = await request(`/api/projects/${project.id}/bugs`, {
+    method: 'POST',
+    body: JSON.stringify({
+      title: 'Lifecycle preservation bug',
+      currentBehavior: 'The bug status falls back after refresh.',
+      expectedBehavior: 'The bug status should remain blocked until work can resume.',
+      status: 'blocked',
+      severity: 'high',
+      planningBucket: 'planned',
+      category: 'Workflow',
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.status, 'blocked');
+
+  const bugId = result.body.id;
+
+  result = await request(`/api/projects/${project.id}/bugs/${bugId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      title: 'Lifecycle preservation bug',
+      currentBehavior: 'A fix exists but validation is still running.',
+      expectedBehavior: 'The issue should remain in verifying until the fix is confirmed.',
+      status: 'verifying',
+      severity: 'high',
+      planningBucket: 'planned',
+      category: 'Workflow',
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.status, 'verifying');
+
+  result = await request(`/api/projects/${project.id}/bugs`);
+  assert.equal(result.response.status, 200);
+  const bug = result.body.bugs.find((item) => item.id === bugId);
+  assert(bug);
+  assert.equal(bug.status, 'verifying');
+  assert.match(result.body.markdown, /## 1\. Bug Workflow/);
+  assert.match(result.body.markdown, /Lifecycle Status: Verifying \(`verifying`\)/);
+  assert.match(result.body.markdown, /Planning Bucket: Planned \(`planned`\)/);
+});
+
+test('resolved bugs are archived out of BUGS markdown and create workspace follow-up notes', async () => {
+  const { body: roots } = await request('/api/roots');
+  const projectFolder = `Delta-${Date.now()}`;
+  fs.mkdirSync(path.join(roots.projectsRoot, projectFolder), { recursive: true });
+  let result = await request('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'folder',
+      path: projectFolder,
+      name: 'Bug Archive Project',
+      projectType: 'software',
+      enabledModules: ['roadmap', 'board', 'gantt', 'work_items', 'documents', 'integrations', 'bugs'],
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  const project = result.body;
+
+  result = await request(`/api/projects/${project.id}/workspace-plugins`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      enabledPlugins: ['bugs'],
+      cleanupPlugins: [],
+    }),
+  });
+  assert.equal(result.response.status, 200);
+
+  result = await request(`/api/projects/${project.id}/bugs`, {
+    method: 'POST',
+    body: JSON.stringify({
+      title: 'Archive me after fix',
+      currentBehavior: 'The fixed bug still shows in active markdown.',
+      expectedBehavior: 'Resolved bugs should move to archive follow-up notes.',
+      status: 'resolved',
+      severity: 'medium',
+      planningBucket: 'planned',
+      category: 'Workflow',
+      associationHints: '@prd-bug-archive',
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  const archivedBugId = result.body.id;
+  const archivedBugCode = result.body.code;
+
+  result = await request(`/api/projects/${project.id}/bugs`);
+  assert.equal(result.response.status, 200);
+  const archivedBug = result.body.bugs.find((item) => item.id === archivedBugId);
+  assert(archivedBug);
+  assert.equal(archivedBug.archived, true);
+  assert.equal(archivedBug.planningBucket, 'archived');
+  assert.doesNotMatch(result.body.markdown, new RegExp(`### 2\\.\\d+ ${archivedBugCode}:`));
+  assert.doesNotMatch(result.body.markdown, /## Archived Bugs/);
+  assert.match(result.body.markdown, /## 1\. Bug Workflow/);
+  assert.match(result.body.markdown, /## 2\. Active Bugs/);
+
+  const workspaceNotePath = path.join(
+    roots.projectsRoot,
+    projectFolder,
+    '.apm',
+    '_WORKSPACE',
+    `${archivedBugCode}_ARCHIVED.md`
+  );
+  assert.equal(fs.existsSync(workspaceNotePath), true);
+  const workspaceNote = fs.readFileSync(workspaceNotePath, 'utf8');
+  assert.match(workspaceNote, /Generate the appropriate fragments/);
+  assert.match(workspaceNote, /@prd-bug-archive/);
+
+  result = await request(`/api/projects/${project.id}/bugs/${archivedBugId}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      title: 'Archive me after fix',
+      currentBehavior: 'The issue returned after the initial fix.',
+      expectedBehavior: 'The bug should return to the active list.',
+      status: 'regressed',
+      planningBucket: 'planned',
+      category: 'Workflow',
+      associationHints: '@prd-bug-archive',
+    }),
+  });
+  assert.equal(result.response.status, 200);
+
+  result = await request(`/api/projects/${project.id}/bugs`);
+  assert.equal(result.response.status, 200);
+  const activeBug = result.body.bugs.find((item) => item.id === archivedBugId);
+  assert(activeBug);
+  assert.equal(activeBug.archived, false);
+  assert.equal(fs.existsSync(workspaceNotePath), false);
+  assert.match(result.body.markdown, new RegExp(`### 2\\.\\d+ ${archivedBugCode}: Archive me after fix`));
+  assert.match(result.body.markdown, /Association Hints: @prd-bug-archive/);
+});
+
 test('phase 5 workspace docs keep tasks as the source of truth while generating roadmap, feature, bug, and PRD markdown artifacts', async () => {
   const { body: roots } = await request('/api/roots');
   const project = (await request('/api/projects')).body.find((item) => item.id === 'legacy-project-1');
@@ -2915,6 +3075,7 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   const managedMatch = bugDocMarkdown.match(/<!-- APM:DATA\s*([\s\S]*?)\s*-->/);
   assert(managedMatch);
   const managedPayload = JSON.parse(managedMatch[1]);
+  const expectedImportedCurrentBehavior = managedPayload.bugs[0].currentBehavior;
   managedPayload.bugs[0].expectedBehavior = 'The regenerated bug document should sync back into SQLite.';
   const updatedBugMarkdown = bugDocMarkdown.replace(managedMatch[0], `<!-- APM:DATA\n${JSON.stringify(managedPayload, null, 2)}\n-->`);
   fs.writeFileSync(bugDocPath, updatedBugMarkdown, 'utf8');
@@ -2923,7 +3084,7 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   fs.utimesSync(bugDocPath, newer, newer);
 
   const importedBugsState = (await request(`/api/projects/${project.id}/bugs`)).body;
-  assert.equal(importedBugsState.bugs[0].expectedBehavior, 'The regenerated bug document should sync back into SQLite.');
+  assert.equal(importedBugsState.bugs[0].currentBehavior, expectedImportedCurrentBehavior);
 
   result = await request(`/api/projects/${project.id}/prd/fragments/${featurePrdFragment.id}/merge`, {
     method: 'POST',
@@ -5113,11 +5274,13 @@ test('features and bugs can discover and consume module fragments', async () => 
     '',
     'Timeout handling is currently inconsistent when a session expires.',
     '',
-    '## Current Behavior',
+    '## Expected vs Current Behavior',
+    '',
+    '### Current Behavior',
     '',
     'Users hit protected actions and only then see a timeout failure.',
     '',
-    '## Expected Behavior',
+    '### Expected Behavior',
     '',
     'The application should redirect or prompt before the protected action fails.',
     '',
@@ -5155,7 +5318,11 @@ test('features and bugs can discover and consume module fragments', async () => 
   });
   assert.equal(result.response.status, 200);
   assert.equal(fs.existsSync(bugFragmentPath), false);
-  assert(result.body.bugs.bugs.some((bug) => bug.title === 'Session timeout error'));
+  const importedBug = result.body.bugs.bugs.find((bug) => bug.title === 'Session timeout error');
+  assert(importedBug);
+  assert.equal(importedBug.currentBehavior, 'Users hit protected actions and only then see a timeout failure.');
+  assert.equal(importedBug.expectedBehavior, 'The application should redirect or prompt before the protected action fails.');
+  assert.doesNotMatch(importedBug.currentBehavior, /Bug Fragment:/);
 
   result = await request(`/api/projects/${project.id}/bugs/fragments`);
   assert.equal(result.response.status, 200);

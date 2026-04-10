@@ -175,6 +175,29 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
     return collected.join('\n').trim();
   }
 
+  function extractMarkdownSectionAnyLevel(markdown, heading) {
+    const lines = String(markdown || '').split(/\r?\n/);
+    const target = String(heading || '').trim().toLowerCase();
+    let startIndex = -1;
+    let startLevel = 0;
+    for (let index = 0; index < lines.length; index += 1) {
+      const match = lines[index].match(/^(#{1,6})\s+(.+?)\s*$/);
+      if (!match) continue;
+      if (match[2].trim().toLowerCase() !== target) continue;
+      startIndex = index;
+      startLevel = match[1].length;
+      break;
+    }
+    if (startIndex < 0) return '';
+    const collected = [];
+    for (let index = startIndex + 1; index < lines.length; index += 1) {
+      const nextHeading = lines[index].match(/^(#{1,6})\s+/);
+      if (nextHeading && nextHeading[1].length <= startLevel) break;
+      collected.push(lines[index]);
+    }
+    return collected.join('\n').trim();
+  }
+
   function summarizeMarkdown(markdown, fallback = '') {
     const text = stripManagedBlock(markdown)
       .replace(/^#.+$/gm, '')
@@ -600,8 +623,8 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       title: (codeMatch?.[2] || heading || fallbackTitle).trim(),
       summary: sectionSummary || summarizeMarkdown(markdown, heading || fallbackTitle),
       body: stripManagedBlock(markdown),
-      currentBehavior: extractMarkdownSection(markdown, 'Current Behavior'),
-      expectedBehavior: extractMarkdownSection(markdown, 'Expected Behavior'),
+      currentBehavior: extractMarkdownSection(markdown, 'Current Behavior') || extractMarkdownSectionAnyLevel(markdown, 'Current Behavior'),
+      expectedBehavior: extractMarkdownSection(markdown, 'Expected Behavior') || extractMarkdownSectionAnyLevel(markdown, 'Expected Behavior'),
     };
   }
 
@@ -1340,7 +1363,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         id: existing?.id,
         title: details.title || existing?.title || fileName.replace(/\.md$/i, ''),
         summary: details.summary || existing?.summary || '',
-        currentBehavior: details.currentBehavior || details.body || existing?.currentBehavior || existing?.summary || '',
+        currentBehavior: details.currentBehavior || existing?.currentBehavior || details.summary || existing?.summary || '',
         expectedBehavior: details.expectedBehavior || existing?.expectedBehavior || 'Review expected behavior and complete this bug record.',
         status: existing?.status || 'open',
         planningBucket: existing?.planningBucket || 'planned',
@@ -1396,12 +1419,13 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         roadmapPhaseId: req.body.roadmapPhaseId || null,
         dependencyIds: req.body.dependencyIds,
         affectedModuleKeys: req.body.affectedModuleKeys,
+        associationHints: req.body.associationHints,
         progress: req.body.progress,
         milestone: req.body.milestone,
         sortOrder: req.body.sortOrder,
-        completed: !!req.body.completed,
-        regressed: !!req.body.regressed,
-        archived: !!req.body.archived,
+        completed: req.body.completed,
+        regressed: req.body.regressed,
+        archived: req.body.archived,
       });
       await syncBugsDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
@@ -1417,12 +1441,16 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       ensureWorkspaceProject(project);
       const bug = await getBugItemById(project.id, req.params.bugId);
       if (!bug) return res.status(404).json({ error: 'Bug not found' });
-      const saved = await saveBugItem({
+      const nextPayload = {
         ...bug,
         ...req.body,
         id: bug.id,
         projectId: project.id,
-      });
+      };
+      if (req.body?.archived === undefined) delete nextPayload.archived;
+      if (req.body?.completed === undefined) delete nextPayload.completed;
+      if (req.body?.regressed === undefined) delete nextPayload.regressed;
+      const saved = await saveBugItem(nextPayload);
       await syncBugsDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
       res.json(saved);

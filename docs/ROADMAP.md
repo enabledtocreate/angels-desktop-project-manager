@@ -125,7 +125,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-02T22:29:43.656Z",
-      "updatedAt": "2026-04-02T22:29:43.656Z",
+      "updatedAt": "2026-04-10T18:35:20.488Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -148,7 +148,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-02T22:29:43.682Z",
-      "updatedAt": "2026-04-02T22:29:43.682Z",
+      "updatedAt": "2026-04-10T18:35:20.442Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -171,7 +171,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-02T22:29:43.699Z",
-      "updatedAt": "2026-04-02T22:29:43.699Z",
+      "updatedAt": "2026-04-10T18:35:20.559Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -286,7 +286,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-03T23:30:06.834Z",
-      "updatedAt": "2026-04-03T23:30:06.834Z",
+      "updatedAt": "2026-04-10T18:35:20.396Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -309,7 +309,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-03T23:30:07.490Z",
-      "updatedAt": "2026-04-03T23:30:07.490Z",
+      "updatedAt": "2026-04-10T18:35:20.349Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -332,7 +332,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-03T23:30:07.948Z",
-      "updatedAt": "2026-04-03T23:30:07.948Z",
+      "updatedAt": "2026-04-10T18:35:20.303Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -447,7 +447,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-03T23:54:57.292Z",
-      "updatedAt": "2026-04-03T23:54:57.292Z",
+      "updatedAt": "2026-04-10T18:35:20.256Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -470,7 +470,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-03T23:54:57.787Z",
-      "updatedAt": "2026-04-03T23:54:57.787Z",
+      "updatedAt": "2026-04-10T18:35:20.212Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -493,7 +493,7 @@
       "status": "todo",
       "priority": "medium",
       "createdAt": "2026-04-03T23:54:58.314Z",
-      "updatedAt": "2026-04-03T23:54:58.314Z",
+      "updatedAt": "2026-04-10T18:35:20.160Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
@@ -513,16 +513,16 @@
       "title": "SFTP Feedback doesn't exist",
       "description": "Adding mapping doesn't have good feedback.  The button \"Add From Selection\" for the Upload Mapping has no feedback.\nUpload from mapping has regressed to missing",
       "category": "SFTP",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "createdAt": "2026-04-10T01:27:14.574Z",
-      "updatedAt": "2026-04-10T01:30:59.314Z",
+      "updatedAt": "2026-04-10T18:36:37.305Z",
       "dueDate": null,
       "assignedTo": null,
       "startDate": null,
       "endDate": null,
       "roadmapPhaseId": null,
-      "planningBucket": "planned",
+      "planningBucket": "archived",
       "workItemType": "software_bug",
       "itemType": "bug",
       "dependencyIds": [],
@@ -898,11 +898,11 @@
       "assignedTo": null,
       "startDate": null,
       "endDate": null,
-      "status": "open",
-      "taskStatus": "todo",
+      "status": "resolved",
+      "taskStatus": "done",
       "taskId": "task-1775784434574-wxbsu2g",
       "roadmapPhaseId": null,
-      "planningBucket": "planned",
+      "planningBucket": "archived",
       "workItemType": "software_bug",
       "itemType": "bug",
       "dependencyIds": [],
@@ -910,11 +910,11 @@
       "progress": 0,
       "milestone": false,
       "sortOrder": 0,
-      "completed": false,
+      "completed": true,
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-10T01:27:14.574Z",
-      "updatedAt": "2026-04-10T01:30:59.314Z"
+      "updatedAt": "2026-04-10T18:36:37.305Z"
     },
     {
       "id": "bug-1775260498325-6ol1enm",
@@ -946,7 +946,7 @@
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-03T23:54:58.314Z",
-      "updatedAt": "2026-04-03T23:54:58.314Z"
+      "updatedAt": "2026-04-10T18:35:20.160Z"
     },
     {
       "id": "bug-1775260497797-580tuqz",
@@ -978,7 +978,7 @@
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-03T23:54:57.787Z",
-      "updatedAt": "2026-04-03T23:54:57.787Z"
+      "updatedAt": "2026-04-10T18:35:20.212Z"
     },
     {
       "id": "bug-1775260497330-1iuegfh",
@@ -1010,7 +1010,7 @@
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-03T23:54:57.292Z",
-      "updatedAt": "2026-04-03T23:54:57.292Z"
+      "updatedAt": "2026-04-10T18:35:20.256Z"
     },
     {
       "id": "bug-1775259007958-9e1v5uq",
@@ -1042,7 +1042,7 @@
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-03T23:30:07.948Z",
-      "updatedAt": "2026-04-03T23:30:07.948Z"
+      "updatedAt": "2026-04-10T18:35:20.303Z"
     },
     {
       "id": "bug-1775259007507-oohx0ts",
@@ -1074,7 +1074,7 @@
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-03T23:30:07.490Z",
-      "updatedAt": "2026-04-03T23:30:07.490Z"
+      "updatedAt": "2026-04-10T18:35:20.349Z"
     },
     {
       "id": "bug-1775259006850-31h8czq",
@@ -1106,7 +1106,7 @@
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-03T23:30:06.834Z",
-      "updatedAt": "2026-04-03T23:30:06.834Z"
+      "updatedAt": "2026-04-10T18:35:20.396Z"
     },
     {
       "id": "bug-1774625378814-fscisc2",
@@ -1138,7 +1138,7 @@
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-02T22:29:43.682Z",
-      "updatedAt": "2026-04-02T22:29:43.682Z"
+      "updatedAt": "2026-04-10T18:35:20.442Z"
     },
     {
       "id": "bug-1775007912160-wi58d94",
@@ -1170,7 +1170,7 @@
       "regressed": false,
       "archived": false,
       "createdAt": "2026-04-02T22:29:43.656Z",
-      "updatedAt": "2026-04-02T22:29:43.656Z"
+      "updatedAt": "2026-04-10T18:35:20.488Z"
     },
     {
       "id": "bug-1774587154303-cb3ch8s",
@@ -1202,7 +1202,7 @@
       "regressed": false,
       "archived": true,
       "createdAt": "2026-04-02T22:29:43.699Z",
-      "updatedAt": "2026-04-02T22:29:43.699Z"
+      "updatedAt": "2026-04-10T18:35:20.559Z"
     }
   ],
   "templateVersion": "2.0",
