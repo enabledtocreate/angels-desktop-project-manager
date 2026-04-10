@@ -1,0 +1,318 @@
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+html[data-scheme='cyan-glow'] {
+  color-scheme: dark;
+  --color-ink: 226 232 240;
+  --color-slate: 12 18 34;
+  --color-panel: 19 28 49;
+  --color-accent: 34 211 238;
+  --color-accent-soft: 23 60 99;
+  --color-border: 30 58 95;
+  --color-surface: 26 39 68;
+  --color-muted: 125 211 252;
+  --color-danger: 248 113 113;
+  --font-app: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --body-background:
+    radial-gradient(circle at top left, rgba(86, 195, 255, 0.18), transparent 28rem),
+    radial-gradient(circle at bottom right, rgba(31, 99, 152, 0.35), transparent 30rem),
+    radial-gradient(ellipse 120% 80% at 50% 0%, rgba(15, 23, 41, 1) 0%, rgba(12, 18, 34, 1) 60%);
+  --body-pattern: radial-gradient(circle at 1px 1px, rgba(34, 211, 238, 0.04) 1px, transparent 0);
+  --titlebar-background:
+    linear-gradient(180deg, rgba(8, 15, 29, 0.94), rgba(11, 22, 41, 0.88)),
+    radial-gradient(circle at top left, rgba(86, 195, 255, 0.16), transparent 20rem);
+  --titlebar-mark:
+    linear-gradient(135deg, rgba(86, 195, 255, 0.24), rgba(19, 60, 99, 0.95));
+}
+
+html[data-scheme='dark-blue'] {
+  color-scheme: dark;
+  --color-ink: 241 245 249;
+  --color-slate: 10 15 26;
+  --color-panel: 17 24 39;
+  --color-accent: 59 130 246;
+  --color-accent-soft: 26 35 50;
+  --color-border: 30 41 59;
+  --color-surface: 26 35 50;
+  --color-muted: 148 163 184;
+  --color-danger: 248 113 113;
+  --font-app: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --body-background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 28rem),
+    linear-gradient(180deg, rgba(10, 15, 26, 1) 0%, rgba(10, 15, 26, 1) 100%);
+  --body-pattern: none;
+  --titlebar-background:
+    linear-gradient(180deg, rgba(8, 13, 22, 0.96), rgba(10, 15, 26, 0.92));
+  --titlebar-mark:
+    linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(26, 35, 50, 0.95));
+}
+
+html[data-scheme='app-icon'] {
+  color-scheme: light;
+  --color-ink: 31 42 68;
+  --color-slate: 244 246 250;
+  --color-panel: 255 255 255;
+  --color-accent: 76 124 243;
+  --color-accent-soft: 233 237 245;
+  --color-border: 216 223 234;
+  --color-surface: 244 246 250;
+  --color-muted: 107 122 153;
+  --color-danger: 255 92 92;
+  --font-app: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --body-background:
+    radial-gradient(circle at 10% -10%, rgba(76, 124, 243, 0.28), transparent 55%),
+    radial-gradient(circle at 90% -10%, rgba(140, 107, 255, 0.24), transparent 55%),
+    linear-gradient(180deg, rgb(255, 255, 255) 0%, rgb(244, 246, 250) 55%, rgb(221, 228, 244) 100%);
+  --body-pattern: radial-gradient(circle at 1px 1px, rgba(54, 201, 230, 0.08) 1px, transparent 0);
+  --titlebar-background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 246, 250, 0.92)),
+    radial-gradient(circle at top left, rgba(76, 124, 243, 0.12), transparent 20rem);
+  --titlebar-mark:
+    linear-gradient(135deg, rgba(76, 124, 243, 0.22), rgba(140, 107, 255, 0.28));
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--color-accent), 0.55) rgba(var(--color-border), 0.18);
+}
+
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(var(--color-surface), 0.58);
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(var(--color-accent), 0.55);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--color-accent), 0.72);
+  background-clip: padding-box;
+}
+
+body {
+  @apply antialiased;
+  margin: 0;
+  overflow: hidden;
+  color: rgb(var(--color-ink));
+  font-family: var(--font-app);
+  background: var(--body-background);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: var(--body-pattern);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+a {
+  @apply text-inherit no-underline;
+}
+
+.app-shell-with-titlebar {
+  padding-top: 3.5rem;
+}
+
+.app-shell-scroll {
+  height: calc(100vh - 3.5rem);
+  overflow: hidden;
+}
+
+.app-titlebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1000;
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(var(--color-border), 0.65);
+  background: var(--titlebar-background);
+  padding: 0.65rem 1rem 0.75rem;
+  backdrop-filter: blur(20px);
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.app-titlebar__brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-titlebar__mark {
+  display: grid;
+  height: 2rem;
+  width: 2rem;
+  place-items: center;
+  border: 1px solid rgba(var(--color-accent), 0.28);
+  border-radius: 0.9rem;
+  background: var(--titlebar-mark);
+  color: rgb(var(--color-ink));
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.app-titlebar__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.app-titlebar__eyebrow {
+  color: rgba(var(--color-muted), 0.78);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.app-titlebar__title {
+  overflow: hidden;
+  color: rgb(var(--color-ink));
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-titlebar__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-titlebar__button {
+  min-width: 2.5rem;
+  padding-right: 0.75rem;
+  padding-left: 0.75rem;
+  border-radius: 999px;
+}
+
+.app-titlebar__button--close:hover {
+  border-color: rgba(var(--color-danger), 0.45) !important;
+  background: rgba(127, 29, 29, 0.85) !important;
+  color: #fff5f5 !important;
+}
+
+.theme-swatch {
+  display: inline-flex;
+  height: 0.9rem;
+  width: 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.theme-swatch--cyan-glow {
+  background: linear-gradient(135deg, #22d3ee, #0c1222);
+}
+
+.theme-swatch--dark-blue {
+  background: linear-gradient(135deg, #3b82f6, #0a0f1a);
+}
+
+.theme-swatch--app-icon {
+  background: linear-gradient(135deg, #4c7cf3, #ffffff);
+}
+
+html[data-scheme='app-icon'] .text-white,
+html[data-scheme='app-icon'] [class*='text-white'] {
+  color: rgb(var(--color-ink)) !important;
+}
+
+html[data-scheme='app-icon'] [class*='text-sky-100'],
+html[data-scheme='app-icon'] [class*='text-sky-50'] {
+  color: rgba(var(--color-ink), 0.78) !important;
+}
+
+html[data-scheme='app-icon'] [class*='bg-white/5'] {
+  background-color: rgba(233, 237, 245, 0.88) !important;
+}
+
+html[data-scheme='app-icon'] [class*='bg-slate'] {
+  background-color: rgba(244, 246, 250, 0.96) !important;
+}
+
+html[data-scheme='app-icon'] [class*='bg-accent'],
+html[data-scheme='app-icon'] [class*='bg-accentSoft'],
+html[data-scheme='app-icon'] [class*='bg-emerald'],
+html[data-scheme='app-icon'] [class*='bg-sky-400/10'],
+html[data-scheme='app-icon'] [class*='bg-amber'],
+html[data-scheme='app-icon'] [class*='bg-panel/80'],
+html[data-scheme='app-icon'] [class*='bg-sky-300'],
+html[data-scheme='app-icon'] [class*='bg-sky-200'] {
+  color: rgb(var(--color-ink)) !important;
+}
+
+html[data-scheme='app-icon'] [class*='text-emerald-100'],
+html[data-scheme='app-icon'] [class*='text-sky-100'],
+html[data-scheme='app-icon'] [class*='text-amber-100'] {
+  color: rgba(var(--color-ink), 0.88) !important;
+}
+
+html[data-scheme='app-icon'] button[class*='bg-accent'],
+html[data-scheme='app-icon'] button[class*='bg-accentSoft'],
+html[data-scheme='app-icon'] [class*='bg-accent'] *,
+html[data-scheme='app-icon'] [class*='bg-accentSoft'] *,
+html[data-scheme='app-icon'] [class*='bg-sky-300'] *,
+html[data-scheme='app-icon'] [class*='bg-sky-200'] * {
+  color: rgb(var(--color-ink)) !important;
+}
+
+html[data-scheme='app-icon'] [class*='border-white/10'] {
+  border-color: rgba(var(--color-border), 0.9) !important;
+}
+
+html[data-scheme='app-icon'] .shadow-panel {
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12) !important;
+}
+
+@media (max-width: 768px) {
+  .app-shell-with-titlebar {
+    padding-top: 4.5rem;
+  }
+
+  .app-shell-scroll {
+    height: calc(100vh - 4.5rem);
+  }
+
+  .app-titlebar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-titlebar__controls {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

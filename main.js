@@ -1,27 +1,67 @@
-const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
+const electronMain = require('electron');
+if (!electronMain || typeof electronMain === 'string' || !electronMain.app) {
+  throw new Error('Electron main-process APIs are unavailable. Start the desktop app without ELECTRON_RUN_AS_NODE=1.');
+}
+const { app, BrowserWindow, globalShortcut, ipcMain } = electronMain;
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
-const kill = require('kill-port');
+const appState = require('./src/app-state');
+const logger = require('./src/logger');
 
 const PORT = 3847;
 const APP_DIR = __dirname;
-const DATA_DIR = path.join(APP_DIR, 'data');
-const LOG_FILE = path.join(DATA_DIR, 'app.log');
-let serverProcess = null;
+const DEFAULT_THEME_BG = '#0c1222';
+const DEBUG_STARTUP = process.env.APM_DEBUG_STARTUP === '1';
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+let serverHandle = null;
+
+function initializeRuntimePaths() {
+  if (!process.env.APM_STATE_DIR) {
+    process.env.APM_STATE_DIR = app.getPath('userData');
+  }
+  if (!process.env.APM_DEFAULT_PROJECTS_ROOT) {
+    const portableRoot = process.env.PORTABLE_EXECUTABLE_DIR;
+    process.env.APM_DEFAULT_PROJECTS_ROOT = portableRoot
+      ? path.resolve(portableRoot)
+      : app.isPackaged
+        ? path.dirname(app.getPath('exe'))
+        : APP_DIR;
+  }
 }
 
-function logToFile(msg, err) {
+initializeRuntimePaths();
+
+function getDataDir() {
+  return appState.getDataDir();
+}
+
+function getLogFile() {
+  return logger.getCurrentLogFile(appState.getLogsDir());
+}
+
+function ensureDataDir() {
+  const dataDir = getDataDir();
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+}
+
+function logToFile(message, err) {
   try {
     ensureDataDir();
-    const ts = new Date().toISOString();
-    const line = err ? `[Electron] ${ts} ${msg} ${err.stack || err.message || String(err)}\n` : `[Electron] ${ts} ${msg}\n`;
-    fs.appendFileSync(LOG_FILE, line, 'utf8');
-  } catch (e) {
-    console.error('Failed to write log:', e);
+    logger.writeLog(appState.getLogsDir(), {
+      level: err ? 'ERROR' : 'INFO',
+      source: 'electron',
+      eventType: err ? 'electron.error' : 'electron.event',
+      message,
+      error: err ? (err.stack || err.message || String(err)) : '',
+    });
+  } catch (error) {
+    console.error('Failed to write log:', error);
+  }
+}
+
+function debugLog(message, err) {
+  if (DEBUG_STARTUP) {
+    logToFile(message, err);
   }
 }
 
@@ -30,39 +70,36 @@ process.on('uncaughtException', (err) => {
   console.error('uncaughtException:', err);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
   logToFile('unhandledRejection', String(reason));
   console.error('unhandledRejection:', reason);
 });
 
-function killPortThenStart() {
-  return kill(PORT, 'tcp').catch(() => {}).then(() => {
-    serverProcess = spawn('node', [path.join(APP_DIR, 'server.js')], {
-      cwd: APP_DIR,
-      stdio: 'pipe',
-      env: process.env,
-    });
-    serverProcess.stderr.on('data', (d) => {
-      const text = d.toString();
-      process.stderr.write(text);
-      logToFile('Server stderr', new Error(text));
-    });
-    serverProcess.on('error', (err) => {
-      logToFile('Server process error', err);
-      console.error('Server error:', err);
-    });
-    serverProcess.on('exit', (code) => {
-      if (code !== 0 && code !== null) {
-        logToFile('Server exited with code ' + code);
-        console.error('Server exited:', code);
-      }
-    });
-  });
+function configureRuntimePaths() {
+  initializeRuntimePaths();
+  debugLog(
+    `configureRuntimePaths stateDir=${process.env.APM_STATE_DIR} projectRoot=${appState.getProjectRoot()} dataDir=${appState.getDataDir()} dbPath=${appState.getDbPath()}`
+  );
 }
 
-const DEFAULT_THEME_BG = '#0c1222';
+async function startBackend() {
+  configureRuntimePaths();
+  debugLog('startBackend begin');
+  const { startServer } = require('./server');
+  serverHandle = await startServer(PORT);
+  debugLog('startBackend success');
+}
+
+async function stopBackend() {
+  if (!serverHandle || !serverHandle.server) return;
+  await new Promise((resolve, reject) => {
+    serverHandle.server.close((err) => (err ? reject(err) : resolve()));
+  });
+  serverHandle = null;
+}
 
 function createWindow() {
+  const iconPath = path.join(APP_DIR, 'public', 'icon.png');
   const win = new BrowserWindow({
     width: 1000,
     height: 700,
@@ -71,7 +108,7 @@ function createWindow() {
     title: "Angel's Project Manager",
     backgroundColor: DEFAULT_THEME_BG,
     frame: false,
-    ...(fs.existsSync(path.join(APP_DIR, 'public', 'icon.png')) && { icon: path.join(APP_DIR, 'public', 'icon.png') }),
+    ...(fs.existsSync(iconPath) && { icon: iconPath }),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -80,17 +117,24 @@ function createWindow() {
     show: false,
   });
 
+  debugLog(`createWindow loadURL http://localhost:${PORT}`);
   win.loadURL(`http://localhost:${PORT}`);
   win.once('ready-to-show', () => win.show());
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    logToFile(`did-fail-load code=${errorCode} description=${errorDescription}`);
+  });
+  win.webContents.on('render-process-gone', (event, details) => {
+    logToFile(`render-process-gone reason=${details.reason} exitCode=${details.exitCode}`);
+  });
 
-  // F12 and Ctrl+Shift+I open DevTools
   const openDevTools = () => {
     try {
       win.webContents.openDevTools();
-    } catch (e) {
-      logToFile('openDevTools failed', e);
+    } catch (err) {
+      logToFile('openDevTools failed', err);
     }
   };
+
   win.webContents.on('before-input-event', (event, input) => {
     if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
       event.preventDefault();
@@ -99,26 +143,36 @@ function createWindow() {
   });
 
   win.on('closed', () => {
-    if (serverProcess) {
-      serverProcess.kill();
-      serverProcess = null;
-    }
+    debugLog('window closed');
     app.quit();
   });
 }
 
+app.on('will-finish-launching', () => {
+  debugLog('app will-finish-launching');
+});
+
+app.on('ready', () => {
+  debugLog('app ready');
+});
+
+app.on('quit', () => {
+  debugLog('app quit');
+});
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
+  logToFile('single-instance-lock denied; quitting early');
   app.quit();
   process.exit(0);
 }
 
 app.on('second-instance', () => {
-  const wins = BrowserWindow.getAllWindows();
-  if (wins.length) {
-    const w = wins[0];
-    if (w.isMinimized()) w.restore();
-    w.focus();
+  const windows = BrowserWindow.getAllWindows();
+  if (windows.length) {
+    const window = windows[0];
+    if (window.isMinimized()) window.restore();
+    window.focus();
   }
 });
 
@@ -127,7 +181,6 @@ ipcMain.handle('restart-app', () => {
   app.quit();
 });
 
-// Sets the window content-area background (loading/gaps).
 ipcMain.handle('set-theme', (event, payload) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win && payload && payload.backgroundColor) {
@@ -160,42 +213,54 @@ ipcMain.handle('window-is-maximized', (event) => {
   return win ? win.isMaximized() : false;
 });
 
-app.whenReady().then(() => {
-  // Register F12 to open DevTools for the focused window
+app.whenReady().then(async () => {
+  debugLog('app.whenReady');
   globalShortcut.register('F12', () => {
     const win = BrowserWindow.getFocusedWindow();
     if (win && win.webContents) {
       try {
         win.webContents.openDevTools();
-      } catch (e) {
-        logToFile('F12 openDevTools failed', e);
+      } catch (err) {
+        logToFile('F12 openDevTools failed', err);
       }
     }
   });
+
   globalShortcut.register('CommandOrControl+Shift+I', () => {
     const win = BrowserWindow.getFocusedWindow();
     if (win && win.webContents) {
       try {
         win.webContents.openDevTools();
-      } catch (e) {
-        logToFile('Ctrl+Shift+I openDevTools failed', e);
+      } catch (err) {
+        logToFile('Ctrl+Shift+I openDevTools failed', err);
       }
     }
   });
 
-  killPortThenStart().then(() => {
-    // Give the server time to start listening before loading the window
-    setTimeout(createWindow, 1200);
-  });
+  try {
+    await startBackend();
+    createWindow();
+  } catch (err) {
+    logToFile('Backend startup failed', err);
+    console.error('Backend startup failed:', err);
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {
   globalShortcut.unregisterAll();
   app.quit();
 });
-app.on('before-quit', () => {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
+
+app.on('before-quit', async (event) => {
+  if (!serverHandle) return;
+  event.preventDefault();
+  try {
+    await stopBackend();
+  } catch (err) {
+    logToFile('Failed to stop backend cleanly', err);
+  } finally {
+    serverHandle = null;
+    app.exit();
   }
 });

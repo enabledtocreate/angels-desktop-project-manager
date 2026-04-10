@@ -1,0 +1,253 @@
+// APM Schema Sync
+// Intended Version: 0
+// Observed Version: 0
+// Sync Status: unverified
+// Drift Severity: low
+// Change Source: unknown
+// Pending Migration Status: comparison_required
+// Recommended Action: capture_or_compare
+
+// Action Summary: Capture an observed schema or define the intended schema to begin tracking drift.
+// Drift Summary: No schema comparison has been recorded yet.
+// Action Item Count: 0
+
+
+Project "Angel's Project Manager" {
+  database_type: "Generic"
+}
+
+Table app_settings {
+  key TEXT [pk]
+  value TEXT
+  is_secret INTEGER [default: 0]
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+}
+
+Table bug_items {
+  id TEXT [pk]
+  project_id TEXT [not null]
+  code TEXT [not null]
+  title TEXT [not null]
+  summary TEXT [default: '']
+  severity TEXT [default: 'medium']
+  status TEXT [default: 'open']
+  task_id TEXT
+  completed INTEGER [default: 0]
+  regressed INTEGER [default: 0]
+  archived INTEGER [default: 0]
+  created_at TEXT [default: CURRENT_TIMESTAMP]
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+  current_behavior TEXT [default: '']
+  expected_behavior TEXT [default: '']
+  work_item_type TEXT [default: 'software_bug']
+  affected_module_keys TEXT [default: '[]']
+}
+
+Table credentials {
+  id TEXT [pk]
+  name TEXT [not null]
+  host TEXT [not null]
+  port INTEGER [default: 22]
+  user TEXT [not null]
+  password TEXT
+  key_path TEXT
+}
+
+Table entity_relationships {
+  id TEXT [pk]
+  project_id TEXT [not null]
+  source_entity_type TEXT [not null]
+  source_entity_id TEXT [not null]
+  relationship_type TEXT [not null]
+  target_entity_type TEXT [not null]
+  target_entity_id TEXT [not null]
+  metadata_json TEXT [default: '{}']
+  created_at TEXT [default: CURRENT_TIMESTAMP]
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+}
+
+Table feature_items {
+  id TEXT [pk]
+  project_id TEXT [not null]
+  code TEXT [not null]
+  title TEXT [not null]
+  summary TEXT [default: '']
+  status TEXT [default: 'planned']
+  roadmap_phase_id TEXT
+  task_id TEXT
+  archived INTEGER [default: 0]
+  created_at TEXT [default: CURRENT_TIMESTAMP]
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+  work_item_type TEXT [default: 'software_feature']
+  affected_module_keys TEXT [default: '[]']
+}
+
+Table integration_events {
+  id TEXT [pk]
+  project_id TEXT [not null]
+  source TEXT [not null]
+  event_type TEXT [not null]
+  delivery_status TEXT [default: 'received']
+  payload TEXT [default: '{}']
+  created_at TEXT [default: CURRENT_TIMESTAMP]
+}
+
+Table migrations {
+  id INTEGER [pk]
+  name TEXT [unique, not null]
+  executed_at TEXT [default: CURRENT_TIMESTAMP]
+}
+
+Table prd_fragments {
+  id TEXT [pk]
+  project_id TEXT [not null]
+  feature_id TEXT
+  code TEXT [not null]
+  title TEXT [not null]
+  markdown TEXT [default: '']
+  mermaid TEXT [default: '']
+  status TEXT [default: 'draft']
+  merged INTEGER [default: 0]
+  merged_at TEXT
+  file_name TEXT
+  file_path TEXT
+  file_updated_at TEXT
+  file_md5 TEXT [default: '']
+  db_md5 TEXT [default: '']
+  created_at TEXT [default: CURRENT_TIMESTAMP]
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+  merged_file_name TEXT
+}
+
+Table project_md_documents {
+  project_id TEXT [pk, not null]
+  doc_type TEXT [pk, not null]
+  markdown TEXT [default: '']
+  mermaid TEXT [default: '']
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+  file_path TEXT
+  file_updated_at TEXT
+  file_md5 TEXT [default: '']
+  db_md5 TEXT [default: '']
+  editor_state TEXT [default: '']
+  title TEXT [default: '']
+  module_key TEXT [default: '']
+  template_name TEXT [default: '']
+  template_version TEXT [default: '']
+  source_of_truth TEXT [default: 'database']
+}
+
+Table project_modules {
+  project_id TEXT [pk, not null]
+  module_key TEXT [pk, not null]
+  module_group TEXT [not null]
+  label TEXT [not null]
+  description TEXT [default: '']
+  enabled INTEGER [default: 0]
+  is_core INTEGER [default: 0]
+  sort_order INTEGER [default: 0]
+  settings_json TEXT [default: '{}']
+  created_at TEXT [default: CURRENT_TIMESTAMP]
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+  purpose_summary TEXT [default: '']
+}
+
+Table projects {
+  id TEXT [pk]
+  path TEXT
+  absolute_path TEXT
+  name TEXT [not null]
+  description TEXT
+  parent_id TEXT
+  server_id TEXT
+  image_path TEXT
+  open_in_cursor INTEGER [default: 0]
+  category TEXT
+  tags TEXT [default: '[]']
+  links TEXT [default: '[]']
+  date_added TEXT
+  type TEXT [default: 'folder']
+  open_in_cursor_admin INTEGER [default: 0]
+  url TEXT
+  pinned INTEGER [default: 0]
+  image_url TEXT
+  upload_mappings TEXT [default: '[]']
+  mapping_groups TEXT [default: '[]']
+  primary_action TEXT [default: 'auto']
+  integrations TEXT [default: '{}']
+  workspace_plugins TEXT [default: '[]']
+  project_type TEXT [default: 'general']
+}
+
+Table roadmap_fragments {
+  id TEXT [pk]
+  project_id TEXT [not null]
+  source_feature_id TEXT
+  source_phase_id TEXT
+  code TEXT [not null]
+  title TEXT [not null]
+  markdown TEXT [not null, default: '']
+  mermaid TEXT [not null, default: '']
+  payload_json TEXT [not null, default: '']
+  status TEXT [not null, default: 'draft']
+  merged INTEGER [not null, default: 0]
+  merged_at TEXT
+  integrated_at TEXT
+  file_name TEXT
+  file_path TEXT
+  file_updated_at TEXT
+  file_md5 TEXT [not null, default: '']
+  db_md5 TEXT [not null, default: '']
+  created_at TEXT [not null]
+  updated_at TEXT [not null]
+}
+
+Table roadmap_phases {
+  id TEXT [pk]
+  project_id TEXT [not null]
+  code TEXT [not null]
+  name TEXT [not null]
+  summary TEXT [default: '']
+  goal TEXT [default: '']
+  status TEXT [default: 'planned']
+  target_date TEXT
+  sort_order INTEGER [default: 0]
+  created_at TEXT [default: CURRENT_TIMESTAMP]
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+  after_phase_id TEXT
+  archived INTEGER [default: 0]
+}
+
+Table tasks {
+  id TEXT [pk]
+  project_id TEXT [not null]
+  title TEXT [not null]
+  description TEXT
+  status TEXT [default: 'todo']
+  priority TEXT [default: 'medium']
+  created_at TEXT [default: CURRENT_TIMESTAMP]
+  updated_at TEXT [default: CURRENT_TIMESTAMP]
+  due_date TEXT
+  assigned_to TEXT
+  start_date TEXT
+  end_date TEXT
+  dependency_ids TEXT [default: '[]']
+  progress INTEGER [default: 0]
+  milestone INTEGER [default: 0]
+  sort_order INTEGER [default: 0]
+  roadmap_phase_id TEXT
+  planning_bucket TEXT [default: 'considered']
+  item_type TEXT [default: 'task']
+  category TEXT
+  work_item_type TEXT [default: 'core_task']
+}
+
+Ref: bug_items.project_id < projects.id
+Ref: entity_relationships.project_id < projects.id
+Ref: feature_items.project_id < projects.id
+Ref: integration_events.project_id < projects.id
+Ref: prd_fragments.project_id < projects.id
+Ref: project_md_documents.project_id < projects.id
+Ref: project_modules.project_id < projects.id
+Ref: roadmap_phases.project_id < projects.id
+Ref: tasks.project_id < projects.id

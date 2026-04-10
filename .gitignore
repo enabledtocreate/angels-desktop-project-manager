@@ -1,10 +1,13 @@
 node_modules/
 dist/
 out/
+.next/
 *.log
 
 # App data (user-generated; do not track)
 data/
+.apm/
+.app-state/
 
 # OS/editor cruft
 .DS_Store

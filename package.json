@@ -1,23 +1,98 @@
 {
   "name": "angels-project-manager",
   "version": "1.0.0",
+  "productName": "Angel's Project Manager",
   "description": "Angel's Project Manager - manage project folders and SFTP",
+  "author": "Angel's Project Manager",
+  "license": "UNLICENSED",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run next:build && electron .",
     "server": "node server.js",
+    "test": "node --test --test-isolation=none",
+    "next:dev": "npm --prefix next-app run dev",
+    "next:build": "npm --prefix next-app run build",
+    "next:start": "npm --prefix next-app run start",
+    "build": "npm run next:build && npm run test && npm run logs:archive-current && electron-builder --win portable && npm run build:shortcuts",
+    "build:watch": "node scripts/watch-build.js",
+    "build:watch:initial": "node scripts/watch-build.js --initial",
+    "build:dir": "npm run next:build && npm run test && npm run logs:archive-current && electron-builder --dir",
+    "build:shortcuts": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-build-shortcuts.ps1",
+    "logs:archive-current": "node scripts/archive-current-log.js",
+    "migrate": "node migrations/migrate.js",
+    "migrate-data": "node migrate-data.js",
     "ensure-icon-ico": "node scripts/ensure-icon-ico.js",
     "update-shortcut": "node scripts/ensure-icon-ico.js && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-shortcut-icon.ps1"
   },
-  "engines": { "node": ">=18.0.0" },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3",
     "png-to-ico": "^3.0.1"
   },
   "dependencies": {
+    "chokidar": "^5.0.0",
     "cors": "^2.8.5",
-    "electron": "^28.0.0",
     "express": "^4.18.2",
     "kill-port": "^1.1.0",
+    "mermaid": "^11.12.0",
+    "sqlite3": "^5.1.7",
     "ssh2": "^1.17.0"
+  },
+  "build": {
+    "appId": "com.angels.projectmanager",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/sqlite3/**/*"
+    ],
+    "compression": "normal",
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
+    "buildDependenciesFromSource": false,
+    "directories": {
+      "output": "dist",
+      "buildResources": "public"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "migrate-data.js",
+      "next-app/out/**/*",
+      "public/**/*",
+      "templates/**/*",
+      "standards/**/*",
+      "src/**/*",
+      "migrations/**/*",
+      "scripts/**/*",
+      "package.json",
+      "!data{,/**/*}",
+      "!docs{,/**/*}",
+      "!test{,/**/*}",
+      "!server.js.backup",
+      "!server_temp.js",
+      "!README.md"
+    ],
+    "extraMetadata": {
+      "main": "main.js"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icon.png",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    }
   }
 }

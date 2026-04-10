@@ -68,6 +68,410 @@
     <div class="app">
       <main class="main">
         <section class="projects-list" id="projects-list"></section>
+        <section class="project-screen" id="project-screen" hidden>
+          <div class="project-screen-nav">
+            <button type="button" class="btn btn-ghost" id="btn-project-screen-back">&larr; Back to projects</button>
+          </div>
+          <div class="project-screen-card" id="project-screen-card"></div>
+          <section class="project-workspace designer-shell">
+            <aside class="workspace-designer-sidebar">
+              <div class="workspace-designer-sidebar-card">
+                <div class="workspace-designer-kicker" id="workspace-designer-kicker">Project Designer</div>
+                <h2 class="workspace-designer-title" id="workspace-designer-title">Project Workspace</h2>
+                <p class="workspace-designer-summary" id="workspace-designer-summary"></p>
+              </div>
+              <nav class="workspace-designer-nav" id="workspace-designer-nav" aria-label="Project designer navigation"></nav>
+            </aside>
+            <div class="workspace-designer-main">
+              <div class="task-workspace-topbar">
+                <div class="task-workspace-heading">
+                  <div class="task-workspace-kicker" id="task-workspace-kicker">Project Designer</div>
+                  <h2 class="task-workspace-title" id="task-workspace-title">Roadmap</h2>
+                  <p class="task-workspace-view-description" id="task-workspace-view-description"></p>
+                </div>
+                <div class="task-workspace-actions">
+                  <div class="autosave-status" id="autosave-status" data-save-state="saved">
+                    <span class="autosave-dot" aria-hidden="true"></span>
+                    <span id="autosave-status-text">Saved</span>
+                  </div>
+                  <button type="button" class="btn btn-secondary" id="btn-task-add">+ Add task</button>
+                </div>
+              </div>
+              <div class="task-workspace-summary" id="task-workspace-summary"></div>
+              <div class="task-deadline-alerts" id="task-deadline-alerts"></div>
+              <section class="task-workspace-view" data-task-view="board">
+                <div class="task-board" id="task-board"></div>
+              </section>
+              <section class="task-workspace-view" data-task-view="gantt">
+                <div class="task-phase3-layout">
+                  <div class="task-phase3-sidebar" id="task-phase3-sidebar"></div>
+                  <div class="task-timeline" id="task-timeline"></div>
+                </div>
+              </section>
+              <section class="task-workspace-view is-active" data-task-view="roadmap">
+              <div class="roadmap-shell">
+                <div class="roadmap-subtabs">
+                  <button type="button" class="roadmap-subtab is-active" data-roadmap-panel="general">General Information</button>
+                  <button type="button" class="roadmap-subtab" data-roadmap-panel="phases">Phases</button>
+                </div>
+
+                <section class="roadmap-panel is-active" data-roadmap-panel-view="general">
+                  <div class="roadmap-general-grid">
+                    <article class="workspace-doc-card roadmap-general-card">
+                      <div class="workspace-doc-sidebar-header">
+                        <h3>Version</h3>
+                      </div>
+                      <div class="roadmap-version" id="roadmap-version"></div>
+                    </article>
+                    <article class="workspace-doc-card roadmap-general-card">
+                      <div class="workspace-doc-sidebar-header">
+                        <h3>Executive Summary</h3>
+                      </div>
+                      <div class="roadmap-executive-summary" id="roadmap-executive-summary"></div>
+                    </article>
+                  </div>
+                  <article class="workspace-doc-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>At a Glance</h3>
+                    </div>
+                    <div class="roadmap-flowchart-canvas" id="roadmap-general-flowchart"></div>
+                  </article>
+                </section>
+
+                <section class="roadmap-panel" data-roadmap-panel-view="phases">
+                  <div class="roadmap-phase-toolbar">
+                    <div class="roadmap-phase-toolbar-actions">
+                      <button type="button" class="btn btn-secondary" id="btn-roadmap-phase-add">+ Add phase</button>
+                      <button type="button" class="btn btn-secondary" id="btn-roadmap-merge-fragments">Merge Fragments</button>
+                    </div>
+                    <div class="roadmap-phase-toggle-group">
+                      <button type="button" class="btn btn-small btn-secondary is-active" data-roadmap-phase-panel="planner">Planner</button>
+                      <button type="button" class="btn btn-small btn-secondary" data-roadmap-phase-panel="previews">Previews</button>
+                      <button type="button" class="btn btn-small btn-secondary" data-roadmap-phase-panel="archives">Archives</button>
+                    </div>
+                  </div>
+
+                  <section class="roadmap-phase-panel is-active" data-roadmap-phase-panel-view="planner">
+                    <div class="roadmap-planner-layout">
+                      <article class="workspace-doc-card roadmap-planner-flow">
+                        <div class="workspace-doc-sidebar-header">
+                          <h3>Phase Flow</h3>
+                        </div>
+                        <div class="roadmap-flowchart-canvas roadmap-flowchart-droppable" id="roadmap-phase-flowchart"></div>
+                      </article>
+                      <aside class="roadmap-planner-sidebar">
+                        <article class="workspace-doc-card">
+                          <div class="workspace-doc-sidebar-header">
+                            <div class="roadmap-bucket-title">
+                              <h3>Planned Items</h3>
+                              <span class="info-chip" title="Planned features and bugs that are moving to a phase.">i</span>
+                            </div>
+                          </div>
+                          <div class="roadmap-bucket-tabs">
+                            <button type="button" class="roadmap-bucket-tab is-active" data-roadmap-bucket-group="planned" data-roadmap-bucket-kind="features">Features</button>
+                            <button type="button" class="roadmap-bucket-tab" data-roadmap-bucket-group="planned" data-roadmap-bucket-kind="bugs">Bugs</button>
+                          </div>
+                          <div class="roadmap-drop-bucket" data-roadmap-drop-target="planned">
+                            <div class="workspace-doc-list" id="roadmap-planned-items"></div>
+                          </div>
+                        </article>
+                        <article class="workspace-doc-card">
+                          <div class="workspace-doc-sidebar-header">
+                            <div class="roadmap-bucket-title">
+                              <h3>Considered Items</h3>
+                              <span class="info-chip" title="Considered features are brainstormed features with no plans and may be removed.">i</span>
+                            </div>
+                          </div>
+                          <div class="roadmap-bucket-tabs">
+                            <button type="button" class="roadmap-bucket-tab is-active" data-roadmap-bucket-group="considered" data-roadmap-bucket-kind="features">Features</button>
+                            <button type="button" class="roadmap-bucket-tab" data-roadmap-bucket-group="considered" data-roadmap-bucket-kind="bugs">Bugs</button>
+                          </div>
+                          <div class="roadmap-drop-bucket" data-roadmap-drop-target="considered">
+                            <div class="workspace-doc-list" id="roadmap-considered-items"></div>
+                          </div>
+                        </article>
+                      </aside>
+                    </div>
+                  </section>
+
+                  <section class="roadmap-phase-panel" data-roadmap-phase-panel-view="previews">
+                    <div class="workspace-doc-layout roadmap-previews-layout">
+                      <div class="workspace-doc-sidebar">
+                        <div class="workspace-doc-sidebar-card">
+                          <div class="workspace-doc-sidebar-header">
+                            <h3>Roadmap Fragments</h3>
+                            <button type="button" class="btn btn-small btn-secondary" id="btn-roadmap-fragments-refresh">Refresh</button>
+                          </div>
+                          <div class="workspace-doc-list" id="roadmap-fragment-list"></div>
+                        </div>
+                      </div>
+                      <div class="workspace-doc-main">
+                        <div class="workspace-doc-card">
+                          <div class="workspace-doc-sidebar-header">
+                            <h3>Fragment Preview</h3>
+                          </div>
+                          <div class="workspace-doc-markdown" id="roadmap-fragment-preview"></div>
+                        </div>
+                        <div class="workspace-doc-card">
+                          <div class="workspace-doc-sidebar-header">
+                            <h3>Roadmap Preview</h3>
+                            <div class="workspace-doc-actions">
+                              <button type="button" class="btn btn-small btn-secondary" id="btn-roadmap-refresh">Refresh</button>
+                            </div>
+                          </div>
+                          <div class="workspace-doc-markdown" id="roadmap-markdown-preview"></div>
+                        </div>
+                        <div class="workspace-doc-card">
+                          <div class="workspace-doc-sidebar-header">
+                            <h3>Roadmap Flowchart</h3>
+                          </div>
+                          <textarea id="roadmap-mermaid" rows="10" class="workspace-doc-textarea" placeholder="Roadmap Mermaid text"></textarea>
+                          <div class="workspace-mermaid-preview" id="roadmap-mermaid-preview"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="roadmap-phase-panel" data-roadmap-phase-panel-view="archives">
+                    <div class="roadmap-archives-grid">
+                      <article class="workspace-doc-card">
+                        <div class="workspace-doc-sidebar-header">
+                          <h3>Archived Phases</h3>
+                        </div>
+                        <div class="workspace-doc-list" id="roadmap-archived-phase-list"></div>
+                      </article>
+                      <article class="workspace-doc-card">
+                        <div class="workspace-doc-sidebar-header">
+                          <h3>Merged Fragments</h3>
+                        </div>
+                        <div class="workspace-doc-list" id="roadmap-archived-fragment-list"></div>
+                      </article>
+                    </div>
+                  </section>
+                </section>
+              </div>
+              </section>
+              <section class="task-workspace-view" data-task-view="features">
+              <div class="workspace-doc-layout">
+                <div class="workspace-doc-sidebar">
+                  <div class="workspace-doc-sidebar-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Features</h3>
+                      <button type="button" class="btn btn-small btn-secondary" id="btn-feature-add">+ Add feature</button>
+                    </div>
+                    <div class="workspace-doc-list" id="feature-list"></div>
+                  </div>
+                </div>
+                <div class="workspace-doc-main">
+                  <div class="workspace-doc-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Features Markdown</h3>
+                    </div>
+                    <div class="workspace-doc-markdown" id="features-markdown-preview"></div>
+                  </div>
+                  <div class="workspace-doc-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Features Flowchart</h3>
+                    </div>
+                    <textarea id="features-mermaid" rows="10" class="workspace-doc-textarea" placeholder="Features Mermaid text"></textarea>
+                    <div class="workspace-mermaid-preview" id="features-mermaid-preview"></div>
+                  </div>
+                </div>
+              </div>
+              </section>
+              <section class="task-workspace-view" data-task-view="bugs">
+              <div class="workspace-doc-layout">
+                <div class="workspace-doc-sidebar">
+                  <div class="workspace-doc-sidebar-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Bugs</h3>
+                      <button type="button" class="btn btn-small btn-secondary" id="btn-bug-add">+ Add bug</button>
+                    </div>
+                    <div class="workspace-doc-list" id="bug-list"></div>
+                  </div>
+                </div>
+                <div class="workspace-doc-main">
+                  <div class="workspace-doc-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Bugs Markdown</h3>
+                    </div>
+                    <div class="workspace-doc-markdown" id="bugs-markdown-preview"></div>
+                  </div>
+                  <div class="workspace-doc-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Bugs Flowchart</h3>
+                    </div>
+                    <textarea id="bugs-mermaid" rows="10" class="workspace-doc-textarea" placeholder="Bugs Mermaid text"></textarea>
+                    <div class="workspace-mermaid-preview" id="bugs-mermaid-preview"></div>
+                  </div>
+                </div>
+              </div>
+              </section>
+              <section class="task-workspace-view" data-task-view="prd">
+              <div class="workspace-doc-layout">
+                <div class="workspace-doc-sidebar">
+                  <div class="workspace-doc-sidebar-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>PRD Fragments</h3>
+                      <button type="button" class="btn btn-small btn-secondary" id="btn-prd-fragments-refresh">Refresh</button>
+                    </div>
+                    <div class="workspace-doc-list" id="prd-fragment-list"></div>
+                  </div>
+                  <div class="workspace-doc-sidebar-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Fragment Preview</h3>
+                    </div>
+                    <div class="workspace-doc-markdown" id="prd-fragment-preview"></div>
+                  </div>
+                </div>
+                <div class="workspace-doc-main">
+                  <div class="workspace-doc-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Product Requirements Document</h3>
+                      <button type="button" class="btn btn-small btn-secondary" id="btn-prd-save">Save PRD</button>
+                    </div>
+                    <div id="prd-editor-builder" class="prd-editor-builder"></div>
+                  </div>
+                  <div class="workspace-doc-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>Generated PRD Markdown</h3>
+                    </div>
+                    <div class="workspace-doc-markdown" id="prd-markdown-preview"></div>
+                  </div>
+                  <div class="workspace-doc-card">
+                    <div class="workspace-doc-sidebar-header">
+                      <h3>PRD Flowchart</h3>
+                    </div>
+                    <textarea id="prd-mermaid" rows="10" class="workspace-doc-textarea" placeholder="PRD Mermaid text"></textarea>
+                    <div class="workspace-mermaid-preview" id="prd-mermaid-preview"></div>
+                  </div>
+                </div>
+              </div>
+              </section>
+              <section class="task-workspace-view" data-task-view="integrations">
+              <div class="integrations-layout">
+                <section class="integration-panel">
+                  <div class="integration-panel-header">
+                    <h3>Git Workflow</h3>
+                    <button type="button" class="btn btn-small btn-secondary" id="btn-integration-refresh-git">Refresh</button>
+                  </div>
+                  <div class="integration-summary" id="integration-git-summary"></div>
+                  <div class="integration-actions">
+                    <button type="button" class="btn btn-small btn-secondary" id="btn-git-fetch">Fetch</button>
+                    <button type="button" class="btn btn-small btn-secondary" id="btn-git-pull">Pull</button>
+                    <button type="button" class="btn btn-small btn-secondary" id="btn-git-push">Push</button>
+                  </div>
+                  <div class="field-row integration-field-row">
+                    <div class="field">
+                      <label for="integration-branch-select">Checkout branch</label>
+                      <select id="integration-branch-select"></select>
+                    </div>
+                    <div class="field integration-field-end">
+                      <button type="button" class="btn btn-secondary" id="btn-git-checkout">Checkout</button>
+                    </div>
+                  </div>
+                  <div class="field-row integration-field-row">
+                    <div class="field">
+                      <label for="integration-branch-create">Create branch</label>
+                      <input type="text" id="integration-branch-create" placeholder="feature/my-branch" />
+                    </div>
+                    <div class="field integration-field-end">
+                      <button type="button" class="btn btn-secondary" id="btn-git-create-branch">Create</button>
+                    </div>
+                  </div>
+                  <div class="field-row integration-field-row">
+                    <div class="field">
+                      <label for="integration-merge-branch">Merge branch</label>
+                      <select id="integration-merge-branch"></select>
+                    </div>
+                    <div class="field integration-field-end integration-stack-actions">
+                      <button type="button" class="btn btn-secondary" id="btn-git-merge">Merge</button>
+                      <button type="button" class="btn btn-ghost btn-small" id="btn-git-abort-merge">Abort merge</button>
+                    </div>
+                  </div>
+                  <div class="integration-conflicts" id="integration-git-conflicts"></div>
+                </section>
+
+                <section class="integration-panel">
+                  <div class="integration-panel-header">
+                    <h3>GitHub</h3>
+                    <button type="button" class="btn btn-small btn-secondary" id="btn-integration-refresh-github">Refresh</button>
+                  </div>
+                  <div class="integration-summary" id="integration-github-summary"></div>
+                  <div class="integration-columns">
+                    <div>
+                      <h4>Open Issues</h4>
+                      <ul class="integration-list" id="integration-github-issues"></ul>
+                    </div>
+                    <div>
+                      <h4>Open Pull Requests</h4>
+                      <ul class="integration-list" id="integration-github-pulls"></ul>
+                    </div>
+                  </div>
+                  <div class="integration-form">
+                    <h4>Create Issue</h4>
+                    <div class="field">
+                      <label for="integration-issue-title">Issue title</label>
+                      <input type="text" id="integration-issue-title" placeholder="Describe the work" />
+                    </div>
+                    <div class="field">
+                      <label for="integration-issue-body">Issue body</label>
+                      <textarea id="integration-issue-body" rows="3" placeholder="Context, acceptance criteria, or repro steps"></textarea>
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="btn-github-create-issue">Create issue</button>
+                  </div>
+                  <div class="integration-form">
+                    <h4>Create Pull Request</h4>
+                    <div class="field-row integration-field-row">
+                      <div class="field">
+                        <label for="integration-pr-title">Title</label>
+                        <input type="text" id="integration-pr-title" placeholder="Release candidate" />
+                      </div>
+                      <div class="field">
+                        <label for="integration-pr-head">Head branch</label>
+                        <input type="text" id="integration-pr-head" placeholder="feature/my-branch" />
+                      </div>
+                      <div class="field">
+                        <label for="integration-pr-base">Base branch</label>
+                        <input type="text" id="integration-pr-base" placeholder="main" />
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label for="integration-pr-body">Body</label>
+                      <textarea id="integration-pr-body" rows="3" placeholder="Summary of the proposed change"></textarea>
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="btn-github-create-pr">Create pull request</button>
+                  </div>
+                </section>
+
+                <section class="integration-panel">
+                  <div class="integration-panel-header">
+                    <h3>External Tools</h3>
+                    <button type="button" class="btn btn-small btn-secondary" id="btn-integration-refresh-events">Refresh events</button>
+                  </div>
+                  <div class="integration-actions integration-actions-wrap">
+                    <button type="button" class="btn btn-secondary" id="btn-tool-explorer">Open Explorer</button>
+                    <button type="button" class="btn btn-secondary" id="btn-tool-cursor">Open Cursor</button>
+                    <button type="button" class="btn btn-secondary" id="btn-tool-vscode">Open VS Code</button>
+                    <button type="button" class="btn btn-secondary" id="btn-tool-terminal">Open Terminal</button>
+                    <button type="button" class="btn btn-secondary" id="btn-tool-chrome">Open Chrome</button>
+                  </div>
+                  <h4>Webhook Endpoint</h4>
+                  <div class="integration-summary" id="integration-webhook-summary"></div>
+                  <div class="integration-code" id="integration-webhook-url"></div>
+                  <h4>Custom Integrations</h4>
+                  <ul class="integration-list" id="integration-plugin-list"></ul>
+                  <h4>Recent Events</h4>
+                  <ul class="integration-list" id="integration-events-list"></ul>
+                </section>
+              </div>
+              </section>
+              <section class="task-workspace-view" data-task-view="module-designer">
+                <div class="module-designer-surface" id="module-designer-surface"></div>
+              </section>
+            </div>
+          </section>
+        </section>
       </main>
       <div id="project-context-menu" class="project-context-menu" hidden>
         <button type="button" class="project-context-menu-item" id="project-context-open-cursor" data-action="open-cursor"><span class="project-context-menu-icon" aria-hidden="true">&lt;/&gt;</span> Open in Cursor</button>
@@ -189,13 +593,80 @@
         <label for="link-url">URL</label>
         <input type="url" id="link-url" placeholder="https://…" />
       </div>
-      <div class="field" id="field-link-path" hidden>
-        <label for="link-path">Path</label>
-        <input type="text" id="link-path" placeholder="e.g. Goals/MyProject/docs (relative to Projects root)" />
+        <div class="field" id="field-link-path" hidden>
+          <label for="link-path">Path</label>
+          <div class="path-row">
+            <input type="text" id="link-path" readonly placeholder="Browse to select a file or folder" />
+            <button type="button" class="btn btn-secondary" id="btn-link-browse">Browse</button>
+          </div>
+          <div class="field browse-panel" id="link-browse-panel" hidden>
+            <label>Select a file or folder</label>
+            <div class="browse-nav">
+              <button type="button" class="btn btn-small" id="link-browse-up">↑ Up</button>
+              <span class="browse-current" id="link-browse-current"></span>
+            </div>
+            <ul class="browse-dirs" id="link-browse-dirs"></ul>
+            <div class="browse-selection" id="link-browse-selection">Selected: current folder</div>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-secondary" id="link-browse-select-folder">Use current folder</button>
+              <button type="button" class="btn btn-primary" id="link-browse-select">Use selected path</button>
+            </div>
+          </div>
+        </div>
+      <div class="field">
+        <label for="link-action">Click action</label>
+        <select id="link-action">
+          <option value="auto">Auto</option>
+          <option value="explorer">File Explorer</option>
+          <option value="cursor">Cursor</option>
+          <option value="vscode">VS Code</option>
+          <option value="chrome">Chrome</option>
+        </select>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" id="btn-link-cancel">Cancel</button>
         <button type="button" class="btn btn-primary" id="btn-link-save">Save</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="modal-plugin" class="modal">
+    <div class="modal-content">
+      <h2 id="modal-plugin-title">Add integration</h2>
+      <div class="field">
+        <label for="plugin-name">Name</label>
+        <input type="text" id="plugin-name" placeholder="Deploy webhook" />
+      </div>
+      <div class="field">
+        <label for="plugin-type">Type</label>
+        <select id="plugin-type">
+          <option value="webhook_forward">Outgoing webhook</option>
+          <option value="open_url">Open URL</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="plugin-target-url">Target URL</label>
+        <input type="url" id="plugin-target-url" placeholder="https://example.com/hooks/project" />
+      </div>
+      <div class="field" id="field-plugin-method">
+        <label for="plugin-method">HTTP method</label>
+        <select id="plugin-method">
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+          <option value="GET">GET</option>
+        </select>
+      </div>
+      <div class="field" id="field-plugin-headers">
+        <label for="plugin-headers">Headers (JSON)</label>
+        <textarea id="plugin-headers" rows="4" placeholder='{"x-api-key":"secret"}'></textarea>
+      </div>
+      <div class="field project-settings-check" id="field-plugin-project-context">
+        <label class="checkbox-inline"><input type="checkbox" id="plugin-include-project-context" checked /> Include project context in payload</label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-plugin-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-plugin-save">Save</button>
       </div>
     </div>
   </dialog>
@@ -262,18 +733,66 @@
             <div class="tags-suggestions" id="project-settings-tags-suggestions" hidden></div>
           </div>
         </div>
-        <div class="field" id="field-project-settings-cursor">
-          <label>Open in Cursor</label>
-          <div class="cursor-options">
-            <label class="cursor-option"><input type="checkbox" id="project-settings-open-cursor" /> Open in Cursor</label>
-            <label class="cursor-option cursor-option-indent"><input type="checkbox" id="project-settings-open-cursor-admin" disabled /> Open in Admin mode</label>
-          </div>
+        <div class="field">
+          <label for="project-settings-primary-action">Launch action</label>
+          <select id="project-settings-primary-action">
+            <option value="auto">Auto</option>
+            <option value="explorer">File Explorer</option>
+            <option value="cursor">Cursor</option>
+            <option value="vscode">VS Code</option>
+            <option value="chrome">Chrome</option>
+          </select>
+          <p class="hint">Used by the folder button next to the project name. Chrome uses the project URL or the first URL link when available.</p>
         </div>
         <div class="field">
           <label>Links</label>
           <ul class="links-list" id="project-settings-links-list"></ul>
           <button type="button" class="btn btn-secondary btn-small" id="btn-project-settings-add-link">+ Add link</button>
         </div>
+        <section class="project-settings-section">
+          <h3>Integrations</h3>
+          <div class="field project-settings-check">
+            <label class="checkbox-inline"><input type="checkbox" id="project-settings-github-enabled" checked /> Enable GitHub integration for this project</label>
+            <p class="hint">When disabled, this project ignores GitHub remote auto-detection and API actions.</p>
+          </div>
+          <div class="field-row integration-field-row">
+            <div class="field">
+              <label for="project-settings-github-owner">GitHub owner</label>
+              <input type="text" id="project-settings-github-owner" placeholder="my-org" />
+            </div>
+            <div class="field">
+              <label for="project-settings-github-repo">GitHub repo</label>
+              <input type="text" id="project-settings-github-repo" placeholder="project-repo" />
+            </div>
+          </div>
+          <div class="field project-settings-check">
+            <label class="checkbox-inline"><input type="checkbox" id="project-settings-webhook-auto-tasks" /> Create tasks from incoming webhooks</label>
+          </div>
+          <div class="field-row integration-field-row">
+            <div class="field">
+              <label for="project-settings-webhook-status">Webhook task status</label>
+              <select id="project-settings-webhook-status">
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="project-settings-webhook-prefix">Webhook task prefix</label>
+              <input type="text" id="project-settings-webhook-prefix" placeholder="Webhook" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Custom integrations</label>
+            <ul class="links-list" id="project-settings-plugins-list"></ul>
+            <button type="button" class="btn btn-secondary btn-small" id="btn-project-settings-add-plugin">+ Add integration</button>
+          </div>
+        </section>
+        <section class="project-settings-section">
+          <h3>Software Modules</h3>
+          <div class="workspace-plugin-manager" id="project-settings-software-modules"></div>
+          <p class="hint">Roadmap, Kanban, and Gantt are part of the core workspace. Use Software modules to add software-specific design surfaces to this project.</p>
+        </section>
         <div class="field">
           <label for="project-settings-server">SFTP server</label>
           <select id="project-settings-server">
@@ -291,14 +810,24 @@
   <!-- Settings modal (File → Settings) -->
   <dialog id="modal-settings" class="modal">
     <div class="modal-content modal-wide">
-      <h2>Settings</h2>
-      <div class="settings-layout">
-        <nav class="settings-nav">
-          <button type="button" class="settings-nav-item is-active" data-settings-view-nav="appearance">Appearance</button>
+        <h2>Settings</h2>
+        <div class="settings-layout">
+          <nav class="settings-nav">
+          <button type="button" class="settings-nav-item is-active" data-settings-view-nav="projects">Projects</button>
+          <button type="button" class="settings-nav-item" data-settings-view-nav="appearance">Appearance</button>
+          <button type="button" class="settings-nav-item" data-settings-view-nav="integrations">Integrations</button>
           <button type="button" class="settings-nav-item" data-settings-view-nav="sftp">SFTP servers</button>
-        </nav>
-        <div class="settings-content">
-          <section class="settings-section settings-view is-active" id="settings-view-appearance" data-settings-view="appearance">
+          </nav>
+          <div class="settings-content">
+          <section class="settings-section settings-view is-active" id="settings-view-projects" data-settings-view="projects">
+            <h3>Projects</h3>
+            <div class="field">
+              <label for="settings-project-root">Project Root</label>
+              <input type="text" id="settings-project-root" placeholder="C:\Projects\Angel's Project Manager" />
+              <p class="hint">The app will use <code>data</code> under this folder. Changing it moves the current data folder and makes relative project paths resolve from the new root.</p>
+            </div>
+          </section>
+          <section class="settings-section settings-view" id="settings-view-appearance" data-settings-view="appearance">
             <h3>Appearance</h3>
             <div class="field">
               <label for="settings-color-scheme">Color scheme</label>
@@ -307,6 +836,24 @@
                 <option value="dark-blue">Dark Blue</option>
                 <option value="app-icon">App Icon</option>
               </select>
+            </div>
+          </section>
+          <section class="settings-section settings-view" id="settings-view-integrations" data-settings-view="integrations">
+            <h3>Integrations</h3>
+            <div class="field">
+              <label for="settings-github-api-base-url">GitHub API base URL</label>
+              <input type="text" id="settings-github-api-base-url" placeholder="https://api.github.com" />
+              <p class="hint">Use the default for GitHub.com. Point this to GitHub Enterprise or a local test server when needed.</p>
+            </div>
+            <div class="field">
+              <label for="settings-github-token">GitHub access token</label>
+              <input type="password" id="settings-github-token" placeholder="Leave blank to keep current token" />
+              <p class="hint" id="settings-github-token-hint">Used for issues and pull requests.</p>
+            </div>
+            <div class="field">
+              <label for="settings-webhook-secret">Webhook secret</label>
+              <input type="password" id="settings-webhook-secret" placeholder="Leave blank to keep current secret" />
+              <p class="hint" id="settings-webhook-secret-hint">Optional shared secret expected in <code>x-apm-webhook-secret</code>.</p>
             </div>
           </section>
           <section class="settings-section settings-view" id="settings-view-sftp" data-settings-view="sftp">
@@ -366,6 +913,382 @@
           <button type="button" class="btn btn-ghost" id="btn-settings-server-cancel">Cancel</button>
           <button type="button" class="btn btn-primary" id="btn-settings-save-server">Save server</button>
         </div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="modal-task-editor" class="modal">
+    <div class="modal-content modal-task-editor">
+      <h2 id="task-editor-title">Add task</h2>
+      <form id="form-task-editor">
+        <input type="hidden" id="task-editor-id" />
+        <div class="field">
+          <label for="task-editor-title-input">Title</label>
+          <input type="text" id="task-editor-title-input" required placeholder="Define the next deliverable" />
+        </div>
+        <div class="field">
+          <label for="task-editor-description">Description</label>
+          <textarea id="task-editor-description" rows="3" placeholder="Notes, acceptance criteria, or blockers"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="task-editor-status">Status</label>
+            <select id="task-editor-status">
+              <option value="todo">To Do</option>
+              <option value="in_progress">In Progress</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="task-editor-priority">Priority</label>
+            <select id="task-editor-priority">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="task-editor-category">Category</label>
+            <input type="text" id="task-editor-category" placeholder="Planning, Backend, UX..." />
+          </div>
+          <div class="field">
+            <label for="task-editor-progress">Progress</label>
+            <input type="number" id="task-editor-progress" min="0" max="100" value="0" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="task-editor-assignee">Assigned To</label>
+            <input type="text" id="task-editor-assignee" placeholder="Owner" />
+          </div>
+          <div class="field">
+            <label for="task-editor-due-date">Due Date</label>
+            <input type="date" id="task-editor-due-date" />
+          </div>
+          <div class="field task-editor-check">
+            <label for="task-editor-milestone">Milestone</label>
+            <input type="checkbox" id="task-editor-milestone" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="task-editor-start-date">Start Date</label>
+            <input type="date" id="task-editor-start-date" />
+          </div>
+          <div class="field">
+            <label for="task-editor-end-date">End Date</label>
+            <input type="date" id="task-editor-end-date" />
+          </div>
+        </div>
+          <div class="field">
+            <label for="task-editor-roadmap-phase">Roadmap Phase</label>
+            <select id="task-editor-roadmap-phase">
+              <option value="">Unassigned</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="task-editor-planning-bucket">Planning Bucket</label>
+            <select id="task-editor-planning-bucket">
+              <option value="considered">Considered</option>
+              <option value="planned">Planned</option>
+              <option value="phase">Phase</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="task-editor-dependencies">Dependencies</label>
+            <select id="task-editor-dependencies" multiple size="6"></select>
+            <p class="hint">Select prerequisite tasks for Phase 3 timeline planning.</p>
+          </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-task-editor-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save task</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="modal-roadmap-phase" class="modal">
+    <div class="modal-content">
+      <h2 id="roadmap-phase-modal-title">Add roadmap phase</h2>
+      <form id="form-roadmap-phase">
+        <input type="hidden" id="roadmap-phase-id" />
+        <div class="field">
+          <label for="roadmap-phase-name">Phase name</label>
+          <input type="text" id="roadmap-phase-name" required placeholder="Foundation" />
+        </div>
+        <div class="field">
+          <label for="roadmap-phase-goal">Goal</label>
+          <textarea id="roadmap-phase-goal" rows="3" placeholder="What this phase should achieve"></textarea>
+        </div>
+        <div class="field">
+          <label for="roadmap-phase-summary">Summary</label>
+          <textarea id="roadmap-phase-summary" rows="3" placeholder="What belongs in this phase"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="roadmap-phase-status">Status</label>
+            <select id="roadmap-phase-status">
+              <option value="planned">Planned</option>
+              <option value="active">Active</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="roadmap-phase-target-date">Target date</label>
+            <input type="date" id="roadmap-phase-target-date" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="roadmap-phase-after">Comes after</label>
+            <select id="roadmap-phase-after">
+              <option value="">None</option>
+            </select>
+          </div>
+          <div class="field project-settings-check">
+            <label class="checkbox-inline"><input type="checkbox" id="roadmap-phase-archived" /> Archive phase</label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-roadmap-phase-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save phase</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="modal-feature" class="modal">
+    <div class="modal-content">
+      <h2 id="feature-modal-title">Add feature</h2>
+      <form id="form-feature">
+        <input type="hidden" id="feature-id" />
+        <div class="field">
+          <label for="feature-title">Title</label>
+          <input type="text" id="feature-title" required placeholder="Multi-user invite flow" />
+        </div>
+        <div class="field">
+          <label for="feature-summary">Summary</label>
+          <textarea id="feature-summary" rows="3" placeholder="What the feature should do"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="feature-status">Status</label>
+            <select id="feature-status">
+              <option value="planned">Planned</option>
+              <option value="in_progress">In Progress</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+            <div class="field">
+              <label for="feature-priority">Priority</label>
+              <select id="feature-priority">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="feature-category">Category</label>
+              <input type="text" id="feature-category" placeholder="Planning, Backend, UX..." />
+            </div>
+            <div class="field">
+              <label for="feature-roadmap-phase">Roadmap Phase</label>
+              <select id="feature-roadmap-phase">
+                <option value="">Unassigned</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="feature-planning-bucket">Planning Bucket</label>
+              <select id="feature-planning-bucket">
+                <option value="considered">Considered</option>
+                <option value="planned">Planned</option>
+                <option value="phase">Phase</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="feature-progress">Progress</label>
+            <input type="number" id="feature-progress" min="0" max="100" value="0" />
+          </div>
+          <div class="field">
+            <label for="feature-assigned-to">Assigned To</label>
+            <input type="text" id="feature-assigned-to" placeholder="Owner" />
+          </div>
+          <div class="field">
+            <label for="feature-due-date">Due Date</label>
+            <input type="date" id="feature-due-date" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field project-settings-check">
+            <label class="checkbox-inline"><input type="checkbox" id="feature-milestone" /> Milestone</label>
+          </div>
+          <div class="field">
+            <label for="feature-start-date">Start Date</label>
+            <input type="date" id="feature-start-date" />
+          </div>
+          <div class="field">
+            <label for="feature-end-date">End Date</label>
+            <input type="date" id="feature-end-date" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="feature-dependencies">Dependencies</label>
+          <select id="feature-dependencies" multiple size="6"></select>
+        </div>
+        <div class="field project-settings-check">
+          <label class="checkbox-inline"><input type="checkbox" id="feature-archived" /> Archive feature</label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-feature-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save feature</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="modal-bug" class="modal">
+    <div class="modal-content">
+      <h2 id="bug-modal-title">Add bug</h2>
+      <form id="form-bug">
+        <input type="hidden" id="bug-id" />
+        <div class="field">
+          <label for="bug-title">Title</label>
+          <input type="text" id="bug-title" required placeholder="Save action breaks with empty tag" />
+        </div>
+        <div class="field">
+          <label for="bug-current-behavior">Current Behavior</label>
+          <textarea id="bug-current-behavior" rows="3" placeholder="What is happening right now?"></textarea>
+        </div>
+        <div class="field">
+          <label for="bug-expected-behavior">Expected Behavior</label>
+          <textarea id="bug-expected-behavior" rows="3" placeholder="What should happen instead?"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="bug-status">Status</label>
+            <select id="bug-status">
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+            <div class="field">
+              <label for="bug-severity">Severity</label>
+              <select id="bug-severity">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="bug-category">Category</label>
+              <input type="text" id="bug-category" placeholder="Planning, Backend, UX..." />
+            </div>
+            <div class="field">
+              <label for="bug-planning-bucket">Planning Bucket</label>
+              <select id="bug-planning-bucket">
+                <option value="considered">Considered</option>
+                <option value="planned">Planned</option>
+                <option value="phase">Phase</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="bug-roadmap-phase">Roadmap Phase</label>
+            <select id="bug-roadmap-phase">
+              <option value="">Unassigned</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="bug-progress">Progress</label>
+            <input type="number" id="bug-progress" min="0" max="100" value="0" />
+          </div>
+          <div class="field">
+            <label for="bug-assigned-to">Assigned To</label>
+            <input type="text" id="bug-assigned-to" placeholder="Owner" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="bug-due-date">Due Date</label>
+            <input type="date" id="bug-due-date" />
+          </div>
+          <div class="field">
+            <label for="bug-start-date">Start Date</label>
+            <input type="date" id="bug-start-date" />
+          </div>
+          <div class="field">
+            <label for="bug-end-date">End Date</label>
+            <input type="date" id="bug-end-date" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field project-settings-check">
+            <label class="checkbox-inline"><input type="checkbox" id="bug-milestone" /> Milestone</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="bug-dependencies">Dependencies</label>
+          <select id="bug-dependencies" multiple size="6"></select>
+        </div>
+        <div class="field-row">
+          <div class="field project-settings-check">
+            <label class="checkbox-inline"><input type="checkbox" id="bug-completed" /> Completed</label>
+          </div>
+          <div class="field project-settings-check">
+            <label class="checkbox-inline"><input type="checkbox" id="bug-regressed" /> Regressed</label>
+          </div>
+          <div class="field project-settings-check">
+            <label class="checkbox-inline"><input type="checkbox" id="bug-archived" /> Archive bug</label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-bug-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save bug</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="modal-roadmap-fragments" class="modal">
+    <div class="modal-content modal-wide">
+      <h2>Merge Roadmap Fragments</h2>
+      <div class="workspace-doc-list" id="roadmap-fragment-merge-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-roadmap-fragments-close">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="modal-fragment-preview" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="workspace-doc-sidebar-header">
+        <h2 id="fragment-preview-title">Fragment Preview</h2>
+      </div>
+      <div class="workspace-doc-item-meta" id="fragment-preview-meta"></div>
+      <div class="workspace-doc-markdown" id="fragment-preview-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-fragment-preview-close">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="modal-work-item-detail" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="workspace-doc-sidebar-header">
+        <h2 id="work-item-detail-title">Item Details</h2>
+        <button type="button" class="btn btn-secondary" id="btn-work-item-detail-edit">Edit</button>
+      </div>
+      <div class="work-item-detail-body" id="work-item-detail-body"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btn-work-item-detail-close">Close</button>
       </div>
     </div>
   </dialog>
