@@ -69,6 +69,7 @@ const {
   saveBugItem,
   deleteBugItem,
     readProjectDocument,
+  recordProjectTemplateFiles,
   saveProjectDocument,
   deleteProjectDocument,
   readEntityRelationships,
@@ -105,6 +106,7 @@ const {
   createGitHubPullRequest,
 } = require('./github-client');
 const { FileWatcherService } = require('./file-watcher');
+const { dbAll } = require('./database');
 const {
   ensureProjectDocsDir,
   ensureProjectWorkspaceDir,
@@ -132,6 +134,7 @@ const {
   renderArchitectureEditorStateMarkdown,
   renderArchitectureMarkdown,
   defaultAiEnvironmentEditorState,
+  buildAiDirectiveRegistry,
   renderAiEnvironmentEditorStateMarkdown,
   renderAiEnvironmentMarkdown,
   defaultDatabaseSchemaEditorState,
@@ -149,10 +152,15 @@ const {
   readPrdFragmentDocument,
   readRoadmapFragmentDocument,
   writeProjectDocument,
+  syncProjectTemplateFiles,
   listProjectDocFiles,
   listProjectFragmentFiles,
+  listProjectFragmentFilesForModule,
+  listSharedFragmentFilesForModule,
   ensureProjectFragmentsDir,
+  getProjectFragmentsDir,
   getFragmentsRootDir,
+  getSharedFragmentsDir,
   ensureSharedFragmentsDir,
   readManagedFileSnapshot,
   parseManagedBlock,
@@ -251,6 +259,31 @@ function createApp() {
     );
   }
 
+  function ensureProjectFragmentWatcher(project) {
+    if (!project || !project.id) return;
+    if (
+      process.argv.includes('--test')
+      || process.env.APM_DISABLE_AUTO_FRAGMENT_WATCHER === '1'
+      || /apm-prd-/i.test(String(process.env.APM_STATE_DIR || ''))
+    ) return;
+    const projectFragmentsDir = ensureProjectFragmentsDir(project);
+    const sharedFragmentsDir = ensureSharedFragmentsDir();
+    const watchId = `project-fragments:${project.id}`;
+    fileWatcherService.watch(watchId, [projectFragmentsDir, sharedFragmentsDir], {
+      persistent: false,
+      ignored: ['**/*.tmp', '**/.DS_Store'],
+    }).catch((error) => {
+      config.logEntry({
+        level: 'WARN',
+        source: 'server',
+        eventType: 'file_watcher.fragment_watch_failed',
+        action: 'watch_fragments',
+        message: `Failed to watch fragment folders for project ${project.id}`,
+        details: JSON.stringify({ projectId: project.id, error: error.message || String(error) }),
+      });
+    });
+  }
+
   function ensureWorkspaceProject(project) {
     if (!project) throw new Error('Project not found');
     if (project.type !== 'folder' || !project.absolutePath) {
@@ -259,6 +292,8 @@ function createApp() {
     }
     ensureProjectDocsDir(project);
     ensureProjectWorkspaceDir(project);
+    syncProjectTemplateFiles(project);
+    ensureProjectFragmentWatcher(project);
     config.log(`phase5: workspace project ready ${project.id} -> ${project.absolutePath}`);
     return project;
   }
@@ -476,6 +511,8 @@ function createApp() {
   }
 
   async function finalizeDocumentSync(project, docType, finalFileMarkdown, dbDocumentInput) {
+    const templateSyncRecords = syncProjectTemplateFiles(project);
+    await recordProjectTemplateFiles(project.id, templateSyncRecords);
     let storedDocument = await readProjectDocument(project.id, docType);
     let fileSnapshot = readProjectManagedDocument(project, docType);
     const dbMd5 = computeMd5(finalFileMarkdown);
@@ -1975,9 +2012,16 @@ function createApp() {
     const stored = await readProjectDocument(project.id, 'ai_environment');
     const editorState = stored && stored.editorState ? stored.editorState : defaultAiEnvironmentEditorState(project);
     const appSettings = await readAppSettings();
+    const projectModules = await readProjectModules(project.id);
+    const enabledModuleKeys = (Array.isArray(projectModules) ? projectModules : [])
+      .filter((module) => module.enabled)
+      .map((module) => module.moduleKey);
     const sharedProfiles = Array.isArray(appSettings?.ai?.profiles) ? appSettings.ai.profiles : [];
     const fragmentsDirectiveProjectId = appSettings?.ai?.fragmentsDirectiveProjectId || '';
     const fragmentsRootDir = getFragmentsRootDir();
+    const projectFragmentsDir = getProjectFragmentsDir(project);
+    const sharedFragmentsDir = getSharedFragmentsDir();
+    const shutdownLockedAppBeforeBuildDirectiveEnabled = Boolean(appSettings?.ai?.shutdownLockedAppBeforeBuildDirectiveEnabled);
     const runtimeDatabasePath = path.join(config.getDataDir(), 'app.db');
     const documentPath = getProjectDocPath(project, 'ai_environment');
     const softwareStandardsPath = getProjectSoftwareStandardsRegistryPath(project);
@@ -1985,6 +2029,19 @@ function createApp() {
       sharedProfiles,
       fragmentsDirectiveProjectId,
       fragmentsRootDir,
+      projectFragmentsDir,
+      sharedFragmentsDir,
+      shutdownLockedAppBeforeBuildDirectiveEnabled,
+      enabledModuleKeys,
+    });
+    const directiveRegistry = buildAiDirectiveRegistry(project, {
+      fragmentsDirectiveProjectId,
+      fragmentsRootDir,
+      projectFragmentsDir,
+      sharedFragmentsDir,
+      shutdownLockedAppBeforeBuildDirectiveEnabled,
+      enabledModuleKeys,
+      disabledDirectiveIds: editorState.disabledDirectiveIds,
     });
     return {
       markdown: markdownBody,
@@ -1995,6 +2052,11 @@ function createApp() {
       sharedProfiles,
       fragmentsDirectiveProjectId,
       fragmentsRootDir,
+      projectFragmentsDir,
+      sharedFragmentsDir,
+      shutdownLockedAppBeforeBuildDirectiveEnabled,
+      enabledModuleKeys,
+      directiveRegistry,
       runtimeDatabasePath,
       documentPath,
       softwareStandardsPath,
@@ -2016,6 +2078,10 @@ function createApp() {
       sharedProfiles: state.sharedProfiles,
       fragmentsDirectiveProjectId: state.fragmentsDirectiveProjectId,
       fragmentsRootDir: state.fragmentsRootDir,
+      projectFragmentsDir: state.projectFragmentsDir,
+      sharedFragmentsDir: state.sharedFragmentsDir,
+      shutdownLockedAppBeforeBuildDirectiveEnabled: state.shutdownLockedAppBeforeBuildDirectiveEnabled,
+      enabledModuleKeys: state.enabledModuleKeys,
     });
     const markdown = renderAiEnvironmentMarkdown(project, markdownBody, state.mermaid, state.editorState);
     const syncResult = await finalizeDocumentSync(project, 'ai_environment', markdown, {
@@ -2052,6 +2118,127 @@ function createApp() {
       observedAt: String(source.observedAt || ''),
       schemaFingerprint: String(source.schemaFingerprint || ''),
       confidence: String(source.confidence || 'mixed'),
+    };
+  }
+
+  function quoteSqliteIdentifier(identifier) {
+    return `"${String(identifier || '').replace(/"/g, '""')}"`;
+  }
+
+  async function captureRuntimeDatabaseSchemaModel() {
+    const capturedAt = new Date().toISOString();
+    const sourceLabel = path.join(config.getDataDir(), 'app.db');
+    const objects = await dbAll(
+      "SELECT name, type, sql FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    );
+    const entities = [];
+    const relationships = [];
+    const indexes = [];
+    const constraints = [];
+
+    for (const object of objects) {
+      const entityId = object.name;
+      const quotedName = quoteSqliteIdentifier(object.name);
+      const foreignKeys = object.type === 'table'
+        ? await dbAll(`PRAGMA foreign_key_list(${quotedName})`)
+        : [];
+      const foreignKeyByField = new Map(foreignKeys.map((fk) => [fk.from, fk]));
+      const fields = object.type === 'table'
+        ? await dbAll(`PRAGMA table_info(${quotedName})`)
+        : [];
+      const entityFields = fields.map((field) => {
+        const foreignKey = foreignKeyByField.get(field.name);
+        return {
+          id: `${entityId}.${field.name}`,
+          name: field.name,
+          type: field.type || 'TEXT',
+          nullable: !field.notnull,
+          primaryKey: Number(field.pk || 0) > 0,
+          unique: false,
+          defaultValue: field.dflt_value === null || field.dflt_value === undefined ? '' : String(field.dflt_value),
+          referencesEntityId: foreignKey?.table || '',
+          referencesFieldId: foreignKey?.to || '',
+          status: 'observed',
+          notes: '',
+        };
+      });
+
+      const primaryKeyFields = entityFields.filter((field) => field.primaryKey).map((field) => field.name);
+      if (primaryKeyFields.length) {
+        constraints.push({
+          id: `pk_${entityId}`,
+          entityId,
+          name: `${entityId}_pk`,
+          type: 'primary_key',
+          definition: `(${primaryKeyFields.join(', ')})`,
+          status: 'observed',
+          notes: 'Primary key captured from live SQLite metadata.',
+        });
+      }
+
+      foreignKeys.forEach((foreignKey, index) => {
+        relationships.push({
+          id: `${entityId}:${foreignKey.from}:${foreignKey.table}:${foreignKey.to || 'id'}:${index}`,
+          fromEntityId: entityId,
+          fromFieldId: foreignKey.from,
+          toEntityId: foreignKey.table,
+          toFieldId: foreignKey.to || 'id',
+          cardinality: 'many-to-one',
+          status: 'observed',
+          notes: 'Foreign key captured from live SQLite metadata.',
+        });
+      });
+
+      if (object.type === 'table') {
+        const indexRows = await dbAll(`PRAGMA index_list(${quotedName})`);
+        for (const indexRow of indexRows) {
+          const indexFields = await dbAll(`PRAGMA index_info(${quoteSqliteIdentifier(indexRow.name)})`);
+          indexes.push({
+            id: indexRow.name,
+            entityId,
+            name: indexRow.name,
+            fields: indexFields.map((field) => field.name).filter(Boolean),
+            unique: Boolean(indexRow.unique),
+            status: 'observed',
+            notes: indexRow.origin === 'pk' ? 'Primary key backing index.' : '',
+          });
+        }
+      }
+
+      entities.push({
+        id: entityId,
+        name: object.name,
+        kind: object.type || 'table',
+        status: 'observed',
+        notes: object.sql || '',
+        fields: entityFields,
+      });
+    }
+
+    const comparable = { entities, relationships, indexes, constraints };
+    return {
+      source: {
+        sourceType: 'sqlite_database',
+        sourceLabel,
+        dialect: 'sqlite',
+        observedAt: capturedAt,
+        schemaFingerprint: computeMd5(JSON.stringify(buildComparableDatabaseSchemaModel(comparable))),
+        confidence: 'observed',
+      },
+      summary: `Observed SQLite schema captured from ${sourceLabel}.`,
+      entities,
+      relationships,
+      indexes,
+      constraints,
+      migrationNotes: [
+        {
+          title: 'Live runtime schema capture',
+          description: 'Captured directly from the configured runtime SQLite database.',
+          status: 'observed',
+        },
+      ],
+      openQuestions: [],
+      mermaid: defaultDatabaseSchemaMermaid(),
     };
   }
 
@@ -2735,11 +2922,21 @@ function createApp() {
     return nextState;
   }
 
-  function applyDatabaseSchemaSyncAction(project, existingState, actionType) {
+  async function applyDatabaseSchemaSyncAction(project, existingState, actionType) {
     const currentState = normalizeDatabaseSchemaStateEditorState(project, existingState);
     const previousSync = normalizeDatabaseSchemaSyncTracking(currentState.syncTracking);
     const now = new Date().toISOString();
     const normalizedAction = String(actionType || '').trim().toLowerCase();
+
+    if (normalizedAction === 'capture_runtime_schema') {
+      const runtimeSchemaModel = await captureRuntimeDatabaseSchemaModel();
+      const importedEditorState = buildDatabaseSchemaNarrativeStateFromModel(runtimeSchemaModel, {
+        ...currentState,
+        importSource: runtimeSchemaModel.source,
+        schemaModel: runtimeSchemaModel,
+      });
+      return applyObservedSchemaImport(project, currentState, importedEditorState);
+    }
 
     if (normalizedAction === 'refresh_comparison') {
       const nextSync = compareDatabaseSchemaSyncState(currentState);
@@ -2929,6 +3126,11 @@ function createApp() {
     requireString(source.confidence, 'payload.source.confidence');
     if (!allowedConfidence.has(source.confidence)) {
       throw new Error(`Database schema fragment confidence "${source.confidence}" is not allowed.`);
+    }
+    const importMode = String(payload.importMode || payload.schemaScope || '').trim().toLowerCase();
+    const describesPartialSchema = /partial schema|migration-sized schema|not a complete recapture|not a complete schema/i.test(text);
+    if (importMode === 'partial_schema' || importMode === 'partial' || describesPartialSchema) {
+      throw new Error('Database Schema fragment is marked as a partial schema update. The current Database Schema consumer only accepts full-schema imports; capture the live runtime schema or wait for additive schema operations support.');
     }
 
     requireString(payload.summary, 'payload.summary');
@@ -3227,6 +3429,7 @@ function createApp() {
     saveProject,
     deleteProject,
     readProjectModules,
+    syncProjectModules,
     readProjectTasks,
     readProjectWorkItems,
     getTaskById,
@@ -3299,8 +3502,12 @@ function createApp() {
     tryDeleteFile,
     listProjectDocFiles,
     listProjectFragmentFiles,
+    listProjectFragmentFilesForModule,
+    listSharedFragmentFilesForModule,
     ensureProjectFragmentsDir,
+    getProjectFragmentsDir,
     getFragmentsRootDir,
+    getSharedFragmentsDir,
     ensureSharedFragmentsDir,
     readManagedFileSnapshot,
     renderPrdEditorStateMarkdown,

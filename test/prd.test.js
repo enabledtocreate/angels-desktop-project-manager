@@ -159,6 +159,7 @@ test('bootstraps SQLite from legacy JSON and preserves schema needed for roadmap
   const projectColumns = await dbModule.dbAll('PRAGMA table_info(projects)');
   const taskColumns = await dbModule.dbAll('PRAGMA table_info(tasks)');
   const documentColumns = await dbModule.dbAll('PRAGMA table_info(project_md_documents)');
+  const templateFileColumns = await dbModule.dbAll('PRAGMA table_info(project_template_files)');
   const moduleColumns = await dbModule.dbAll('PRAGMA table_info(project_modules)');
   const featureColumns = await dbModule.dbAll('PRAGMA table_info(feature_items)');
   const bugColumns = await dbModule.dbAll('PRAGMA table_info(bug_items)');
@@ -171,6 +172,8 @@ test('bootstraps SQLite from legacy JSON and preserves schema needed for roadmap
   assert(taskColumns.some((column) => column.name === 'work_item_type'));
   assert(documentColumns.some((column) => column.name === 'module_key'));
   assert(documentColumns.some((column) => column.name === 'source_of_truth'));
+  assert(templateFileColumns.some((column) => column.name === 'template_version'));
+  assert(templateFileColumns.some((column) => column.name === 'source_md5'));
   assert(moduleColumns.some((column) => column.name === 'purpose_summary'));
   assert(featureColumns.some((column) => column.name === 'work_item_type'));
   assert(bugColumns.some((column) => column.name === 'work_item_type'));
@@ -204,6 +207,7 @@ test('bootstraps SQLite from legacy JSON and preserves schema needed for roadmap
     '025_rename_ux_ui_to_experience_design.js',
     '026_bug_association_hints.js',
     '027_bug_fragment_body_cleanup.js',
+    '028_project_template_files.js',
   ]);
   });
 
@@ -472,12 +476,14 @@ test('AI environment module syncs a managed document and persists structured edi
   assert.equal(result.response.status, 200);
   assert.match(result.body.markdown, /Guide AI agents working on AI Guided Project\./);
   assert(result.body.editorState.requiredBehaviors.length >= 1);
+  assert(result.body.editorState.termDictionary.length >= 1);
 
   result = await request('/api/settings', {
     method: 'PUT',
     body: JSON.stringify({
       ai: {
         fragmentsDirectiveProjectId: project.id,
+        shutdownLockedAppBeforeBuildDirectiveEnabled: true,
         profiles: [
           {
             id: 'ai-profile-global',
@@ -507,6 +513,7 @@ test('AI environment module syncs a managed document and persists structured edi
   assert.equal(result.response.status, 200);
   assert.equal(result.body.ai.profiles.length, 3);
   assert.equal(result.body.ai.fragmentsDirectiveProjectId, project.id);
+  assert.equal(result.body.ai.shutdownLockedAppBeforeBuildDirectiveEnabled, true);
 
   result = await request(`/api/projects/${project.id}/ai-environment`, {
     method: 'PUT',
@@ -534,17 +541,27 @@ test('AI environment module syncs a managed document and persists structured edi
   result = await request(`/api/projects/${project.id}/ai-environment`);
   assert.equal(result.response.status, 200);
   const currentRoots = await request('/api/roots');
-  assert.match(result.body.markdown, /## 0\. Locked System Directives/);
-  assert.match(result.body.markdown, /Fragments generated should use the configured fragments path/);
-  assert.match(result.body.markdown, /Fragments generated should be placed in/);
+  assert.match(result.body.markdown, /## 1\. Mission/);
+  assert.match(result.body.markdown, /## 4\. APM Term Dictionary/);
+  assert.match(result.body.markdown, /## 7\. Directive Template References/);
+  assert.match(result.body.markdown, /## 8\. Locked System Directives/);
+  assert.match(result.body.markdown, /Use the configured fragments path/);
+  assert.match(result.body.markdown, /Fragments generated for this project must be placed in/);
   assert.equal(
     result.body.softwareStandardsPath,
     path.join(currentRoots.body.projectsRoot, 'Alpha', '.apm', 'standards', 'software', 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')
   );
-  assert.match(result.body.markdown, /## 1\. Applied Shared Profiles/);
+  assert.match(result.body.markdown, /templates\/ROADMAP\.template\.md/);
+  assert.match(result.body.markdown, /## 9\. Module Directive Index/);
+  assert.match(result.body.markdown, /### 9\.1 Roadmap/);
+  assert.match(result.body.markdown, /#### 9\.1\.1 Use active roadmap and feature context/);
+  assert.match(result.body.markdown, /## 6\. Applied Shared Profiles/);
+  assert.match(result.body.markdown, /\| Term \| Definition \| Stable ID \| Source Refs \|/);
+  assert.match(result.body.markdown, /\| APM \| Angel's Project Manager/);
   assert.match(result.body.markdown, /Global baseline/);
   assert.match(result.body.markdown, /General project guidance/);
   assert.match(result.body.markdown, /Manual escalation policy/);
+  assert.match(result.body.markdown, /Shut down locked running application processes before rebuilds/);
 
   const aiDocRow = await dbModule.dbGet(
     'SELECT doc_type, module_key, template_name FROM project_md_documents WHERE project_id = ? AND doc_type = ?',
@@ -574,6 +591,7 @@ test('project list ui preferences persist through app settings and reload from t
         projectListSortMode: 'dateAdded',
         projectListViewMode: 'grid',
         projectListGroupMode: 'category',
+        showStableIds: false,
       },
     }),
   });
@@ -581,17 +599,19 @@ test('project list ui preferences persist through app settings and reload from t
   assert.equal(result.body.ui.projectListSortMode, 'dateAdded');
   assert.equal(result.body.ui.projectListViewMode, 'grid');
   assert.equal(result.body.ui.projectListGroupMode, 'category');
+  assert.equal(result.body.ui.showStableIds, false);
 
   result = await request('/api/settings');
   assert.equal(result.response.status, 200);
   assert.equal(result.body.ui.projectListSortMode, 'dateAdded');
   assert.equal(result.body.ui.projectListViewMode, 'grid');
   assert.equal(result.body.ui.projectListGroupMode, 'category');
+  assert.equal(result.body.ui.showStableIds, false);
 
   const storedSettings = await dbModule.dbAll(
     `SELECT key, value
      FROM app_settings
-     WHERE key IN ('ui.projectListSortMode', 'ui.projectListViewMode', 'ui.projectListGroupMode')
+     WHERE key IN ('ui.projectListSortMode', 'ui.projectListViewMode', 'ui.projectListGroupMode', 'ui.showStableIds')
      ORDER BY key ASC`
   );
   assert.deepEqual(
@@ -600,6 +620,7 @@ test('project list ui preferences persist through app settings and reload from t
       ['ui.projectListGroupMode', 'category'],
       ['ui.projectListSortMode', 'dateAdded'],
       ['ui.projectListViewMode', 'grid'],
+      ['ui.showStableIds', '0'],
     ]
   );
 });
@@ -871,6 +892,8 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(appThemeProvider, /COLOR_SCHEME_KEY/);
   assert.match(appThemeProvider, /window\.electronAPI\?\.setTheme/);
   assert.match(appThemeProvider, /document\.documentElement\.dataset\.scheme/);
+  assert.match(appThemeProvider, /showStableIds/);
+  assert.match(appThemeProvider, /dataset\.showStableIds/);
   assert.match(appSettingsModal, /Desktop app settings/);
   assert.match(appSettingsModal, /fetchJson\('\/api\/settings'\)/);
   assert.match(appSettingsModal, /fetchJson\('\/api\/credentials'\)/);
@@ -879,6 +902,7 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(appSettingsModal, /Data Directory/);
   assert.match(appSettingsModal, /Log Directory/);
   assert.match(appSettingsModal, /UI skins/);
+  assert.match(appSettingsModal, /Show document and canvas IDs/);
   assert.match(appSettingsModal, /setColorScheme/);
   assert.match(globalsCss, /\.app-titlebar/);
   assert.match(globalsCss, /\.app-shell-scroll/);
@@ -886,6 +910,7 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(globalsCss, /html\[data-scheme='cyan-glow'\]/);
   assert.match(globalsCss, /html\[data-scheme='dark-blue'\]/);
   assert.match(globalsCss, /html\[data-scheme='app-icon'\]/);
+  assert.match(globalsCss, /html\[data-show-stable-ids='false'\] \.apm-stable-id/);
   assert.match(globalsCss, /\.theme-swatch--app-icon/);
   assert.match(globalsCss, /\[class\*='text-white'\]/);
   assert.match(globalsCss, /\[class\*='bg-accent'\]/);
@@ -2990,6 +3015,7 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'FEATURES.template.md')), true);
   assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'BUGS.template.md')), true);
   assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'PRD.template.md')), true);
+  assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'FUNCTIONAL_SPEC.template.md')), true);
   assert.equal(fs.existsSync(path.join(alphaSoftwareStandardsDir, 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')), true);
   assert.equal(fs.existsSync(path.join(alphaFragmentsDir, featurePrdFragment.fileName)), true);
   for (const templateName of Object.values(workspaceDocs.FRAGMENT_TEMPLATE_NAMES)) {
@@ -3002,6 +3028,21 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   assert.match(generatedRoadmapTemplate, /### Phases/);
   assert.match(generatedRoadmapTemplate, /### Planned Features/);
   assert.match(generatedRoadmapTemplate, /### Considered Features/);
+  const generatedFunctionalSpecTemplate = fs.readFileSync(path.join(alphaTemplatesDir, 'FUNCTIONAL_SPEC.template.md'), 'utf8');
+  assert.match(generatedFunctionalSpecTemplate, /Template Version: `2\.0`/);
+  assert.match(generatedFunctionalSpecTemplate, /## Functional Flowchart Action Vocabulary/);
+  assert.match(generatedFunctionalSpecTemplate, /### Node Types/);
+  assert.match(generatedFunctionalSpecTemplate, /Decision: Describes a conditional branch/);
+  assert.match(generatedFunctionalSpecTemplate, /### Connection Types/);
+  assert.match(generatedFunctionalSpecTemplate, /Create Draft Edge/);
+
+  const templateRegistryRows = await dbModule.dbAll(
+    'SELECT template_name, template_kind, template_version, source_md5, target_md5, target_path FROM project_template_files WHERE project_id = ?',
+    [project.id]
+  );
+  assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.template.md' && row.template_version === '2.0'));
+  assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC_FRAGMENT.template.md' && row.template_kind === 'fragment'));
+  assert(templateRegistryRows.every((row) => row.source_md5 && row.target_md5 && row.target_path));
 
   const roadmapFile = fs.readFileSync(path.join(alphaDocsDir, 'ROADMAP.md'), 'utf8');
   assert.match(roadmapFile, /```mermaid/);
@@ -3935,20 +3976,109 @@ test('AI environment markdown always includes locked system directives for fragm
     sharedProfiles: [],
     fragmentsDirectiveProjectId: project.id,
     fragmentsRootDir: 'C:\\APM\\Fragments',
+    shutdownLockedAppBeforeBuildDirectiveEnabled: true,
   });
 
-  assert.match(markdown, /## 0\. Locked System Directives/);
-  assert.match(markdown, /Fragments generated should use the configured fragments path/);
+  assert.match(markdown, /## 1\. Mission/);
+  assert.match(markdown, /## 4\. APM Term Dictionary/);
+  assert.match(markdown, /## 7\. Directive Template References/);
+  assert.match(markdown, /## 8\. Locked System Directives/);
+  assert.match(markdown, /Use the configured fragments path/);
   assert.match(markdown, /live runtime SQLite database/);
-  assert.match(markdown, /Create ADR records when architectural decisions are made/);
-  assert.match(markdown, /Record document-impacting changes in the Change Log with stable target references/);
+  assert.match(markdown, /## 9\. Module Directive Index/);
+  assert.match(markdown, /### 9\.1 Roadmap/);
+  assert.match(markdown, /#### 9\.1\.1 Use active roadmap and feature context/);
+  assert.match(markdown, /Create ADR records for architectural decisions/);
+  assert.match(markdown, /Shut down locked running application processes before rebuilds/);
+  assert.match(markdown, /Record document-impacting changes in the Change Log/);
   assert.match(markdown, /Keep generated stored titles short and storage-safe/);
   assert.match(markdown, /keep titles and other short stored fields as short as the database allows/i);
-  assert.match(markdown, /target section number, stable target item id/);
-  assert.match(markdown, /create or update an ADR record/);
+  assert.match(markdown, /Create stable human-readable ids for persisted items/);
+  assert.match(markdown, /apm\.shared\.stable-id\.naming/);
+  assert.match(markdown, /short lowercase kebab-case identifier scoped by module or item type/);
+  assert.match(markdown, /templates\/CHANGELOG\.template\.md/);
+  assert.match(markdown, /\| Stable ID \|/);
+  assert.match(markdown, /ai-environment-term-dictionary-apm/);
+  assert.match(markdown, /apm\.module\.changelog\.traceability/);
+  assert.match(markdown, /Module and template directives are authoritative/);
   assert.match(markdown, /app\.db/);
   assert.match(markdown, /C:\\APM\\Fragments/);
   assert.doesNotMatch(markdown, /No locked system directives defined\./);
+});
+
+test('AI environment build-lock shutdown directive is optional', () => {
+  const project = {
+    id: 'legacy-project-1',
+    name: 'Legacy Alpha',
+    projectType: 'general',
+  };
+  const editorState = workspaceDocs.defaultAiEnvironmentEditorState(project);
+  const markdown = workspaceDocs.renderAiEnvironmentEditorStateMarkdown(project, editorState, {
+    sharedProfiles: [],
+    fragmentsDirectiveProjectId: project.id,
+    fragmentsRootDir: 'C:\\APM\\Fragments',
+    shutdownLockedAppBeforeBuildDirectiveEnabled: false,
+  });
+
+  assert.doesNotMatch(markdown, /Shut down locked running application processes before rebuilds/);
+});
+
+test('AI environment optional directives can be disabled while required directives remain emitted', () => {
+  const project = {
+    id: 'legacy-project-1',
+    name: 'Legacy Alpha',
+    projectType: 'general',
+  };
+  const editorState = {
+    ...workspaceDocs.defaultAiEnvironmentEditorState(project),
+    disabledDirectiveIds: [
+      'apm.module.architecture.adr-capture',
+      'apm.shared.fragments.path',
+    ],
+  };
+  const markdown = workspaceDocs.renderAiEnvironmentEditorStateMarkdown(project, editorState, {
+    sharedProfiles: [],
+    fragmentsDirectiveProjectId: project.id,
+    fragmentsRootDir: 'C:\\APM\\Fragments',
+    shutdownLockedAppBeforeBuildDirectiveEnabled: true,
+  });
+
+  assert.doesNotMatch(markdown, /Create ADR records when architectural decisions are made/);
+  assert.match(markdown, /Use the configured fragments path/);
+});
+
+test('AI environment custom instructions strip embedded managed suggestion blocks', () => {
+  const project = {
+    id: 'legacy-project-1',
+    name: 'Legacy Alpha',
+    projectType: 'general',
+  };
+  const noisyCustomInstructions = [
+    '# AI Environment Suggestion: Sample',
+    '',
+    '<!-- APM:DATA',
+    JSON.stringify({
+      docType: 'ai_environment',
+      version: 1,
+      editorState: {
+        customInstructions: 'Project Scope\n- Keep this concise.',
+      },
+    }, null, 2),
+    '-->',
+    '',
+    '## Custom Instructions',
+    '',
+    'This visible fallback should not duplicate the managed payload.',
+  ].join('\n');
+  const normalized = workspaceDocs.normalizeDocumentEditorStateForStorage(project, 'ai_environment', {
+    ...workspaceDocs.defaultAiEnvironmentEditorState(project),
+    customInstructions: noisyCustomInstructions,
+  });
+  const markdown = workspaceDocs.renderAiEnvironmentEditorStateMarkdown(project, normalized);
+
+  assert.equal(normalized.customInstructions, 'Project Scope\n- Keep this concise.');
+  assert.doesNotMatch(markdown, /APM:DATA/);
+  assert.doesNotMatch(markdown, /AI Environment Suggestion/);
 });
 
 test('PRD markdown does not render untitled placeholders for description-only detail entries', () => {
@@ -4291,13 +4421,13 @@ test('AI environment markdown includes a locked project workspace directive for 
     sharedProfiles: [],
   });
 
-  assert.match(markdown, /## 0\. Locked System Directives/);
+  assert.match(markdown, /## 8\. Locked System Directives/);
   assert.match(markdown, /Use the project workspace folder for volatile AI work/);
   assert.match(markdown, /\.apm\\_WORKSPACE|\.apm\/_WORKSPACE/);
   assert.match(markdown, /TODO lists, draft plans, scratch notes, and temporary working files/);
 });
 
-test('AI environment markdown omits locked fragment directives for non-selected projects', () => {
+test('AI environment markdown omits application-only directives for non-selected projects', () => {
   const project = {
     id: 'legacy-project-1',
     name: 'Legacy Alpha',
@@ -4309,10 +4439,13 @@ test('AI environment markdown omits locked fragment directives for non-selected 
     fragmentsDirectiveProjectId: 'some-other-project',
   });
 
-  assert.doesNotMatch(markdown, /Fragments generated should use the configured fragments path/);
-  assert.match(markdown, /Record document-impacting changes in the Change Log with stable target references/);
+  assert.match(markdown, /Use the configured fragments path/);
+  assert.doesNotMatch(markdown, /live runtime SQLite database/);
+  assert.doesNotMatch(markdown, /Application directives are emitted to the configured Directive Project/);
+  assert.match(markdown, /Record document-impacting changes in the Change Log/);
   assert.match(markdown, /Keep generated stored titles short and storage-safe/);
-  assert.match(markdown, /## 1\. Applied Shared Profiles/);
+  assert.match(markdown, /## 9\. Module Directive Index/);
+  assert.match(markdown, /## 6\. Applied Shared Profiles/);
 });
 
 test('roadmap and features markdown use planned and implemented feature language', () => {
@@ -4395,21 +4528,41 @@ test('AI environment workspace exposes save path, fragments path, and custom ins
   assert.match(aiWorkspace, /AI_ENVIRONMENT\.md:/);
   assert.match(aiWorkspace, /Fragments Path:/);
   assert.match(aiWorkspace, /Software Standards:/);
-  assert.match(aiWorkspace, /Fragments generated should be placed in/);
   assert.match(aiWorkspace, /Load Fragments/);
-  assert.match(aiWorkspace, /live runtime SQLite database/);
-  assert.match(aiWorkspace, /Record document-impacting changes in the Change Log with stable target references/);
-  assert.match(aiWorkspace, /Keep generated stored titles short and storage-safe/);
-  assert.match(aiWorkspace, /Upload Directives/);
-  assert.match(aiWorkspace, /parseManagedBlock/);
-  assert.match(aiWorkspace, /Imported directives from/);
+  assert.match(aiWorkspace, /APM Term Dictionary/);
+  assert.match(aiWorkspace, /termDictionary/);
+  assert.match(aiWorkspace, /Directive Hierarchy/);
+  assert.match(aiWorkspace, /function groupDirectivesByModule/);
+  assert.match(aiWorkspace, /moduleGroups/);
+  assert.match(aiWorkspace, /expandedDirectiveModules/);
+  assert.match(aiWorkspace, /expandedDirectiveDescriptions/);
+  assert.match(aiWorkspace, /Expand Module/);
+  assert.match(aiWorkspace, /Collapse Module/);
+  assert.match(aiWorkspace, /ai-directive-group/);
+  assert.match(aiWorkspace, /ai-directive-item/);
+  assert.match(aiWorkspace, /aria-controls/);
+  assert.match(aiWorkspace, /disabled directives disappear from generated documents/);
+  assert.match(aiWorkspace, /toggleDirective/);
+  assert.match(aiWorkspace, /Fragment-first directive updates/);
+  assert.match(aiWorkspace, /AI directive changes should be loaded through AI Environment fragments/);
+  assert.doesNotMatch(aiWorkspace, /Upload Directives/);
+  assert.doesNotMatch(aiWorkspace, /Imported directives from/);
 });
 
 test('file watcher hook exposes an EventSource-backed reusable client helper', () => {
   const hookSource = fs.readFileSync(path.join(repoRoot, 'next-app', 'hooks', 'use-file-watcher.js'), 'utf8');
+  const fragmentHookSource = fs.readFileSync(path.join(repoRoot, 'next-app', 'hooks', 'use-fragment-file-watcher.js'), 'utf8');
+  const moduleDocumentHookSource = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'software', 'hooks', 'use-module-document.js'), 'utf8');
+  const serverSource = fs.readFileSync(path.join(repoRoot, 'src', 'server-app.js'), 'utf8');
   assert.match(hookSource, /new EventSource/);
   assert.match(hookSource, /status/);
   assert.match(hookSource, /clearEvents/);
+  assert.match(fragmentHookSource, /project-fragments:\$\{projectId\}/);
+  assert.match(fragmentHookSource, /useFileWatcher/);
+  assert.match(fragmentHookSource, /debounceMs/);
+  assert.match(moduleDocumentHookSource, /useFragmentFileWatcher/);
+  assert.match(serverSource, /ensureProjectFragmentWatcher/);
+  assert.match(serverSource, /project-fragments:\$\{project\.id\}/);
 });
 
 test('structured list editors surface stable ids underneath saved items', () => {
@@ -4422,14 +4575,125 @@ test('structured list editors surface stable ids underneath saved items', () => 
 test('functional spec workspace exposes a visual flow canvas with node controls', () => {
   const functionalSpecWorkspace = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'functional-spec-workspace.js'), 'utf8');
   const functionalFlowNode = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'functional-flow-node.js'), 'utf8');
-  assert.match(functionalSpecWorkspace, /ReactFlow/);
+  const flowchartInterface = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'flowchart', 'functional-flowchart-interface.js'), 'utf8');
+  const reactFlowImplementation = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'flowchart', 'react-flowchart-implementation.js'), 'utf8');
+  const reactCanvasImplementation = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'flowchart', 'react-canvas-flowchart-implementation.js'), 'utf8');
+  const flowchartRendererUtils = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'flowchart', 'flowchart-renderer-utils.js'), 'utf8');
+  const workflowNodeVisuals = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'flowchart', 'workflow-node-visuals.js'), 'utf8');
+  const workspaceDocs = fs.readFileSync(path.join(repoRoot, 'src', 'workspace-docs.js'), 'utf8');
+  const nextPackage = JSON.parse(fs.readFileSync(path.join(repoRoot, 'next-app', 'package.json'), 'utf8'));
+  assert.match(functionalSpecWorkspace, /FunctionalFlowchartCanvas/);
+  assert.doesNotMatch(functionalSpecWorkspace, /@xyflow\/react/);
   assert.match(functionalSpecWorkspace, /function FunctionalSpecTextArea/);
-  assert.match(functionalSpecWorkspace, /function FlowSelectorButton/);
-  assert.match(functionalSpecWorkspace, /Add Start/);
-  assert.match(functionalSpecWorkspace, /Add Decision/);
+  assert.match(functionalSpecWorkspace, /function FunctionalAreaTree/);
+  assert.match(functionalSpecWorkspace, /function WorkflowActionPalette/);
+  assert.match(functionalSpecWorkspace, /function FlowCanvasGroup/);
+  assert.match(functionalSpecWorkspace, /Unattached Functional Notes/);
+  assert.match(functionalSpecWorkspace, /Prefer modeling user actions, validation, interface expectations, and edge cases directly in the flowchart/);
+  assert.match(functionalSpecWorkspace, /Unattached User Actions and System Responses/);
+  assert.match(functionalSpecWorkspace, /Unattached Validation Rules/);
+  assert.match(functionalSpecWorkspace, /Unattached Interface Expectations/);
+  assert.match(functionalSpecWorkspace, /Unattached Edge Cases/);
+  assert.match(functionalSpecWorkspace, /Unattached Open Questions/);
+  assert.match(functionalSpecWorkspace, /draggable/);
+  assert.match(functionalSpecWorkspace, /NODE_DRAG_DATA_TYPE/);
+  assert.match(functionalSpecWorkspace, /Clean Visible Layouts/);
   assert.match(functionalSpecWorkspace, /Hook Points/);
+  assert.match(functionalSpecWorkspace, /xl:grid-cols-\[320px_minmax\(0,1fr\)\]/);
+  assert.match(functionalSpecWorkspace, /deleteNodePreservingEdges/);
+  assert.match(functionalSpecWorkspace, /onCreateNode/);
+  assert.match(functionalSpecWorkspace, /onDeleteNode/);
+  assert.match(functionalSpecWorkspace, /onRemoveEdge/);
+  assert.match(flowchartInterface, /FLOWCHART_RENDERERS/);
+  assert.match(flowchartInterface, /renderer = FLOWCHART_RENDERERS\.reactCanvas/);
+  assert.match(flowchartInterface, /showZoomControls = true/);
+  assert.match(flowchartInterface, /showPanControls = true/);
+  assert.match(flowchartInterface, /enableWheelZoom = true/);
+  assert.match(flowchartInterface, /enableDragPan = true/);
+  assert.match(flowchartInterface, /trapWheelScroll = true/);
+  assert.match(flowchartInterface, /minZoom = 0\.35/);
+  assert.match(flowchartInterface, /maxZoom = 2\.5/);
+  assert.match(flowchartInterface, /ReactFlowchartImplementation/);
+  assert.match(flowchartInterface, /ReactCanvasFlowchartImplementation/);
+  assert.doesNotMatch(flowchartInterface, /TldrawFlowchartImplementation/);
+  assert.match(reactFlowImplementation, /@xyflow\/react/);
+  assert.match(reactFlowImplementation, /ReactFlow/);
+  assert.match(reactFlowImplementation, /MarkerType/);
+  assert.match(reactFlowImplementation, /MiniMap/);
+  assert.match(reactFlowImplementation, /onNodeDrag/);
+  assert.match(reactCanvasImplementation, /ReactCanvasFlowchartImplementation/);
+  assert.match(reactCanvasImplementation, /<svg/);
+  assert.match(reactCanvasImplementation, /onConnectNodes/);
+  assert.match(reactCanvasImplementation, /nodeHandlePoint/);
+  assert.doesNotMatch(reactCanvasImplementation, /nodeCenter/);
+  assert.match(reactCanvasImplementation, /sourceHandle/);
+  assert.match(reactCanvasImplementation, /targetHandle/);
+  assert.match(reactCanvasImplementation, /connectionDraft/);
+  assert.match(reactCanvasImplementation, /danglingParams/);
+  assert.match(reactCanvasImplementation, /beginConnectionFromDraftEdge/);
+  assert.match(reactCanvasImplementation, /onRemoveEdge/);
+  assert.match(reactCanvasImplementation, /onDeleteNode/);
+  assert.match(reactCanvasImplementation, /handleDrop/);
+  assert.match(reactCanvasImplementation, /onDrop/);
+  assert.match(reactCanvasImplementation, /handleDirections/);
+  assert.match(reactCanvasImplementation, /handleDirectionKey/);
+  assert.match(reactCanvasImplementation, /directionTrianglePoints/);
+  assert.match(reactCanvasImplementation, /function HandleDirectionMarker/);
+  assert.match(reactCanvasImplementation, /transform=\{`translate\(\$\{point\.x\} \$\{point\.y\}\)`\}/);
+  assert.match(reactCanvasImplementation, /directions\.incoming/);
+  assert.match(reactCanvasImplementation, /directions\.outgoing/);
+  assert.match(reactCanvasImplementation, /directions=\{inputDirections\}/);
+  assert.match(reactCanvasImplementation, /directions=\{outputDirections\}/);
+  assert.match(reactCanvasImplementation, /fill="white"/);
+  assert.match(reactCanvasImplementation, /tabIndex=\{0\}/);
+  assert.match(reactCanvasImplementation, /onKeyDown=\{handleKeyDown\}/);
+  assert.match(reactCanvasImplementation, /ArrowLeft/);
+  assert.match(reactCanvasImplementation, /ArrowRight/);
+  assert.match(reactCanvasImplementation, /ArrowUp/);
+  assert.match(reactCanvasImplementation, /ArrowDown/);
+  assert.match(reactCanvasImplementation, /Connection type/);
+  assert.match(reactCanvasImplementation, /EDGE_TYPES\.map/);
+  assert.match(reactCanvasImplementation, /Unconnected/);
+  assert.match(reactCanvasImplementation, /Zoom in flowchart/);
+  assert.match(reactCanvasImplementation, /Zoom out flowchart/);
+  assert.match(reactCanvasImplementation, /Reset flowchart zoom/);
+  assert.match(reactCanvasImplementation, /Pan flowchart left/);
+  assert.match(reactCanvasImplementation, /Pan flowchart right/);
+  assert.match(reactCanvasImplementation, /beginPan/);
+  assert.match(reactCanvasImplementation, /panStep/);
+  assert.match(reactCanvasImplementation, /handleWheel/);
+  assert.match(reactCanvasImplementation, /enableWheelZoom/);
+  assert.match(reactCanvasImplementation, /trapWheelScroll/);
+  assert.match(reactCanvasImplementation, /addEventListener\('wheel'/);
+  assert.match(reactCanvasImplementation, /passive: false/);
+  assert.match(reactCanvasImplementation, /preventDefault/);
+  assert.match(reactCanvasImplementation, /stopPropagation/);
+  assert.match(reactCanvasImplementation, /enableDragPan/);
+  assert.match(reactCanvasImplementation, /cursor-grab/);
+  assert.match(flowchartRendererUtils, /export const EDGE_TYPES/);
+  assert.match(flowchartRendererUtils, /CONNECTION_HANDLES/);
+  assert.match(flowchartRendererUtils, /function nodeHandlePoint/);
+  assert.match(functionalSpecWorkspace, /sourceHandle/);
+  assert.match(functionalSpecWorkspace, /targetHandle/);
+  assert.match(functionalSpecWorkspace, /replaceDraft/);
+  assert.match(functionalSpecWorkspace, /draft: Boolean/);
+  assert.match(workspaceDocs, /sourceHandle/);
+  assert.match(workspaceDocs, /targetHandle/);
+  assert.match(workspaceDocs, /Connection Status: Unconnected draft/);
+  assert.match(workspaceDocs, /## 6\. User Actions and System Responses/);
+  assert.match(workspaceDocs, /Functional Flowchart Action Vocabulary/);
+  assert.match(workspaceDocs, /Create Draft Edge: Create an unattached connection/);
+  assert.match(workspaceDocs, /## 7\. Validation Rules/);
+  assert.match(workspaceDocs, /## 8\. Interface Expectations/);
+  assert.match(workspaceDocs, /## 9\. Edge Cases/);
+  assert.match(workspaceDocs, /## 10\. Open Questions/);
+  assert.match(workspaceDocs, /## 11\. Applied Fragments/);
+  assert.match(workspaceDocs, /Boolean\(source \|\| target\)/);
+  assert.equal(Boolean(nextPackage.dependencies.tldraw), false);
+  assert.match(functionalFlowNode, /NodeResizer/);
+  assert.match(functionalFlowNode, /WorkflowNodeIcon/);
   assert.match(functionalFlowNode, /Handle/);
-  assert.match(functionalFlowNode, /decision/);
+  assert.match(workflowNodeVisuals, /decision/);
 });
 
 test('app theme provider forwards global client errors to the backend logger endpoint', () => {
@@ -4575,7 +4839,8 @@ test('document editors expose linked work item tags for source refs', () => {
   assert.match(adrWorkspace, /DocumentFieldMeta/);
   assert.match(moduleWorkspace, /DocumentFieldMeta/);
   assert.match(changelogWorkspace, /DocumentFieldMeta/);
-  assert.match(workItemTags, /read-only view of the linked work item/);
+  assert.match(workItemTags, /ReadableTextBlock/);
+  assert.match(workItemTags, /This read-only view summarizes the linked work item/);
 });
 
 test('changelog backfill restores missing source refs onto matching document item ids', () => {
@@ -4708,6 +4973,10 @@ test('AI environment fragments can be discovered and consumed from fragment dire
   assert.match(String(result.body.aiEnvironment?.editorState?.customInstructions || ''), /Imported custom instruction from fragment\./);
   assert.equal(
     result.body.aiEnvironment?.editorState?.requiredBehaviors?.some((item) => item.title === 'Imported behavior'),
+    true
+  );
+  assert.equal(
+    result.body.aiEnvironment?.editorState?.fragmentHistory?.some((item) => item.code === 'AI_ENVIRONMENT_SUGGESTED_20260402_030000000'),
     true
   );
 });
@@ -4889,12 +5158,195 @@ test('functional spec module saves structured logical behavior with stable ids',
     }),
   });
   assert.equal(result.response.status, 200);
-  assert.match(String(result.body.markdown || ''), /## 2\. Logical Flows/);
-  assert.match(String(result.body.markdown || ''), /## 3\. Flow Endpoints and Return Points/);
+  assert.match(String(result.body.markdown || ''), /## 3\. Logical Workflows/);
+  assert.match(String(result.body.markdown || ''), /### 1\.1 Functional Flowchart Action Vocabulary/);
+  assert.match(String(result.body.markdown || ''), /Decision: Conditional branch/);
+  assert.match(String(result.body.markdown || ''), /Connect Nodes: Create a typed connection/);
+  assert.match(String(result.body.markdown || ''), /## 5\. Flow Endpoints and Return Points/);
   assert.equal(Boolean(result.body.editorState?.overview?.stableId), true);
   assert.equal(Boolean(result.body.editorState?.logicalFlows?.[0]?.stableId), true);
   assert.equal(Boolean(result.body.editorState?.flowEndpoints?.[0]?.stableId), true);
   assert.equal(Boolean(result.body.editorState?.userActionsAndSystemResponses?.[0]?.stableId), true);
+});
+
+test('functional spec fragments can add visual flow graphs through operations', async () => {
+  const project = { id: 'functional-flow-ops-project', name: 'Functional Flow Ops Project' };
+  const initialState = workspaceDocs.defaultModuleDocumentEditorState(project, 'functional_spec');
+  const operations = workspaceDocs.extractDocumentFragmentOperations(`
+<!-- APM:OPERATIONS
+[
+  {
+    "operation": "add",
+    "targetSection": "logical-flows",
+    "item": {
+      "id": "functional-flow-review-fragment",
+      "stableId": "functional-spec-logical-flows-review-fragment",
+      "title": "Review Fragment",
+      "description": "Review a pending fragment before consuming it."
+    }
+  },
+  {
+    "operation": "add",
+    "targetSection": "flow-visuals",
+    "item": {
+      "id": "functional-flow-visual-review-fragment",
+      "flowId": "functional-flow-review-fragment",
+      "flowStableId": "functional-spec-logical-flows-review-fragment",
+      "nodes": [
+        {
+          "id": "functional-node-review-fragment-start",
+          "type": "start",
+          "label": "Review Requested",
+          "description": "The user opens a pending fragment for review."
+        },
+        {
+          "id": "functional-node-review-fragment-return",
+          "type": "return",
+          "label": "Return Review State",
+          "description": "The UI displays the fragment review state."
+        }
+      ],
+      "edges": [
+        {
+          "id": "functional-edge-review-fragment-start-return",
+          "source": "functional-node-review-fragment-start",
+          "target": "functional-node-review-fragment-return",
+          "type": "returns_to",
+          "label": "review state"
+        }
+      ]
+    }
+  }
+]
+-->
+  `);
+  const nextState = workspaceDocs.applyDocumentFragmentOperations(project, 'functional_spec', initialState, operations);
+  const markdown = workspaceDocs.renderModuleDocumentEditorStateMarkdown(project, 'functional_spec', nextState);
+
+  assert.equal(nextState.logicalFlows[0].stableId, 'functional-spec-logical-flows-review-fragment');
+  assert.equal(nextState.flowVisuals[0].nodes.length, 2);
+  assert.equal(nextState.flowVisuals[0].edges[0].type, 'returns_to');
+  assert.match(markdown, /## 4\. Flow Nodes and Connections/);
+  assert.match(markdown, /Review Requested/);
+  assert.match(markdown, /review state/);
+});
+
+test('fragment discovery migrates older managed fragment payloads and detects content-aware files', () => {
+  const fragmentDir = fs.mkdtempSync(path.join(tempRoot, 'legacy-fragments-'));
+  const fragmentPath = path.join(fragmentDir, 'LEGACY_FUNCTIONAL_FLOW.md');
+  fs.writeFileSync(fragmentPath, [
+    '# Functional Spec Fragment: Legacy Flow',
+    '',
+    '<!-- APM:DATA',
+    JSON.stringify({
+      docType: 'functional_spec_fragment',
+      version: 0,
+      id: 'legacy-functional-flow',
+      code: 'LEGACY-FUNC-FLOW',
+      title: 'Legacy Functional Flow',
+      status: 'draft',
+    }, null, 2),
+    '-->',
+    '',
+    '## Executive Summary',
+    '',
+    'Legacy fragment shape without a nested fragment object.',
+  ].join('\n'), 'utf8');
+
+  const files = workspaceDocs.listFragmentFilesForModuleInDir(fragmentDir, 'functional_spec', /^FUNCTIONAL_SPEC_FRAGMENT_.*\.md$/i);
+  const snapshot = workspaceDocs.readManagedFileSnapshot(fragmentPath);
+
+  assert.deepEqual(files, [fragmentPath]);
+  assert.equal(snapshot.managed.version, 1);
+  assert.equal(snapshot.managed.fragment.code, 'LEGACY-FUNC-FLOW');
+  assert.equal(snapshot.managed.fragment.title, 'Legacy Functional Flow');
+  assert.equal(snapshot.managed.fragment.lineageKey, 'LEGACY-FUNC-FLOW');
+  assert.equal(typeof workspaceDocs.FRAGMENT_MANAGED_PAYLOAD_MIGRATORS[0], 'function');
+});
+
+test('functional spec normalization prevents duplicate derived endpoint anchors', () => {
+  const project = { id: 'functional-duplicate-anchor-project', name: 'Functional Duplicate Anchor Project' };
+  const editorState = {
+    overview: { summary: 'Describe duplicate endpoint cleanup.' },
+    logicalFlows: [
+      {
+        id: 'functional-flow-review-fragment',
+        stableId: 'functional-spec-logical-flows-review-fragment',
+        title: 'Review Fragment',
+        description: 'Review a pending fragment before consuming it.',
+      },
+    ],
+    flowVisuals: [
+      {
+        flowId: 'functional-flow-review-fragment',
+        flowStableId: 'functional-spec-logical-flows-review-fragment',
+        nodes: [
+          {
+            id: 'functional-node-review-fragment-return',
+            stableId: 'functional-spec-flow-node-return-review-state',
+            type: 'return',
+            label: 'Return Review State',
+            description: 'The UI displays the fragment review state.',
+          },
+        ],
+        edges: [],
+      },
+    ],
+    flowEndpoints: [
+      {
+        id: 'derived-endpoint-functional-node-review-fragment-return',
+        stableId: 'functional-spec-flow-node-return-review-state',
+        title: 'Review Fragment: Return Review State',
+        description: 'The UI displays the fragment review state.',
+      },
+      {
+        id: 'derived-endpoint-functional-node-review-fragment-return',
+        stableId: 'functional-spec-flow-node-return-review-state-endpoint',
+        title: 'Review Fragment: Return Review State',
+        description: 'The UI displays the fragment review state.',
+      },
+      {
+        title: 'Review Fragment: Return Review State',
+        description: 'Explicit return point for review completion.',
+      },
+    ],
+  };
+  const normalized = workspaceDocs.normalizeDocumentEditorStateForStorage(project, 'functional_spec', editorState);
+  const markdown = workspaceDocs.renderModuleDocumentEditorStateMarkdown(project, 'functional_spec', normalized);
+  const ids = [...markdown.matchAll(/APM-ID:\s*([^\r\n]+)/g)].map((match) => match[1].trim());
+  const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+
+  assert.equal(normalized.flowEndpoints.length, 2);
+  assert.equal(normalized.flowEndpoints[0].stableId, 'functional-spec-flow-node-return-review-state-endpoint');
+  assert.deepEqual(duplicates, []);
+});
+
+test('domain model catalog does not duplicate model update anchors', () => {
+  const project = { id: 'domain-model-anchor-project', name: 'Domain Model Anchor Project' };
+  const editorState = {
+    overview: { summary: 'Describe model anchors.' },
+    models: [
+      {
+        id: 'domain-model-fragment-request',
+        stableId: 'domain-models-model-fragment-request',
+        name: 'Fragment Request',
+        summary: 'A proposed document update.',
+        description: 'A proposed document update.',
+        modelType: 'command',
+        fields: [],
+        relationships: [],
+        rules: [],
+        examples: [],
+      },
+    ],
+    projections: [],
+  };
+  const markdown = workspaceDocs.renderModuleDocumentEditorStateMarkdown(project, 'domain_models', editorState);
+  const ids = [...markdown.matchAll(/APM-ID:\s*([^\r\n]+)/g)].map((match) => match[1].trim());
+  const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+
+  assert.deepEqual(duplicates, []);
+  assert.equal(ids.filter((id) => id === 'domain-models-model-fragment-request').length, 1);
 });
 
 test('architecture fragments support phase-1 document operations against stable item ids', async () => {

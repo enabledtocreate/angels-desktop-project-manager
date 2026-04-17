@@ -1,16 +1,16 @@
 // APM Schema Sync
-// Intended Version: 0
-// Observed Version: 0
-// Sync Status: unverified
+// Intended Version: 2
+// Observed Version: 2
+// Sync Status: in_sync
 // Drift Severity: low
-// Change Source: unknown
-// Pending Migration Status: comparison_required
-// Recommended Action: capture_or_compare
-
-// Action Summary: Capture an observed schema or define the intended schema to begin tracking drift.
-// Drift Summary: No schema comparison has been recorded yet.
+// Change Source: intended_edit
+// Pending Migration Status: none
+// Recommended Action: none
+// Last Compared: 2026-04-14T03:42:47.410Z
+// Action Summary: No migration work is currently required.
+// Drift Summary: Intended schema and observed schema are aligned.
 // Action Item Count: 0
-
+// Last Sync Event: Adopted observed schema into the intended design at version 2.
 
 Project "Angel's Project Manager" {
   database_type: "Generic"
@@ -21,6 +21,12 @@ Table app_settings {
   value TEXT
   is_secret INTEGER [default: 0]
   updated_at TEXT [default: CURRENT_TIMESTAMP]
+  Note: 'CREATE TABLE app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      is_secret INTEGER DEFAULT 0,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )'
 }
 
 Table bug_items {
@@ -41,6 +47,23 @@ Table bug_items {
   expected_behavior TEXT [default: '']
   work_item_type TEXT [default: 'software_bug']
   affected_module_keys TEXT [default: '[]']
+  association_hints TEXT [default: '']
+  Note: 'CREATE TABLE bug_items (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      code TEXT NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT DEFAULT \'\',
+      severity TEXT DEFAULT \'medium\',
+      status TEXT DEFAULT \'open\',
+      task_id TEXT,
+      completed INTEGER DEFAULT 0,
+      regressed INTEGER DEFAULT 0,
+      archived INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP, current_behavior TEXT DEFAULT \'\', expected_behavior TEXT DEFAULT \'\', work_item_type TEXT DEFAULT \'software_bug\', affected_module_keys TEXT DEFAULT \'[]\', association_hints TEXT DEFAULT \'\',
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
 }
 
 Table credentials {
@@ -51,6 +74,15 @@ Table credentials {
   user TEXT [not null]
   password TEXT
   key_path TEXT
+  Note: 'CREATE TABLE credentials (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  host TEXT NOT NULL,
+  port INTEGER DEFAULT 22,
+  user TEXT NOT NULL,
+  password TEXT,
+  key_path TEXT
+)'
 }
 
 Table entity_relationships {
@@ -64,6 +96,19 @@ Table entity_relationships {
   metadata_json TEXT [default: '{}']
   created_at TEXT [default: CURRENT_TIMESTAMP]
   updated_at TEXT [default: CURRENT_TIMESTAMP]
+  Note: 'CREATE TABLE entity_relationships (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      source_entity_type TEXT NOT NULL,
+      source_entity_id TEXT NOT NULL,
+      relationship_type TEXT NOT NULL,
+      target_entity_type TEXT NOT NULL,
+      target_entity_id TEXT NOT NULL,
+      metadata_json TEXT DEFAULT \'{}\',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
 }
 
 Table feature_items {
@@ -80,6 +125,20 @@ Table feature_items {
   updated_at TEXT [default: CURRENT_TIMESTAMP]
   work_item_type TEXT [default: 'software_feature']
   affected_module_keys TEXT [default: '[]']
+  Note: 'CREATE TABLE feature_items (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      code TEXT NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT DEFAULT \'\',
+      status TEXT DEFAULT \'planned\',
+      roadmap_phase_id TEXT,
+      task_id TEXT,
+      archived INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP, work_item_type TEXT DEFAULT \'software_feature\', affected_module_keys TEXT DEFAULT \'[]\',
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
 }
 
 Table integration_events {
@@ -90,12 +149,27 @@ Table integration_events {
   delivery_status TEXT [default: 'received']
   payload TEXT [default: '{}']
   created_at TEXT [default: CURRENT_TIMESTAMP]
+  Note: 'CREATE TABLE integration_events (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      delivery_status TEXT DEFAULT \'received\',
+      payload TEXT DEFAULT \'{}\',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
 }
 
 Table migrations {
   id INTEGER [pk]
-  name TEXT [unique, not null]
+  name TEXT [not null]
   executed_at TEXT [default: CURRENT_TIMESTAMP]
+  Note: 'CREATE TABLE migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      executed_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )'
 }
 
 Table prd_fragments {
@@ -117,6 +191,26 @@ Table prd_fragments {
   created_at TEXT [default: CURRENT_TIMESTAMP]
   updated_at TEXT [default: CURRENT_TIMESTAMP]
   merged_file_name TEXT
+  Note: 'CREATE TABLE prd_fragments (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      feature_id TEXT,
+      code TEXT NOT NULL,
+      title TEXT NOT NULL,
+      markdown TEXT DEFAULT \'\',
+      mermaid TEXT DEFAULT \'\',
+      status TEXT DEFAULT \'draft\',
+      merged INTEGER DEFAULT 0,
+      merged_at TEXT,
+      file_name TEXT,
+      file_path TEXT,
+      file_updated_at TEXT,
+      file_md5 TEXT DEFAULT \'\',
+      db_md5 TEXT DEFAULT \'\',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP, merged_file_name TEXT,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
 }
 
 Table project_md_documents {
@@ -135,6 +229,15 @@ Table project_md_documents {
   template_name TEXT [default: '']
   template_version TEXT [default: '']
   source_of_truth TEXT [default: 'database']
+  Note: 'CREATE TABLE project_md_documents (
+      project_id TEXT NOT NULL,
+      doc_type TEXT NOT NULL,
+      markdown TEXT DEFAULT \'\',
+      mermaid TEXT DEFAULT \'\',
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP, file_path TEXT, file_updated_at TEXT, file_md5 TEXT DEFAULT \'\', db_md5 TEXT DEFAULT \'\', editor_state TEXT DEFAULT \'\', title TEXT DEFAULT \'\', module_key TEXT DEFAULT \'\', template_name TEXT DEFAULT \'\', template_version TEXT DEFAULT \'\', source_of_truth TEXT DEFAULT \'database\',
+      PRIMARY KEY (project_id, doc_type),
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
 }
 
 Table project_modules {
@@ -150,6 +253,52 @@ Table project_modules {
   created_at TEXT [default: CURRENT_TIMESTAMP]
   updated_at TEXT [default: CURRENT_TIMESTAMP]
   purpose_summary TEXT [default: '']
+  Note: 'CREATE TABLE project_modules (
+      project_id TEXT NOT NULL,
+      module_key TEXT NOT NULL,
+      module_group TEXT NOT NULL,
+      label TEXT NOT NULL,
+      description TEXT DEFAULT \'\',
+      enabled INTEGER DEFAULT 0,
+      is_core INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      settings_json TEXT DEFAULT \'{}\',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP, purpose_summary TEXT DEFAULT \'\',
+      PRIMARY KEY (project_id, module_key),
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
+}
+
+Table project_template_files {
+  project_id TEXT [pk, not null]
+  template_name TEXT [pk, not null]
+  template_kind TEXT [not null, default: 'document']
+  template_version TEXT [default: '']
+  template_last_updated TEXT [default: '']
+  source_md5 TEXT [default: '']
+  target_md5 TEXT [default: '']
+  target_path TEXT [default: '']
+  target_updated_at TEXT [default: '']
+  replaced INTEGER [default: 0]
+  missing INTEGER [default: 0]
+  synced_at TEXT [default: CURRENT_TIMESTAMP]
+  Note: 'CREATE TABLE project_template_files (
+      project_id TEXT NOT NULL,
+      template_name TEXT NOT NULL,
+      template_kind TEXT NOT NULL DEFAULT \'document\',
+      template_version TEXT DEFAULT \'\',
+      template_last_updated TEXT DEFAULT \'\',
+      source_md5 TEXT DEFAULT \'\',
+      target_md5 TEXT DEFAULT \'\',
+      target_path TEXT DEFAULT \'\',
+      target_updated_at TEXT DEFAULT \'\',
+      replaced INTEGER DEFAULT 0,
+      missing INTEGER DEFAULT 0,
+      synced_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (project_id, template_name),
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
 }
 
 Table projects {
@@ -177,6 +326,28 @@ Table projects {
   integrations TEXT [default: '{}']
   workspace_plugins TEXT [default: '[]']
   project_type TEXT [default: 'general']
+  Note: 'CREATE TABLE projects (
+  id TEXT PRIMARY KEY,
+  path TEXT,
+  absolute_path TEXT,
+  name TEXT NOT NULL,
+  description TEXT,
+  parent_id TEXT,
+  server_id TEXT,
+  image_path TEXT,
+  open_in_cursor INTEGER DEFAULT 0,
+  category TEXT,
+  tags TEXT DEFAULT \'[]\',
+  links TEXT DEFAULT \'[]\',
+  date_added TEXT,
+  type TEXT DEFAULT \'folder\',
+  open_in_cursor_admin INTEGER DEFAULT 0,
+  url TEXT,
+  pinned INTEGER DEFAULT 0,
+  image_url TEXT,
+  upload_mappings TEXT DEFAULT \'[]\',
+  mapping_groups TEXT DEFAULT \'[]\'
+, primary_action TEXT DEFAULT \'auto\', integrations TEXT DEFAULT \'{}\', workspace_plugins TEXT DEFAULT \'[]\', project_type TEXT DEFAULT \'general\')'
 }
 
 Table roadmap_fragments {
@@ -200,6 +371,28 @@ Table roadmap_fragments {
   db_md5 TEXT [not null, default: '']
   created_at TEXT [not null]
   updated_at TEXT [not null]
+  Note: 'CREATE TABLE roadmap_fragments (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      source_feature_id TEXT,
+      source_phase_id TEXT,
+      code TEXT NOT NULL,
+      title TEXT NOT NULL,
+      markdown TEXT NOT NULL DEFAULT \'\',
+      mermaid TEXT NOT NULL DEFAULT \'\',
+      payload_json TEXT NOT NULL DEFAULT \'\',
+      status TEXT NOT NULL DEFAULT \'draft\',
+      merged INTEGER NOT NULL DEFAULT 0,
+      merged_at TEXT,
+      integrated_at TEXT,
+      file_name TEXT,
+      file_path TEXT,
+      file_updated_at TEXT,
+      file_md5 TEXT NOT NULL DEFAULT \'\',
+      db_md5 TEXT NOT NULL DEFAULT \'\',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )'
 }
 
 Table roadmap_phases {
@@ -216,6 +409,20 @@ Table roadmap_phases {
   updated_at TEXT [default: CURRENT_TIMESTAMP]
   after_phase_id TEXT
   archived INTEGER [default: 0]
+  Note: 'CREATE TABLE roadmap_phases (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      code TEXT NOT NULL,
+      name TEXT NOT NULL,
+      summary TEXT DEFAULT \'\',
+      goal TEXT DEFAULT \'\',
+      status TEXT DEFAULT \'planned\',
+      target_date TEXT,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP, after_phase_id TEXT, archived INTEGER DEFAULT 0,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )'
 }
 
 Table tasks {
@@ -240,14 +447,34 @@ Table tasks {
   item_type TEXT [default: 'task']
   category TEXT
   work_item_type TEXT [default: 'core_task']
+  Note: 'CREATE TABLE tasks (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT DEFAULT \'todo\',
+  priority TEXT DEFAULT \'medium\',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  due_date TEXT,
+  assigned_to TEXT,
+  start_date TEXT,
+  end_date TEXT,
+  dependency_ids TEXT DEFAULT \'[]\',
+  progress INTEGER DEFAULT 0,
+  milestone INTEGER DEFAULT 0,
+  sort_order INTEGER DEFAULT 0, roadmap_phase_id TEXT, planning_bucket TEXT DEFAULT \'considered\', item_type TEXT DEFAULT \'task\', category TEXT, work_item_type TEXT DEFAULT \'core_task\',
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+)'
 }
 
-Ref: bug_items.project_id < projects.id
-Ref: entity_relationships.project_id < projects.id
-Ref: feature_items.project_id < projects.id
-Ref: integration_events.project_id < projects.id
-Ref: prd_fragments.project_id < projects.id
-Ref: project_md_documents.project_id < projects.id
-Ref: project_modules.project_id < projects.id
-Ref: roadmap_phases.project_id < projects.id
-Ref: tasks.project_id < projects.id
+Ref: bug_items.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: entity_relationships.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: feature_items.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: integration_events.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: prd_fragments.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: project_md_documents.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: project_modules.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: project_template_files.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: roadmap_phases.project_id < projects.id // Foreign key captured from live SQLite metadata.
+Ref: tasks.project_id < projects.id // Foreign key captured from live SQLite metadata.

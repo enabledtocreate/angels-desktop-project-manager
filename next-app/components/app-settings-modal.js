@@ -20,6 +20,8 @@ function buildEditableSettings(payload) {
     githubTokenMasked: payload?.integrations?.githubTokenMasked || null,
     webhookSecretConfigured: Boolean(payload?.integrations?.webhookSecretConfigured),
     fragmentsDirectiveProjectId: payload?.ai?.fragmentsDirectiveProjectId || '',
+    shutdownLockedAppBeforeBuildDirectiveEnabled: Boolean(payload?.ai?.shutdownLockedAppBeforeBuildDirectiveEnabled),
+    showStableIds: payload?.ui?.showStableIds !== false,
   };
 }
 
@@ -37,7 +39,7 @@ function buildCredentialDraft(credential = null) {
 }
 
 export function AppSettingsModal({ isOpen, onClose, onStatusChange, onOpenLogsModal }) {
-  const { colorScheme, setColorScheme, schemes } = useAppTheme();
+  const { colorScheme, setColorScheme, schemes, setShowStableIds } = useAppTheme();
   const [activeTab, setActiveTab] = useState('projects');
   const [status, setStatus] = useState('idle');
   const [saveStatus, setSaveStatus] = useState('idle');
@@ -93,6 +95,8 @@ export function AppSettingsModal({ isOpen, onClose, onStatusChange, onOpenLogsMo
       editableSettings.dataDir !== '' ||
       editableSettings.logsDir !== '' ||
       editableSettings.fragmentsDirectiveProjectId !== '' ||
+      editableSettings.shutdownLockedAppBeforeBuildDirectiveEnabled !== false ||
+      editableSettings.showStableIds !== true ||
       editableSettings.githubApiBaseUrl !== '' ||
       editableSettings.githubToken !== '' ||
       editableSettings.webhookSecret !== ''
@@ -202,7 +206,7 @@ export function AppSettingsModal({ isOpen, onClose, onStatusChange, onOpenLogsMo
         integrations.webhookSecret = editableSettings.webhookSecret.trim();
       }
 
-      await fetchJson('/api/settings', {
+      const savedSettings = await fetchJson('/api/settings', {
         method: 'PUT',
         body: JSON.stringify({
           projects: {
@@ -210,12 +214,17 @@ export function AppSettingsModal({ isOpen, onClose, onStatusChange, onOpenLogsMo
             dataDir: editableSettings.dataDir,
             logsDir: editableSettings.logsDir,
           },
+          ui: {
+            showStableIds: editableSettings.showStableIds,
+          },
           ai: {
             fragmentsDirectiveProjectId: editableSettings.fragmentsDirectiveProjectId,
+            shutdownLockedAppBeforeBuildDirectiveEnabled: editableSettings.shutdownLockedAppBeforeBuildDirectiveEnabled,
           },
           integrations,
         }),
       });
+      setShowStableIds?.(savedSettings?.ui?.showStableIds !== false);
 
       setEditableSettings((current) => ({
         ...current,
@@ -370,6 +379,25 @@ export function AppSettingsModal({ isOpen, onClose, onStatusChange, onOpenLogsMo
                       <p className="text-xs text-sky-100/60">
                         Only the selected project will receive the locked fragments directive in its generated AI environment.
                       </p>
+                      <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-sky-100/75">
+                        <input
+                          type="checkbox"
+                          checked={editableSettings.shutdownLockedAppBeforeBuildDirectiveEnabled}
+                          onChange={(event) =>
+                            setEditableSettings((current) => ({
+                              ...current,
+                              shutdownLockedAppBeforeBuildDirectiveEnabled: event.target.checked,
+                            }))
+                          }
+                          className="mt-1 h-4 w-4 rounded border-white/20 bg-slate text-accent"
+                        />
+                        <span>
+                          <span className="block font-semibold text-white">Add build-lock shutdown directive</span>
+                          <span className="mt-1 block text-xs leading-5 text-sky-100/60">
+                            When enabled, the selected project AI Environment tells agents to shut down a running locked APM/Electron process before rebuilding or packaging.
+                          </span>
+                        </span>
+                      </label>
                     </div>
                   ) : null}
 
@@ -416,6 +444,25 @@ export function AppSettingsModal({ isOpen, onClose, onStatusChange, onOpenLogsMo
                           );
                         })}
                       </div>
+                      <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-sky-100/75">
+                        <input
+                          type="checkbox"
+                          checked={editableSettings.showStableIds}
+                          onChange={(event) =>
+                            setEditableSettings((current) => ({
+                              ...current,
+                              showStableIds: event.target.checked,
+                            }))
+                          }
+                          className="mt-1 h-4 w-4 rounded border-white/20 bg-slate text-accent"
+                        />
+                        <span>
+                          <span className="block font-semibold text-white">Show document and canvas IDs</span>
+                          <span className="mt-1 block text-xs leading-5 text-sky-100/60">
+                            Hide stable IDs from the visual UI when you want less clutter. IDs remain stored in the database, documents, fragments, and canvas data.
+                          </span>
+                        </span>
+                      </label>
                     </div>
                   ) : null}
 

@@ -10,7 +10,7 @@
     {
       "id": "bug-1775260498325-6ol1enm",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "BUG-009",
+      "code": "BUG-008",
       "title": "Fragment Lifecycle Inconsistency Across Modules",
       "summary": "Fragment discovery, dedupe, archive visibility, cleanup, and status signaling are closer than before but still inconsistent enough to confuse users during review and integration.",
       "currentBehavior": "Fragment discovery, dedupe, archive visibility, cleanup, and status signaling are closer than before but still inconsistent enough to confuse users during review and integration.",
@@ -37,13 +37,13 @@
       "completed": false,
       "regressed": false,
       "archived": false,
-      "createdAt": "2026-04-03T23:54:58.314Z",
-      "updatedAt": "2026-04-10T22:19:18.235Z"
+      "createdAt": "2026-04-11T17:50:45.388Z",
+      "updatedAt": "2026-04-11T17:50:45.388Z"
     },
     {
       "id": "bug-1775260497797-580tuqz",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "BUG-008",
+      "code": "BUG-007",
       "title": "Imported Fragment Bodies Remain In Canonical Documents",
       "summary": "Some managed documents, especially Architecture, still contain imported fragment text bodies in placeholder sections instead of a clean structured result.",
       "currentBehavior": "Some managed documents, especially Architecture, still contain imported fragment text bodies in placeholder sections instead of a clean structured result.",
@@ -70,13 +70,13 @@
       "completed": false,
       "regressed": false,
       "archived": false,
-      "createdAt": "2026-04-03T23:54:57.787Z",
-      "updatedAt": "2026-04-10T22:19:18.343Z"
+      "createdAt": "2026-04-11T17:50:45.338Z",
+      "updatedAt": "2026-04-11T17:50:45.338Z"
     },
     {
       "id": "bug-1775260497330-1iuegfh",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "BUG-007",
+      "code": "BUG-006",
       "title": "Drag and Drop Planning Regression",
       "summary": "Users cannot reliably drag and drop tasks, features, or bugs into phases the way the planning flow previously supported.",
       "currentBehavior": "Users cannot reliably drag and drop tasks, features, or bugs into phases the way the planning flow previously supported.",
@@ -103,13 +103,13 @@
       "completed": false,
       "regressed": false,
       "archived": false,
-      "createdAt": "2026-04-03T23:54:57.292Z",
-      "updatedAt": "2026-04-10T22:19:18.445Z"
+      "createdAt": "2026-04-11T17:50:45.281Z",
+      "updatedAt": "2026-04-11T17:50:45.281Z"
     },
     {
       "id": "bug-1775259007958-9e1v5uq",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "BUG-006",
+      "code": "BUG-005",
       "title": "Fragment Lifecycle Inconsistency Across Modules",
       "summary": "Fragment discovery, dedupe, archive visibility, cleanup, and status signaling are closer than before but still inconsistent enough to confuse users during review and integration.",
       "currentBehavior": "Fragment discovery, dedupe, archive visibility, cleanup, and status signaling are closer than before but still inconsistent enough to confuse users during review and integration.",
@@ -136,13 +136,13 @@
       "completed": false,
       "regressed": false,
       "archived": false,
-      "createdAt": "2026-04-03T23:30:07.948Z",
-      "updatedAt": "2026-04-10T22:19:18.541Z"
+      "createdAt": "2026-04-11T17:50:45.227Z",
+      "updatedAt": "2026-04-11T17:50:45.227Z"
     },
     {
       "id": "bug-1775259007507-oohx0ts",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "BUG-005",
+      "code": "BUG-004",
       "title": "Imported Fragment Bodies Remain In Canonical Documents",
       "summary": "Some managed documents, especially Architecture, still contain imported fragment text bodies in placeholder sections instead of a clean structured result.",
       "currentBehavior": "Some managed documents, especially Architecture, still contain imported fragment text bodies in placeholder sections instead of a clean structured result.",
@@ -169,13 +169,13 @@
       "completed": false,
       "regressed": false,
       "archived": false,
-      "createdAt": "2026-04-03T23:30:07.490Z",
-      "updatedAt": "2026-04-10T22:19:18.579Z"
+      "createdAt": "2026-04-11T17:50:45.171Z",
+      "updatedAt": "2026-04-11T17:50:45.171Z"
     },
     {
       "id": "bug-1775259006850-31h8czq",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "BUG-004",
+      "code": "BUG-003",
       "title": "Drag and Drop Planning Regression",
       "summary": "Users cannot reliably drag and drop tasks, features, or bugs into phases the way the planning flow previously supported.",
       "currentBehavior": "Users cannot reliably drag and drop tasks, features, or bugs into phases the way the planning flow previously supported.",
@@ -202,8 +202,8 @@
       "completed": false,
       "regressed": false,
       "archived": false,
-      "createdAt": "2026-04-03T23:30:06.834Z",
-      "updatedAt": "2026-04-10T22:19:18.619Z"
+      "createdAt": "2026-04-11T17:50:45.021Z",
+      "updatedAt": "2026-04-11T17:50:45.021Z"
     },
     {
       "id": "bug-1774625378814-fscisc2",
@@ -235,8 +235,8 @@
       "completed": false,
       "regressed": false,
       "archived": false,
-      "createdAt": "2026-04-02T22:29:43.682Z",
-      "updatedAt": "2026-04-10T22:19:18.657Z"
+      "createdAt": "2026-04-11T17:50:44.811Z",
+      "updatedAt": "2026-04-11T17:50:44.811Z"
     },
     {
       "id": "bug-1775007912160-wi58d94",
@@ -268,8 +268,8 @@
       "completed": false,
       "regressed": false,
       "archived": false,
-      "createdAt": "2026-04-02T22:29:43.656Z",
-      "updatedAt": "2026-04-10T22:19:18.698Z"
+      "createdAt": "2026-04-11T17:50:44.632Z",
+      "updatedAt": "2026-04-11T17:50:44.632Z"
     },
     {
       "id": "bug-1775784434597-av98knn",
@@ -301,13 +301,13 @@
       "completed": true,
       "regressed": false,
       "archived": true,
-      "createdAt": "2026-04-10T01:27:14.574Z",
-      "updatedAt": "2026-04-10T22:19:18.132Z"
+      "createdAt": "2026-04-11T17:50:45.498Z",
+      "updatedAt": "2026-04-11T17:50:45.498Z"
     },
     {
       "id": "bug-1774587154303-cb3ch8s",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "BUG-003",
+      "code": "BUG-009",
       "title": "Add/Edit link is a text field.",
       "summary": "When file is selected for a link, a user needs to enter it into a text box",
       "currentBehavior": "When file is selected for a link, a user needs to enter it into a text box",
@@ -334,11 +334,11 @@
       "completed": true,
       "regressed": false,
       "archived": true,
-      "createdAt": "2026-04-02T22:29:43.699Z",
-      "updatedAt": "2026-04-10T22:19:18.736Z"
+      "createdAt": "2026-04-11T17:50:45.445Z",
+      "updatedAt": "2026-04-11T17:50:45.445Z"
     }
   ],
-  "mermaid": "flowchart TD\n  bugs[\"Active Bugs\"]\n  bugs --\u003e status_open[\"Open\"]\n  status_open --\u003e bug_bug_1775260498325_6ol1enm[\"BUG-009: Fragment Lifecycle Inconsistency Across Modules\"]\n  status_open --\u003e bug_bug_1775260497797_580tuqz[\"BUG-008: Imported Fragment Bodies Remain In Canonical Documents\"]\n  status_open --\u003e bug_bug_1775260497330_1iuegfh[\"BUG-007: Drag and Drop Planning Regression\"]\n  status_open --\u003e bug_bug_1774625378814_fscisc2[\"BUG-002: PRD Fragments should be deleted after merging\"]\n  status_open --\u003e bug_bug_1775007912160_wi58d94[\"BUG-001: The application should not produce fragments\"]"
+  "mermaid": "flowchart TD\n  bugs[\"Active Bugs\"]\n  bugs --\u003e status_open[\"Open\"]\n  status_open --\u003e bug_bug_1775260498325_6ol1enm[\"BUG-008: Fragment Lifecycle Inconsistency Across Modules\"]\n  status_open --\u003e bug_bug_1775260497797_580tuqz[\"BUG-007: Imported Fragment Bodies Remain In Canonical Documents\"]\n  status_open --\u003e bug_bug_1775260497330_1iuegfh[\"BUG-006: Drag and Drop Planning Regression\"]\n  status_open --\u003e bug_bug_1774625378814_fscisc2[\"BUG-002: PRD Fragments should be deleted after merging\"]\n  status_open --\u003e bug_bug_1775007912160_wi58d94[\"BUG-001: The application should not produce fragments\"]"
 }
 -->
 
@@ -374,7 +374,7 @@ If an archived bug moves back into an active lifecycle state, remove its workspa
 
 ## 2. Active Bugs
 
-### 2.1 BUG-009: Fragment Lifecycle Inconsistency Across Modules
+### 2.1 BUG-008: Fragment Lifecycle Inconsistency Across Modules
 
 - Lifecycle Status: Open (`open`)
 - Planning Bucket: Planned (`planned`)
@@ -383,7 +383,7 @@ If an archived bug moves back into an active lifecycle state, remove its workspa
 - Completed: No
 - Regressed: No
 - Linked Task: task-1775260498314-vb5jtcj
-- Last Updated: 2026-04-10 22:19:18Z
+- Last Updated: 2026-04-11 17:50:45Z
 - Affected Modules: None
 - Association Hints: None
 
@@ -397,7 +397,7 @@ Fragment discovery, dedupe, archive visibility, cleanup, and status signaling ar
 All fragment-enabled modules should expose the same predictable lifecycle for loading, importing, archiving, deduping, versioning, and cleanup.
 ```
 
-### 2.2 BUG-008: Imported Fragment Bodies Remain In Canonical Documents
+### 2.2 BUG-007: Imported Fragment Bodies Remain In Canonical Documents
 
 - Lifecycle Status: Open (`open`)
 - Planning Bucket: Planned (`planned`)
@@ -406,7 +406,7 @@ All fragment-enabled modules should expose the same predictable lifecycle for lo
 - Completed: No
 - Regressed: No
 - Linked Task: task-1775260497787-whnkb4r
-- Last Updated: 2026-04-10 22:19:18Z
+- Last Updated: 2026-04-11 17:50:45Z
 - Affected Modules: None
 - Association Hints: None
 
@@ -420,7 +420,7 @@ Some managed documents, especially Architecture, still contain imported fragment
 Consuming a fragment should update the correct structured document sections so the canonical document reads cleanly without leftover imported-body debris.
 ```
 
-### 2.3 BUG-007: Drag and Drop Planning Regression
+### 2.3 BUG-006: Drag and Drop Planning Regression
 
 - Lifecycle Status: Open (`open`)
 - Planning Bucket: Planned (`planned`)
@@ -429,7 +429,7 @@ Consuming a fragment should update the correct structured document sections so t
 - Completed: No
 - Regressed: No
 - Linked Task: task-1775260497292-mmdkli2
-- Last Updated: 2026-04-10 22:19:18Z
+- Last Updated: 2026-04-11 17:50:45Z
 - Affected Modules: None
 - Association Hints: None
 
@@ -452,7 +452,7 @@ Users should be able to move planned work into roadmap phases through the intend
 - Completed: No
 - Regressed: No
 - Linked Task: task-1774723828060-7ke94cf
-- Last Updated: 2026-04-10 22:19:18Z
+- Last Updated: 2026-04-11 17:50:44Z
 - Affected Modules: None
 - Association Hints: None
 
@@ -475,7 +475,7 @@ After a PRD_FRAGMENT is merged, the PRD module should scan for any other files a
 - Completed: No
 - Regressed: No
 - Linked Task: task-1775007912143-4vovg99
-- Last Updated: 2026-04-10 22:19:18Z
+- Last Updated: 2026-04-11 17:50:44Z
 - Affected Modules: None
 - Association Hints: None
 
@@ -495,9 +495,9 @@ Only AI Agents should be able to generate fragments based off of templates for m
 flowchart TD
   bugs["Active Bugs"]
   bugs --> status_open["Open"]
-  status_open --> bug_bug_1775260498325_6ol1enm["BUG-009: Fragment Lifecycle Inconsistency Across Modules"]
-  status_open --> bug_bug_1775260497797_580tuqz["BUG-008: Imported Fragment Bodies Remain In Canonical Documents"]
-  status_open --> bug_bug_1775260497330_1iuegfh["BUG-007: Drag and Drop Planning Regression"]
+  status_open --> bug_bug_1775260498325_6ol1enm["BUG-008: Fragment Lifecycle Inconsistency Across Modules"]
+  status_open --> bug_bug_1775260497797_580tuqz["BUG-007: Imported Fragment Bodies Remain In Canonical Documents"]
+  status_open --> bug_bug_1775260497330_1iuegfh["BUG-006: Drag and Drop Planning Regression"]
   status_open --> bug_bug_1774625378814_fscisc2["BUG-002: PRD Fragments should be deleted after merging"]
   status_open --> bug_bug_1775007912160_wi58d94["BUG-001: The application should not produce fragments"]
 ```

@@ -1500,6 +1500,76 @@ async function readProjectDocument(projectId, docType) {
   } : null;
 }
 
+async function readProjectTemplateFiles(projectId) {
+  const rows = await dbAll(
+    'SELECT * FROM project_template_files WHERE project_id = ? ORDER BY template_kind, template_name',
+    [projectId]
+  );
+  return rows.map((row) => ({
+    projectId: row.project_id,
+    templateName: row.template_name,
+    templateKind: row.template_kind || 'document',
+    templateVersion: row.template_version || '',
+    templateLastUpdated: row.template_last_updated || '',
+    sourceMd5: row.source_md5 || '',
+    targetMd5: row.target_md5 || '',
+    targetPath: row.target_path || '',
+    targetUpdatedAt: row.target_updated_at || '',
+    replaced: Boolean(row.replaced),
+    missing: Boolean(row.missing),
+    syncedAt: row.synced_at || '',
+  }));
+}
+
+async function recordProjectTemplateFiles(projectId, records = []) {
+  const list = Array.isArray(records) ? records : [];
+  for (const record of list) {
+    if (!record || !record.templateName) continue;
+    await dbRun(`
+      INSERT INTO project_template_files (
+        project_id,
+        template_name,
+        template_kind,
+        template_version,
+        template_last_updated,
+        source_md5,
+        target_md5,
+        target_path,
+        target_updated_at,
+        replaced,
+        missing,
+        synced_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(project_id, template_name) DO UPDATE SET
+        template_kind = excluded.template_kind,
+        template_version = excluded.template_version,
+        template_last_updated = excluded.template_last_updated,
+        source_md5 = excluded.source_md5,
+        target_md5 = excluded.target_md5,
+        target_path = excluded.target_path,
+        target_updated_at = excluded.target_updated_at,
+        replaced = excluded.replaced,
+        missing = excluded.missing,
+        synced_at = excluded.synced_at
+    `, [
+      projectId,
+      record.templateName,
+      record.templateKind || 'document',
+      record.templateVersion || '',
+      record.templateLastUpdated || '',
+      record.sourceMd5 || '',
+      record.targetMd5 || '',
+      record.targetPath || '',
+      record.targetUpdatedAt || '',
+      record.replaced ? 1 : 0,
+      record.missing ? 1 : 0,
+      record.syncedAt || new Date().toISOString(),
+    ]);
+  }
+  return readProjectTemplateFiles(projectId);
+}
+
 async function saveProjectDocument(projectId, docType, input = {}) {
   const updatedAt = input.updatedAt || new Date().toISOString();
   const definition = getModuleDefinition(input.moduleKey || docType);
@@ -1663,16 +1733,19 @@ async function readAppSettings(options = {}) {
     aiProfiles = [];
   }
   const fragmentsDirectiveProjectId = map.get('ai.fragmentsDirectiveProjectId')?.value || '';
+  const shutdownLockedAppBeforeBuildDirectiveEnabled = map.get('ai.shutdownLockedAppBeforeBuildDirectiveEnabled')?.value === '1';
 
   return {
     ui: {
       projectListSortMode: map.get('ui.projectListSortMode')?.value || 'alphabetical',
       projectListViewMode: map.get('ui.projectListViewMode')?.value || 'list',
       projectListGroupMode: map.get('ui.projectListGroupMode')?.value || 'none',
+      showStableIds: map.get('ui.showStableIds')?.value !== '0',
     },
     ai: {
       profiles: aiProfiles,
       fragmentsDirectiveProjectId,
+      shutdownLockedAppBeforeBuildDirectiveEnabled,
     },
     integrations: {
       githubApiBaseUrl: map.get('integrations.githubApiBaseUrl')?.value || 'https://api.github.com',
@@ -1708,8 +1781,10 @@ async function saveAppSettings(settingsInput = {}) {
     ['ui.projectListSortMode', next.ui.projectListSortMode || 'alphabetical', 0],
     ['ui.projectListViewMode', next.ui.projectListViewMode || 'list', 0],
     ['ui.projectListGroupMode', next.ui.projectListGroupMode || 'none', 0],
+    ['ui.showStableIds', next.ui.showStableIds === false ? '0' : '1', 0],
     ['ai.profiles', JSON.stringify(Array.isArray(next.ai.profiles) ? next.ai.profiles : []), 0],
     ['ai.fragmentsDirectiveProjectId', next.ai.fragmentsDirectiveProjectId || '', 0],
+    ['ai.shutdownLockedAppBeforeBuildDirectiveEnabled', next.ai.shutdownLockedAppBeforeBuildDirectiveEnabled ? '1' : '0', 0],
     ['integrations.githubApiBaseUrl', next.integrations.githubApiBaseUrl || 'https://api.github.com', 0],
   ];
 
@@ -1869,6 +1944,8 @@ module.exports = {
   saveBugItem,
   deleteBugItem,
   readProjectDocument,
+  readProjectTemplateFiles,
+  recordProjectTemplateFiles,
   saveProjectDocument,
   deleteProjectDocument,
   readEntityRelationships,

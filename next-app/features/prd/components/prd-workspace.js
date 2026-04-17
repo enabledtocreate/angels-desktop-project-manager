@@ -165,7 +165,7 @@ function PrdTextArea({ label, value, onChange, rows = 4, help, dirty = false, st
         value={value}
         onChange={onChange}
       />
-      <p className="text-[11px] font-mono text-sky-100/45">
+      <p className="apm-stable-id text-[11px] font-mono text-sky-100/45">
         ID: {stableId || 'pending-save'}
       </p>
       <WorkItemReferenceTags sourceRefs={sourceRefs} workItemLookup={workItemLookup} />

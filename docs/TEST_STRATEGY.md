@@ -10,7 +10,7 @@
   "editorState": {
     "overview": {
       "summary": "Test Strategy for Angel's Project Manager is still being defined.",
-      "versionDate": "2026-04-02T23:29:05.603Z",
+      "versionDate": "2026-04-14T03:29:02.962Z",
       "stableId": "test-strategy-overview-summary-executive-summary",
       "sourceRefs": []
     },
@@ -33,7 +33,7 @@
 
 <!--
 APM-ID: test-strategy-overview-summary-executive-summary
-APM-LAST-UPDATED: 2026-04-02
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 Test Strategy for Angel's Project Manager is still being defined.
@@ -42,7 +42,7 @@ Test Strategy for Angel's Project Manager is still being defined.
 
 <!--
 APM-ID: test-strategy-working-content-working-content
-APM-LAST-UPDATED: 2026-04-02
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 No test strategy working content yet.
@@ -55,7 +55,7 @@ No applied fragments yet.
 
 <!--
 APM-ID: test-strategy-open-questions-open-questions
-APM-LAST-UPDATED: 2026-04-02
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 No open questions yet.

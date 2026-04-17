@@ -47,6 +47,10 @@ const DOC_TYPES = {
     fileName: 'FUNCTIONAL_SPEC.md',
     templateName: 'FUNCTIONAL_SPEC.template.md',
   },
+  domain_models: {
+    fileName: 'DOMAIN_MODELS.md',
+    templateName: 'DOMAIN_MODELS.template.md',
+  },
   technical_design: {
     fileName: 'TECHNICAL_DESIGN.md',
     templateName: 'TECHNICAL_DESIGN.template.md',
@@ -75,14 +79,167 @@ const FRAGMENT_TEMPLATE_NAMES = {
   database_schema: 'DATABASE_SCHEMA_FRAGMENT.template.md',
   ai_environment: 'AI_ENVIRONMENT_FRAGMENT.template.md',
   functional_spec: 'FUNCTIONAL_SPEC_FRAGMENT.template.md',
+  domain_models: 'DOMAIN_MODELS_FRAGMENT.template.md',
   technical_design: 'TECHNICAL_DESIGN_FRAGMENT.template.md',
   experience_design: 'EXPERIENCE_DESIGN_FRAGMENT.template.md',
   adr: 'ADR_FRAGMENT.template.md',
   test_strategy: 'TEST_STRATEGY_FRAGMENT.template.md',
 };
+const FRAGMENT_DOC_TYPE_ALIASES = {
+  ux_ui_fragment: 'experience_design_fragment',
+  ux_ui: 'experience_design',
+  ai_environment_directive: 'ai_environment_fragment',
+  ai_environment_suggestion: 'ai_environment_fragment',
+};
+const FRAGMENT_DOC_TYPES_BY_MODULE = {
+  project_brief: ['project_brief_fragment'],
+  roadmap: ['roadmap_fragment'],
+  bugs: ['bugs_fragment'],
+  changelog: ['changelog_fragment'],
+  features: ['features_fragment'],
+  prd: ['prd_fragment'],
+  architecture: ['architecture_fragment'],
+  database_schema: ['database_schema_fragment'],
+  ai_environment: ['ai_environment_fragment', 'ai_environment_directive', 'ai_environment_suggestion', 'ai_environment'],
+  functional_spec: ['functional_spec_fragment'],
+  domain_models: ['domain_models_fragment'],
+  technical_design: ['technical_design_fragment'],
+  experience_design: ['experience_design_fragment', 'ux_ui_fragment'],
+  adr: ['adr_fragment'],
+  test_strategy: ['test_strategy_fragment'],
+};
 const PRD_FRAGMENT_TEMPLATE_NAME = FRAGMENT_TEMPLATE_NAMES.prd;
 const ROADMAP_FRAGMENT_TEMPLATE_NAME = FRAGMENT_TEMPLATE_NAMES.roadmap;
 const DATABASE_SCHEMA_FRAGMENT_TEMPLATE_NAME = FRAGMENT_TEMPLATE_NAMES.database_schema;
+
+const AI_DIRECTIVE_MODULE_LABELS = {
+  project_brief: 'Project Brief',
+  roadmap: 'Roadmap',
+  bugs: 'Bugs',
+  changelog: 'Change Log',
+  features: 'Features',
+  prd: 'PRD',
+  architecture: 'Architecture',
+  database_schema: 'Database Schema',
+  functional_spec: 'Functional Spec',
+  domain_models: 'Domain Models',
+  technical_design: 'Technical Design',
+  experience_design: 'Experience Design',
+  adr: 'ADR',
+  test_strategy: 'Test Strategy',
+};
+
+const AI_MODULE_DIRECTIVE_DEFINITIONS = [
+  {
+    id: 'apm.module.roadmap.active-feature-context',
+    moduleKey: 'roadmap',
+    title: 'Use active roadmap and feature context',
+    description: 'Use active feature IDs for planning and implementation context, and ignore archived features unless the task is explicitly historical.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.roadmap.fragment-first-changes',
+    moduleKey: 'roadmap',
+    title: 'Propose roadmap changes through fragments',
+    description: 'When proposing roadmap changes, create or update a ROADMAP_FRAGMENT document instead of editing ROADMAP.md directly.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.features.destination-fragments',
+    moduleKey: 'features',
+    title: 'Implemented features create destination fragments',
+    description: 'When feature implementation changes canonical documents, create destination fragments for affected modules and keep the feature code attached.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.bugs.lifecycle-and-archive',
+    moduleKey: 'bugs',
+    title: 'Preserve bug lifecycle and archive rules',
+    description: 'Only active bugs remain in BUGS.md; resolved or closed bugs move to archived history and create follow-up guidance for affected documents.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.bugs.regression-test-followup',
+    moduleKey: 'bugs',
+    title: 'Generate regression test follow-up for bugs',
+    description: 'When a bug fix is implemented, add or update regression-test guidance in the appropriate Test Strategy or downstream module.',
+    locked: true,
+    required: false,
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.changelog.traceability',
+    moduleKey: 'changelog',
+    title: 'Record document-impacting changes in the Change Log',
+    description: 'When feature or bug work updates a managed document, create or update a Change Log entry with work item code, target document, target section, stable item id, and summary.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.database-schema.fragment-boundary',
+    moduleKey: 'database_schema',
+    title: 'Keep schema changes inside schema workflows',
+    description: 'Do not edit DATABASE_SCHEMA.md, DATABASE_SCHEMA.dbml, or the canonical schema model directly; use full schema capture or schema fragments through the Database Schema module.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.database-schema.full-import-boundary',
+    moduleKey: 'database_schema',
+    title: 'Do not treat partial schema fragments as full imports',
+    description: 'Migration-sized or partial Database Schema fragments must not replace the full schema model unless additive schema operations are explicitly supported.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.functional-spec.flow-ids',
+    moduleKey: 'functional_spec',
+    title: 'Functional flows require stable ids',
+    description: 'Every workflow, node, edge, control point, model reference, and open question should have stable ids so fragments can target them precisely.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.functional-spec.action-vocabulary',
+    moduleKey: 'functional_spec',
+    title: 'Functional Spec actions must be readable',
+    description: 'Functional Spec templates and generated documents must expose node, connection, canvas, and smart-text actions so humans and AI agents understand the flowchart vocabulary.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.domain-models.conceptual-first',
+    moduleKey: 'domain_models',
+    title: 'Domain models are conceptual first',
+    description: 'Do not treat Domain Models as database tables, UI forms, API payloads, or implementation classes; use projections to connect them downstream.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.architecture.adr-capture',
+    moduleKey: 'architecture',
+    title: 'Create ADR records for architectural decisions',
+    description: 'When work introduces, changes, or reverses a significant architectural decision, update Architecture and create or update ADR records.',
+    locked: true,
+    required: false,
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.technical-design.implementation-details',
+    moduleKey: 'technical_design',
+    title: 'Technical Design owns implementation detail',
+    description: 'Keep Technical Design focused on stack choices, libraries, implementation mechanics, deployment/runtime detail, and subsystem build decisions.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.experience-design.user-behavior',
+    moduleKey: 'experience_design',
+    title: 'Experience Design owns user-facing behavior',
+    description: 'Use Experience Design for interface behavior, UI states, user feedback, navigation paths, and how users experience flows.',
+    emitsToAiEnvironment: true,
+  },
+  {
+    id: 'apm.module.test-strategy.validation-focus',
+    moduleKey: 'test_strategy',
+    title: 'Test Strategy owns validation guidance',
+    description: 'Use Test Strategy for validation approach, regression expectations, test environments, and evidence that requirements are satisfied.',
+    emitsToAiEnvironment: true,
+  },
+];
 
 function getDocDefinition(docType) {
   const definition = DOC_TYPES[docType];
@@ -405,18 +562,65 @@ function syncArchivedBugWorkspaceNotes(project, bugs) {
   return touchedPaths;
 }
 
-function syncTemplateForProject(project, docType) {
+function syncTemplateFileForProject(project, templateName, templateKind, targetDir) {
+  const templateSource = path.join(TEMPLATE_DIR, templateName);
+  const templateTarget = path.join(targetDir, templateName);
+  if (fs.existsSync(templateSource)) {
+    const sourceContent = fs.readFileSync(templateSource, 'utf8');
+    const sourceMd5 = computeMd5(sourceContent);
+    const targetMd5Before = fs.existsSync(templateTarget)
+      ? computeMd5(fs.readFileSync(templateTarget, 'utf8'))
+      : '';
+    const replaced = sourceMd5 !== targetMd5Before;
+    if (replaced) {
+      fs.copyFileSync(templateSource, templateTarget);
+      config.log(`workspace-docs: synced ${templateKind} template ${templateName} -> ${templateTarget}`);
+    }
+    const targetStats = fs.statSync(templateTarget);
+    const templateMeta = getTemplateMetadata(templateName);
+    return {
+      templateName,
+      templateKind,
+      templateVersion: templateMeta.version || '',
+      templateLastUpdated: templateMeta.lastUpdated || '',
+      sourceMd5,
+      targetMd5: sourceMd5,
+      targetPath: templateTarget,
+      targetUpdatedAt: targetStats.mtime.toISOString(),
+      replaced,
+      syncedAt: new Date().toISOString(),
+    };
+  }
+  config.log(`workspace-docs: ${templateKind} template missing at ${templateSource}`);
+  return {
+    templateName,
+    templateKind,
+    templateVersion: '',
+    templateLastUpdated: '',
+    sourceMd5: '',
+    targetMd5: fs.existsSync(templateTarget) ? computeMd5(fs.readFileSync(templateTarget, 'utf8')) : '',
+    targetPath: templateTarget,
+    targetUpdatedAt: fs.existsSync(templateTarget) ? fs.statSync(templateTarget).mtime.toISOString() : '',
+    replaced: false,
+    missing: true,
+    syncedAt: new Date().toISOString(),
+  };
+}
+
+function syncDocumentTemplateRecordForProject(project, docType) {
   const templatesDir = ensureProjectTemplatesDir(project);
   const definition = getDocDefinition(docType);
-  const templateSource = path.join(TEMPLATE_DIR, definition.templateName);
-  const templateTarget = path.join(templatesDir, definition.templateName);
-  if (fs.existsSync(templateSource)) {
-    fs.copyFileSync(templateSource, templateTarget);
-    config.log(`workspace-docs: synced template ${definition.templateName} -> ${templateTarget}`);
+  return syncTemplateFileForProject(project, definition.templateName, 'document', templatesDir);
+}
+
+function syncTemplateForProject(project, docType) {
+  const record = syncDocumentTemplateRecordForProject(project, docType);
+  if (record && record.missing) {
+    config.log(`workspace-docs: template missing for ${docType} at ${path.join(TEMPLATE_DIR, getDocDefinition(docType).templateName)}`);
   } else {
-    config.log(`workspace-docs: template missing for ${docType} at ${templateSource}`);
+    config.log(`workspace-docs: checked template ${getDocDefinition(docType).templateName} -> ${record.targetPath}`);
   }
-  return templateTarget;
+  return record.targetPath;
 }
 
 function syncPrdFragmentTemplateForProject(project) {
@@ -427,19 +631,16 @@ function syncRoadmapFragmentTemplateForProject(project) {
   return syncFragmentTemplateForProject(project, 'roadmap');
 }
 
-function syncFragmentTemplateForProject(project, docType) {
+function syncFragmentTemplateRecordForProject(project, docType) {
   const fragmentsDir = ensureProjectFragmentsDir(project);
   const templateName = FRAGMENT_TEMPLATE_NAMES[docType];
   if (!templateName) return null;
-  const templateSource = path.join(TEMPLATE_DIR, templateName);
-  const templateTarget = path.join(fragmentsDir, templateName);
-  if (fs.existsSync(templateSource)) {
-    fs.copyFileSync(templateSource, templateTarget);
-    config.log(`workspace-docs: synced fragment template ${templateName} -> ${templateTarget}`);
-  } else {
-    config.log(`workspace-docs: fragment template missing for ${docType} at ${templateSource}`);
-  }
-  return templateTarget;
+  return syncTemplateFileForProject(project, templateName, 'fragment', fragmentsDir);
+}
+
+function syncFragmentTemplateForProject(project, docType) {
+  const record = syncFragmentTemplateRecordForProject(project, docType);
+  return record ? record.targetPath : null;
 }
 
 function syncDatabaseSchemaFragmentTemplateForProject(project) {
@@ -448,6 +649,28 @@ function syncDatabaseSchemaFragmentTemplateForProject(project) {
 
 function syncAllFragmentTemplatesForProject(project) {
   return Object.keys(FRAGMENT_TEMPLATE_NAMES).map((docType) => syncFragmentTemplateForProject(project, docType));
+}
+
+function syncAllFragmentTemplateRecordsForProject(project) {
+  return Object.keys(FRAGMENT_TEMPLATE_NAMES)
+    .map((docType) => syncFragmentTemplateRecordForProject(project, docType))
+    .filter(Boolean);
+}
+
+function syncAllDocumentTemplateRecordsForProject(project) {
+  return Object.keys(DOC_TYPES)
+    .map((docType) => syncDocumentTemplateRecordForProject(project, docType))
+    .filter(Boolean);
+}
+
+function syncProjectTemplateFiles(project, docType = null) {
+  const documentRecords = docType
+    ? [syncDocumentTemplateRecordForProject(project, docType)]
+    : syncAllDocumentTemplateRecordsForProject(project);
+  return [
+    ...documentRecords.filter(Boolean),
+    ...syncAllFragmentTemplateRecordsForProject(project),
+  ];
 }
 
 function getProjectDocPath(project, docType) {
@@ -462,11 +685,98 @@ function buildManagedBlock(payload) {
   return `<!-- APM:DATA\n${serialized}\n-->`;
 }
 
+function normalizeFragmentDocType(docType) {
+  const normalized = String(docType || '').trim().toLowerCase();
+  return FRAGMENT_DOC_TYPE_ALIASES[normalized] || normalized;
+}
+
+function getFragmentDocTypesForModule(moduleKey) {
+  const normalizedModuleKey = String(moduleKey || '').trim().toLowerCase();
+  return (FRAGMENT_DOC_TYPES_BY_MODULE[normalizedModuleKey] || [])
+    .map((docType) => normalizeFragmentDocType(docType))
+    .filter(Boolean);
+}
+
+function inferFragmentDocTypeFromFileName(fileName) {
+  const normalizedFileName = String(fileName || '').trim().toUpperCase();
+  const match = Object.entries(FRAGMENT_TEMPLATE_NAMES).find(([, templateName]) => {
+    const prefix = String(templateName || '').replace(/\.template\.md$/i, '');
+    return normalizedFileName.startsWith(`${prefix.toUpperCase()}_`);
+  });
+  if (match) return `${match[0]}_fragment`;
+  if (/^UX_UI_FRAGMENT_/i.test(normalizedFileName)) return 'experience_design_fragment';
+  if (/^AI_ENVIRONMENT_(SUGGESTED|DIRECTIVE)_/i.test(normalizedFileName)) return 'ai_environment_fragment';
+  return '';
+}
+
+function inferFragmentTitleFromMarkdown(markdown, fallback = '') {
+  const heading = String(markdown || '').match(/^#\s+(.+)$/m);
+  return (heading && heading[1] ? heading[1].trim() : fallback).trim();
+}
+
+function migrateLegacyFragmentPayloadToV1(payload, markdown = '', options = {}) {
+  const fileName = options.fileName || '';
+  const inferredDocType = inferFragmentDocTypeFromFileName(fileName);
+  const originalDocType = String(payload.docType || inferredDocType || '').trim();
+  const docType = normalizeFragmentDocType(originalDocType);
+  const existingFragment = payload.fragment && typeof payload.fragment === 'object'
+    ? payload.fragment
+    : null;
+  const fileCode = String(fileName || '').replace(/\.md$/i, '');
+  const migratedFragment = {
+    ...(existingFragment || {}),
+  };
+  if (!migratedFragment.id) migratedFragment.id = payload.fragmentId || payload.id || fileCode || docType;
+  if (!migratedFragment.code) migratedFragment.code = payload.code || fileCode || migratedFragment.id;
+  if (!migratedFragment.title) {
+    migratedFragment.title = payload.title || inferFragmentTitleFromMarkdown(markdown, migratedFragment.code || fileName);
+  }
+  if (!migratedFragment.summary) migratedFragment.summary = payload.summary || '';
+  if (!migratedFragment.status) migratedFragment.status = payload.status || 'draft';
+  if (!migratedFragment.revision) migratedFragment.revision = payload.revision || payload.fragmentRevision || payload.version || 1;
+  if (!migratedFragment.lineageKey) migratedFragment.lineageKey = payload.lineageKey || migratedFragment.code || migratedFragment.id;
+  if (payload.payload && !migratedFragment.payload) migratedFragment.payload = payload.payload;
+  return {
+    ...payload,
+    docType,
+    version: 1,
+    fragment: migratedFragment,
+    migratedFromDocType: docType !== String(originalDocType || '').trim().toLowerCase() ? originalDocType : payload.migratedFromDocType,
+  };
+}
+
+const FRAGMENT_MANAGED_PAYLOAD_MIGRATORS = {
+  0: migrateLegacyFragmentPayloadToV1,
+  1: (payload) => payload,
+};
+
+function migrateManagedPayload(payload, markdown = '', options = {}) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const fileName = options.fileName || '';
+  const inferredDocType = inferFragmentDocTypeFromFileName(fileName);
+  const originalDocType = String(payload.docType || inferredDocType || '').trim();
+  const docType = normalizeFragmentDocType(originalDocType);
+  const nextPayload = {
+    ...payload,
+    ...(docType ? { docType } : {}),
+  };
+  const isFragmentPayload = /_fragment$/i.test(docType);
+  if (!isFragmentPayload) return nextPayload;
+  const parsedVersion = Number.parseInt(nextPayload.version, 10);
+  const hasCompleteV1Fragment = nextPayload.fragment
+    && typeof nextPayload.fragment === 'object'
+    && nextPayload.fragment.code
+    && nextPayload.fragment.title;
+  const startingVersion = Number.isFinite(parsedVersion) && parsedVersion >= 1 && hasCompleteV1Fragment ? 1 : 0;
+  const migrator = FRAGMENT_MANAGED_PAYLOAD_MIGRATORS[startingVersion] || FRAGMENT_MANAGED_PAYLOAD_MIGRATORS[0];
+  return migrator(nextPayload, markdown, options);
+}
+
 function computeMd5(content) {
   return crypto.createHash('md5').update(String(content || ''), 'utf8').digest('hex');
 }
 
-function parseManagedBlock(markdown) {
+function parseManagedBlock(markdown, options = {}) {
   const normalizedMarkdown = String(markdown || '').replace(/^\uFEFF/, '');
   const match = normalizedMarkdown.match(/<!-- APM:DATA\s*([\s\S]*?)\s*-->/);
   if (!match) return null;
@@ -474,10 +784,108 @@ function parseManagedBlock(markdown) {
     const normalized = match[1]
       .replace(/<\\u0021--/g, '<!--')
       .replace(/--\\u003e/g, '-->');
-    return JSON.parse(normalized);
+    return migrateManagedPayload(JSON.parse(normalized), normalizedMarkdown, options);
   } catch {
     return null;
   }
+}
+
+function parseManagedBlocks(markdown) {
+  const normalizedMarkdown = String(markdown || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/<\\u0021--/g, '<!--')
+    .replace(/--\\u003e/g, '-->');
+  const blocks = [];
+  const regex = /<!-- APM:DATA\s*([\s\S]*?)\s*-->/g;
+  let match;
+  while ((match = regex.exec(normalizedMarkdown)) !== null) {
+    try {
+      const normalized = match[1]
+        .replace(/<\\u0021--/g, '<!--')
+        .replace(/--\\u003e/g, '-->');
+      blocks.push(JSON.parse(normalized));
+    } catch {
+      // Ignore malformed embedded managed blocks inside human-authored notes.
+    }
+  }
+  return blocks;
+}
+
+function stripManagedBlocks(markdown) {
+  return String(markdown || '')
+    .replace(/<\\u0021--/g, '<!--')
+    .replace(/--\\u003e/g, '-->')
+    .replace(/<!-- APM:DATA[\s\S]*?-->\s*/g, '')
+    .trim();
+}
+
+function extractMarkdownSectionByHeading(markdown, heading) {
+  const lines = String(markdown || '').split(/\r?\n/);
+  const target = String(heading || '').trim().toLowerCase();
+  let startIndex = -1;
+  let startLevel = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^(#{1,6})\s+(.+?)\s*$/);
+    if (!match || match[2].trim().toLowerCase() !== target) continue;
+    startIndex = index;
+    startLevel = match[1].length;
+    break;
+  }
+  if (startIndex < 0) return '';
+  const collected = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const match = lines[index].match(/^(#{1,6})\s+/);
+    if (match && match[1].length <= startLevel) break;
+    collected.push(lines[index]);
+  }
+  return collected.join('\n').trim();
+}
+
+function uniqueNonEmptyTextBlocks(blocks) {
+  const seen = new Set();
+  const unique = [];
+  for (const block of blocks) {
+    const normalized = String(block || '').trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    unique.push(normalized);
+  }
+  return unique;
+}
+
+function demoteCustomInstructionHeadings(value) {
+  return String(value || '').replace(/^(#{1,2})(\s+)/gm, '###$2').trim();
+}
+
+function sanitizeAiEnvironmentCustomInstructions(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const separator = '\n\n---\n\n';
+  const blocks = raw.split(/\n\s*---\s*\n/g);
+  const cleaned = blocks.map((block) => {
+    const managedInstructions = uniqueNonEmptyTextBlocks(
+      parseManagedBlocks(block)
+        .map((payload) => payload?.editorState?.customInstructions)
+        .filter((item) => typeof item === 'string' && item.trim())
+    );
+    if (managedInstructions.length) return managedInstructions.join(separator);
+
+    const withoutManaged = stripManagedBlocks(block)
+      .replace(/^Imported directives from[^\r\n]*:\s*/i, '')
+      .trim();
+    const customSection = extractMarkdownSectionByHeading(withoutManaged, 'Custom Instructions');
+    if (!customSection && /^#\s+AI Environment Suggestion:/i.test(withoutManaged)) {
+      const sectionStart = withoutManaged.search(/^##\s+(Executive Summary|Mission|Required Behaviors|Module Update Rules|Guardrails|Avoid|Open Questions)/mi);
+      if (sectionStart >= 0) {
+        return withoutManaged
+          .slice(sectionStart)
+          .replace(/\n##\s+Merge Guidance[\s\S]*$/i, '')
+          .trim();
+      }
+    }
+    return (customSection || withoutManaged).trim();
+  });
+  return demoteCustomInstructionHeadings(uniqueNonEmptyTextBlocks(cleaned).join(separator));
 }
 
 function escapeMermaidLabel(value) {
@@ -762,12 +1170,26 @@ function defaultModuleDocumentEditorState(project, docType) {
         summary: `Functional spec for ${project?.name || 'this project'} is still being defined.`,
         versionDate: new Date().toISOString(),
       },
+      functionalAreas: [],
       logicalFlows: [],
       flowEndpoints: [],
       userActionsAndSystemResponses: [],
       validationRules: [],
       interfaceExpectations: [],
       edgeCases: [],
+      openQuestions: [],
+      fragmentHistory: [],
+      flowVisuals: [],
+    };
+  }
+  if (String(docType || '').trim().toLowerCase() === 'domain_models') {
+    return {
+      overview: {
+        summary: `Domain models for ${project?.name || 'this project'} are still being defined.`,
+        versionDate: new Date().toISOString(),
+      },
+      models: [],
+      projections: [],
       openQuestions: [],
       fragmentHistory: [],
     };
@@ -820,10 +1242,211 @@ function defaultModuleDocumentEditorState(project, docType) {
   };
 }
 
+function renderFunctionalSpecFlowVisuals(logicalFlows = [], flowVisuals = [], emptyLabel = '', sectionNumber = '4') {
+  const flows = Array.isArray(logicalFlows) ? logicalFlows : [];
+  const visuals = normalizeFunctionalSpecFlowVisuals(flowVisuals, flows);
+  if (!visuals.length || !visuals.some((visual) => visual.nodes.length || visual.edges.length)) {
+    return [emptyLabel || 'No visual flow graphs defined yet.'];
+  }
+  const flowByKey = new Map(flows.map((flow, index) => [buildFunctionalFlowKey(flow, `flow-${index + 1}`), flow]));
+  return visuals.flatMap((visual, visualIndex) => {
+    const flow = flowByKey.get(String(visual.flowId || '')) || {};
+    const flowTitle = String(flow.title || `Flow ${visualIndex + 1}`).trim();
+    const baseNumber = sectionNumber ? `${sectionNumber}.${visualIndex + 1}` : `${visualIndex + 1}`;
+    const lines = [
+      `### ${baseNumber} ${flowTitle}`,
+      '',
+      '#### Nodes',
+      '',
+    ];
+    if (visual.nodes.length) {
+      visual.nodes.forEach((node, nodeIndex) => {
+        lines.push(
+          ...renderDocumentItemMetadataComment(node),
+          `##### ${baseNumber}.1.${nodeIndex + 1} ${node.label || 'Unnamed node'}`,
+          '',
+          `- Type: ${normalizeFunctionalFlowNodeType(node.type)}`,
+        );
+        if (node.command) lines.push(`- Command: ${node.command}`);
+        if (node.description) lines.push('', node.description);
+        lines.push('');
+      });
+    } else {
+      lines.push('No nodes defined yet.', '');
+    }
+    lines.push('#### Connections', '');
+    if (visual.edges.length) {
+      visual.edges.forEach((edge, edgeIndex) => {
+        const sourceNode = visual.nodes.find((node) => node.id === edge.source);
+        const targetNode = visual.nodes.find((node) => node.id === edge.target);
+        const edgeTitle = edge.label || `${sourceNode?.label || edge.source} to ${targetNode?.label || edge.target}`;
+        lines.push(
+          ...renderDocumentItemMetadataComment(edge),
+          `##### ${baseNumber}.2.${edgeIndex + 1} ${edgeTitle}`,
+          '',
+          `- Type: ${normalizeFunctionalFlowEdgeType(edge.type)}`,
+          `- Source: ${sourceNode?.label || edge.source || 'Unknown source'}`,
+          `- Target: ${targetNode?.label || edge.target || 'Unknown target'}`,
+        );
+        if (edge.draft || !edge.source || !edge.target) lines.push('- Connection Status: Unconnected draft');
+        if (edge.conditionText) lines.push(`- Condition: ${edge.conditionText}`);
+        lines.push('');
+      });
+    } else {
+      lines.push('No connections defined yet.', '');
+    }
+    return lines;
+  });
+}
+
+function renderFunctionalSpecActionVocabulary() {
+  return [
+    '### 1.1 Functional Flowchart Action Vocabulary',
+    '',
+    'These are the standard Functional Spec actions available to the visual editor, fragments, and AI agents.',
+    '',
+    '#### 1.1.1 Node Types',
+    '',
+    '- Start: Begins a logical workflow.',
+    '- User Action: User behavior, command, selection, input, or gesture.',
+    '- System Action: System behavior in response to a trigger or condition.',
+    '- Decision: Conditional branch such as if, else, switch, yes/no, valid/invalid, or available/unavailable.',
+    '- Validation: Rule that checks input, state, permissions, data shape, or readiness.',
+    '- Loop: Repeated behavior until a stop condition is met.',
+    '- Input: Data, events, commands, files, selections, or external signals entering the flow.',
+    '- Output: Data, messages, files, screen changes, events, or results produced by the flow.',
+    '- Endpoint: Attachable control point that other modules may reference as an input, output, or integration point.',
+    '- Return: Where the flow returns control, state, data, or user focus.',
+    '- Error Path: Failure handling, recovery, fallback behavior, or user-visible error messaging.',
+    '- Log / Audit: Logging, audit trail, diagnostics, telemetry, or error reporting behavior.',
+    '- External Interaction: Interaction with another system, service, API, file system, database, device, or module.',
+    '- Formula: Calculation, derivation, comparison, transformation, or logical expression.',
+    '- Model Reference: Relationship to a shared domain model, schema model, external payload, or data concept.',
+    '- Open Question: Unresolved design question attached to a flow, node, edge, endpoint, Functional Area, or document scope.',
+    '',
+    '#### 1.1.2 Connection Types',
+    '',
+    '- Continue: Moves from one action to the next without a special condition.',
+    '- If / Then: Continues only when the stated condition is true or satisfied.',
+    '- Else: Continues when the prior condition is false or not satisfied.',
+    '- Loop Until: Repeats until the stated condition is met.',
+    '- On Success: Continues after the previous action succeeds.',
+    '- On Failure: Continues after the previous action fails or cannot complete.',
+    '- Returns To: Connects a flow back to a caller, return point, parent flow, or previous user context.',
+    '- Emits: Source produces an event, message, file, data object, signal, or output.',
+    '- Consumes: Target reads, receives, or depends on an event, message, file, data object, signal, or input.',
+    '',
+    '#### 1.1.3 Canvas Actions',
+    '',
+    '- Create Node: Add a typed node to a workflow.',
+    '- Move Node: Reposition a node without changing its meaning or id.',
+    '- Resize Node: Change visual size without changing meaning or id.',
+    '- Delete Node: Remove the node while preserving affected connections as unattached draft edges when possible.',
+    '- Connect Nodes: Create a typed connection between source and target handles.',
+    '- Create Draft Edge: Create an unattached connection when the target is not known yet.',
+    '- Remove Draft Edge: Delete an unattached connection.',
+    '- Clean Layout: Reposition visible workflow nodes to reduce overlap while preserving ids and relationships.',
+    '- Hide Flow: Exclude a flow from the current visual view without deleting it from the document.',
+    '- Group Flows: Organize flows into a Functional Area or reusable shared flow group.',
+    '- Attach Comment: Attach an open question or note to a workflow, group, node, edge, endpoint, or document scope.',
+    '- Reference Model: Link a node, edge, formula, or flow to a shared domain model by stable id.',
+    '- Reference Module Item: Link a control point or workflow element to another module item by stable id.',
+    '',
+  ];
+}
+
 function renderModuleDocumentEditorStateMarkdown(project, docType, editorState) {
   const normalizedDocType = String(docType || '').trim().toLowerCase();
   const normalizedEditorState = normalizeDocumentEditorStateForStorage(project, normalizedDocType, editorState);
   if (normalizedDocType === 'functional_spec') {
+    const defaultState = defaultModuleDocumentEditorState(project, normalizedDocType);
+    let state = defaultState;
+    if (normalizedEditorState && typeof normalizedEditorState === 'object') {
+      const logicalFlows = normalizeModuleDetailList(normalizedEditorState.logicalFlows, { docType: 'functional_spec', sectionKey: 'logical-flows' });
+      const flowVisuals = normalizeFunctionalSpecFlowVisuals(normalizedEditorState.flowVisuals, logicalFlows);
+      state = {
+          ...defaultState,
+          ...normalizedEditorState,
+          overview: {
+            ...defaultState.overview,
+            ...(normalizedEditorState.overview || {}),
+          },
+          functionalAreas: normalizeModuleDetailList(normalizedEditorState.functionalAreas, { docType: 'functional_spec', sectionKey: 'functional-areas' }),
+          logicalFlows,
+          flowEndpoints: normalizeFunctionalSpecFlowEndpoints(normalizedEditorState.flowEndpoints, flowVisuals),
+          flowVisuals,
+          userActionsAndSystemResponses: normalizeModuleDetailList(normalizedEditorState.userActionsAndSystemResponses, { docType: 'functional_spec', sectionKey: 'user-actions-and-system-responses' }),
+          validationRules: normalizeModuleDetailList(normalizedEditorState.validationRules, { docType: 'functional_spec', sectionKey: 'validation-rules' }),
+          interfaceExpectations: normalizeModuleDetailList(normalizedEditorState.interfaceExpectations, { docType: 'functional_spec', sectionKey: 'interface-expectations' }),
+          edgeCases: normalizeModuleDetailList(normalizedEditorState.edgeCases, { docType: 'functional_spec', sectionKey: 'edge-cases' }),
+          openQuestions: normalizeModuleDetailList(normalizedEditorState.openQuestions, { docType: 'functional_spec', sectionKey: 'open-questions' }),
+          fragmentHistory: Array.isArray(normalizedEditorState.fragmentHistory) ? normalizedEditorState.fragmentHistory : [],
+        };
+    }
+    const fragmentHistory = Array.isArray(state.fragmentHistory) ? state.fragmentHistory : [];
+    return [
+      buildDocumentHeader(docType, project),
+      buildManagedBlock({
+        docType,
+        version: 1,
+        markdown: '',
+        editorState: state,
+      }),
+      '',
+      '## 1. Executive Summary',
+      '',
+      ...renderDocumentItemMetadataComment({
+        stableId: state.overview?.stableId || '',
+        sourceRefs: state.overview?.sourceRefs || [],
+        versionDate: state.overview?.versionDate || '',
+      }),
+      state.overview?.summary || 'Pending functional spec summary.',
+      '',
+      ...renderFunctionalSpecActionVocabulary(),
+      '## 2. Functional Areas',
+      '',
+      ...renderModuleDetailList(state.functionalAreas, 'No functional areas defined yet.', '2'),
+      '## 3. Logical Workflows',
+      '',
+      ...renderModuleDetailList(state.logicalFlows, 'No logical flows defined yet.', '3'),
+      '## 4. Flow Nodes and Connections',
+      '',
+      ...renderFunctionalSpecFlowVisuals(state.logicalFlows, state.flowVisuals, 'No visual flow graphs defined yet.', '4'),
+      '## 5. Flow Endpoints and Return Points',
+      '',
+      ...renderModuleDetailList(state.flowEndpoints, 'No flow endpoints or return points defined yet.', '5'),
+      '## 6. User Actions and System Responses',
+      '',
+      ...renderModuleDetailList(state.userActionsAndSystemResponses, 'No standalone user action and system response notes yet.', '6'),
+      '## 7. Validation Rules',
+      '',
+      ...renderModuleDetailList(state.validationRules, 'No standalone validation rules yet.', '7'),
+      '## 8. Interface Expectations',
+      '',
+      ...renderModuleDetailList(state.interfaceExpectations, 'No standalone interface expectations yet.', '8'),
+      '## 9. Edge Cases',
+      '',
+      ...renderModuleDetailList(state.edgeCases, 'No standalone edge cases yet.', '9'),
+      '## 10. Open Questions',
+      '',
+      ...renderModuleDetailList(state.openQuestions, 'No open questions yet.', '10'),
+      '## 11. Applied Fragments',
+      '',
+      ...(fragmentHistory.length
+        ? fragmentHistory.flatMap((fragment) => [
+            `### ${fragment.code || fragment.id || 'Fragment'}: ${fragment.title || 'Imported fragment'}`,
+            '',
+            `- Status: ${fragment.status || 'integrated'}`,
+            `- Source: ${fragment.sourceScope || 'project'}`,
+            fragment.integratedAt ? `- Integrated: ${fragment.integratedAt}` : null,
+            '',
+            fragment.summary || 'No fragment summary.',
+            '',
+          ].filter((line) => line !== null))
+        : ['No applied fragments yet.', '']),
+    ].join('\n');
+  }
+  if (normalizedDocType === 'domain_models') {
     const defaultState = defaultModuleDocumentEditorState(project, normalizedDocType);
     const state = normalizedEditorState && typeof normalizedEditorState === 'object'
       ? {
@@ -833,13 +1456,9 @@ function renderModuleDocumentEditorStateMarkdown(project, docType, editorState) 
             ...defaultState.overview,
             ...(normalizedEditorState.overview || {}),
           },
-          logicalFlows: normalizeModuleDetailList(normalizedEditorState.logicalFlows, { docType: 'functional_spec', sectionKey: 'logical-flows' }),
-          flowEndpoints: normalizeModuleDetailList(normalizedEditorState.flowEndpoints, { docType: 'functional_spec', sectionKey: 'flow-endpoints' }),
-          userActionsAndSystemResponses: normalizeModuleDetailList(normalizedEditorState.userActionsAndSystemResponses, { docType: 'functional_spec', sectionKey: 'user-actions-and-system-responses' }),
-          validationRules: normalizeModuleDetailList(normalizedEditorState.validationRules, { docType: 'functional_spec', sectionKey: 'validation-rules' }),
-          interfaceExpectations: normalizeModuleDetailList(normalizedEditorState.interfaceExpectations, { docType: 'functional_spec', sectionKey: 'interface-expectations' }),
-          edgeCases: normalizeModuleDetailList(normalizedEditorState.edgeCases, { docType: 'functional_spec', sectionKey: 'edge-cases' }),
-          openQuestions: normalizeModuleDetailList(normalizedEditorState.openQuestions, { docType: 'functional_spec', sectionKey: 'open-questions' }),
+          models: normalizeDomainModelList(normalizedEditorState.models),
+          projections: normalizeDomainModelProjectionList(normalizedEditorState.projections),
+          openQuestions: normalizeModuleDetailList(normalizedEditorState.openQuestions, { docType: 'domain_models', sectionKey: 'open-questions' }),
           fragmentHistory: Array.isArray(normalizedEditorState.fragmentHistory) ? normalizedEditorState.fragmentHistory : [],
         }
       : defaultState;
@@ -860,30 +1479,21 @@ function renderModuleDocumentEditorStateMarkdown(project, docType, editorState) 
         sourceRefs: state.overview?.sourceRefs || [],
         versionDate: state.overview?.versionDate || '',
       }),
-      state.overview?.summary || 'Pending functional spec summary.',
+      state.overview?.summary || 'Pending domain model summary.',
       '',
-      '## 2. Logical Flows',
+      '## 2. Domain Model Catalog',
       '',
-      ...renderModuleDetailList(state.logicalFlows, 'No logical flows defined yet.', '2'),
-      '## 3. Flow Endpoints and Return Points',
+      ...renderDomainModelCatalog(state.models),
+      '## 3. Domain Models',
       '',
-      ...renderModuleDetailList(state.flowEndpoints, 'No flow endpoints or return points defined yet.', '3'),
-      '## 4. User Actions and System Responses',
+      ...renderDomainModels(state.models),
+      '## 4. Model Projections',
       '',
-      ...renderModuleDetailList(state.userActionsAndSystemResponses, 'No user actions and system responses defined yet.', '4'),
-      '## 5. Validation Rules',
+      ...renderDomainModelProjections(state.projections),
+      '## 5. Open Questions',
       '',
-      ...renderModuleDetailList(state.validationRules, 'No validation rules defined yet.', '5'),
-      '## 6. Interface Expectations',
-      '',
-      ...renderModuleDetailList(state.interfaceExpectations, 'No interface expectations defined yet.', '6'),
-      '## 7. Edge Cases',
-      '',
-      ...renderModuleDetailList(state.edgeCases, 'No edge cases defined yet.', '7'),
-      '## 8. Open Questions',
-      '',
-      ...renderModuleDetailList(state.openQuestions, 'No open questions yet.', '8'),
-      '## 9. Applied Fragments',
+      ...renderModuleDetailList(state.openQuestions, 'No open questions yet.', '5'),
+      '## 6. Applied Fragments',
       '',
       ...(fragmentHistory.length
         ? fragmentHistory.flatMap((fragment) => [
@@ -2131,8 +2741,15 @@ function buildFunctionalFlowKey(flow = {}, fallback = '') {
 
 function normalizeFunctionalFlowNodeType(value) {
   const normalized = String(value || '').trim().toLowerCase();
-  if (['start', 'action', 'decision', 'endpoint', 'return'].includes(normalized)) return normalized;
-  return 'action';
+  if (normalized === 'action') return 'system_action';
+  if (['start', 'user_action', 'system_action', 'decision', 'validation', 'loop', 'input', 'output', 'endpoint', 'return', 'error_path', 'log_audit', 'external_interaction', 'formula', 'model_reference', 'open_question'].includes(normalized)) return normalized;
+  return 'system_action';
+}
+
+function normalizeFunctionalFlowEdgeType(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['continue', 'if_then', 'else', 'loop_until', 'on_success', 'on_failure', 'returns_to', 'emits', 'consumes'].includes(normalized)) return normalized;
+  return 'continue';
 }
 
 function defaultFunctionalFlowNodePosition(index) {
@@ -2181,10 +2798,13 @@ function createFunctionalFlowEdgeEntry(value = {}, index = 0, nodes = [], flow =
   const nodeIds = new Set(nodes.map((node) => String(node?.id || '').trim()).filter(Boolean));
   const source = String(value?.source || value?.sourceId || '').trim();
   const target = String(value?.target || value?.targetId || '').trim();
+  const sourceHandle = String(value?.sourceHandle || 'output').trim();
+  const targetHandle = String(value?.targetHandle || 'input').trim();
   const label = String(value?.label || '').trim();
+  const edgeTitle = label || [source, target].filter(Boolean).join(' to ') || 'unconnected-edge';
   const stableId = buildDocumentItemStableId('functional_spec', 'flow-edge', {
     stableId: value?.stableId,
-    title: label || `${source}-${target}`,
+    title: edgeTitle,
     description: '',
   }, index, [buildFunctionalFlowKey(flow), source, target, label]);
   return {
@@ -2193,11 +2813,17 @@ function createFunctionalFlowEdgeEntry(value = {}, index = 0, nodes = [], flow =
     stableId,
     source,
     target,
+    sourceHandle,
+    targetHandle,
+    type: normalizeFunctionalFlowEdgeType(value?.type),
     label,
+    conditionText: String(value?.conditionText || ''),
+    parsedExpressionHint: value?.parsedExpressionHint || null,
+    draft: Boolean(value?.draft),
     hidden: Boolean(value?.hidden),
     versionDate: String(value?.versionDate || ''),
     sourceRefs: normalizeSourceRefs(value?.sourceRefs),
-    valid: nodeIds.has(source) && nodeIds.has(target),
+    valid: Boolean(source || target) && (!source || nodeIds.has(source)) && (!target || nodeIds.has(target)),
   };
 }
 
@@ -2231,6 +2857,307 @@ function normalizeFunctionalSpecFlowVisuals(items, logicalFlows = []) {
       };
     })
     .filter((visual) => visual.flowId);
+}
+
+function normalizeFunctionalSpecFlowEndpoints(items, flowVisuals = []) {
+  const normalized = normalizeModuleDetailList(items, { docType: 'functional_spec', sectionKey: 'flow-endpoints' });
+  const nodeStableIds = new Set();
+  (Array.isArray(flowVisuals) ? flowVisuals : []).forEach((visual) => {
+    (Array.isArray(visual?.nodes) ? visual.nodes : []).forEach((node) => {
+      if (!['endpoint', 'return'].includes(normalizeFunctionalFlowNodeType(node?.type))) return;
+      const stableId = String(node?.stableId || '').trim();
+      if (stableId) nodeStableIds.add(stableId);
+    });
+  });
+  const seen = new Set();
+  return normalized
+    .map((endpoint) => {
+      const id = String(endpoint?.id || '').trim();
+      const stableId = String(endpoint?.stableId || '').trim();
+      if (id.startsWith('derived-endpoint-') && stableId && nodeStableIds.has(stableId) && !stableId.endsWith('-endpoint')) {
+        return {
+          ...endpoint,
+          stableId: `${stableId}-endpoint`,
+        };
+      }
+      return endpoint;
+    })
+    .filter((endpoint, index) => {
+      const key = String(endpoint?.stableId || `${endpoint?.title || ''}::${endpoint?.description || ''}` || `endpoint-${index}`).trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeDomainModelType(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\s+/g, '-');
+  if (['entity', 'value-object', 'aggregate', 'event', 'command', 'concept', 'external-resource'].includes(normalized)) return normalized;
+  return normalized || 'concept';
+}
+
+function normalizeDomainConceptualType(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\s+/g, '-');
+  if (['text', 'number', 'boolean', 'date', 'datetime', 'identifier', 'enum', 'object', 'collection', 'reference', 'unknown'].includes(normalized)) return normalized;
+  return normalized || 'unknown';
+}
+
+function createDomainModelFieldEntry(value = {}, index = 0, model = {}) {
+  const name = String(value?.name || value?.title || '').trim();
+  const displayName = String(value?.displayName || name).trim();
+  const modelName = String(model?.name || model?.title || '').trim();
+  const stableId = buildDocumentItemStableId('domain_models', 'field', {
+    stableId: value?.stableId,
+    title: [modelName, name || displayName].filter(Boolean).join(' '),
+    description: value?.description || '',
+  }, index, [modelName, name, displayName]);
+  return {
+    ...(value && typeof value === 'object' ? value : {}),
+    id: String(value?.id || stableId),
+    stableId,
+    name,
+    displayName,
+    description: String(value?.description || ''),
+    conceptualType: normalizeDomainConceptualType(value?.conceptualType || value?.type),
+    required: Boolean(value?.required),
+    defaultValue: value?.defaultValue !== undefined ? String(value.defaultValue || '') : '',
+    allowedValues: Array.isArray(value?.allowedValues)
+      ? value.allowedValues.map((item) => String(item || '').trim()).filter(Boolean)
+      : String(value?.allowedValues || '').split(/[,;\n]+/).map((item) => item.trim()).filter(Boolean),
+    constraints: normalizeModuleDetailList(value?.constraints, { docType: 'domain_models', sectionKey: 'field-constraints' }),
+    sourceRefs: normalizeSourceRefs(value?.sourceRefs),
+    versionDate: String(value?.versionDate || ''),
+  };
+}
+
+function normalizeDomainModelFields(items, model = {}) {
+  return Array.isArray(items)
+    ? items
+      .map((item, index) => createDomainModelFieldEntry(item, index, model))
+      .filter((item) => item.name || item.description)
+    : [];
+}
+
+function createDomainModelRelationshipEntry(value = {}, index = 0, model = {}) {
+  const title = String(value?.title || value?.name || '').trim();
+  const modelName = String(model?.name || model?.title || '').trim();
+  const stableId = buildDocumentItemStableId('domain_models', 'relationship', {
+    stableId: value?.stableId,
+    title: [modelName, title].filter(Boolean).join(' '),
+    description: value?.description || '',
+  }, index, [modelName, title, value?.targetModelName || value?.targetModelStableId]);
+  return {
+    ...(value && typeof value === 'object' ? value : {}),
+    id: String(value?.id || stableId),
+    stableId,
+    title,
+    description: String(value?.description || ''),
+    relationshipType: String(value?.relationshipType || value?.type || '').trim(),
+    targetModelStableId: String(value?.targetModelStableId || '').trim(),
+    targetModelName: String(value?.targetModelName || '').trim(),
+    sourceRefs: normalizeSourceRefs(value?.sourceRefs),
+    versionDate: String(value?.versionDate || ''),
+  };
+}
+
+function normalizeDomainModelRelationships(items, model = {}) {
+  return Array.isArray(items)
+    ? items
+      .map((item, index) => createDomainModelRelationshipEntry(item, index, model))
+      .filter((item) => item.title || item.description || item.targetModelName || item.targetModelStableId)
+    : [];
+}
+
+function createDomainModelEntry(value = {}, index = 0) {
+  const name = String(value?.name || value?.title || '').trim();
+  const summary = String(value?.summary || value?.description || '').trim();
+  const stableId = buildDocumentItemStableId('domain_models', 'model', {
+    stableId: value?.stableId,
+    title: name,
+    description: summary,
+  }, index, [name, summary]);
+  const model = {
+    ...(value && typeof value === 'object' ? value : {}),
+    id: String(value?.id || stableId),
+    stableId,
+    name,
+    summary,
+    description: String(value?.description || ''),
+    modelType: normalizeDomainModelType(value?.modelType || value?.type),
+    sourceRefs: normalizeSourceRefs(value?.sourceRefs),
+    versionDate: String(value?.versionDate || ''),
+  };
+  model.fields = normalizeDomainModelFields(value?.fields, model);
+  model.relationships = normalizeDomainModelRelationships(value?.relationships, model);
+  model.rules = normalizeModuleDetailList(value?.rules, { docType: 'domain_models', sectionKey: `model-${name || index + 1}-rules` });
+  model.examples = normalizeModuleDetailList(value?.examples, { docType: 'domain_models', sectionKey: `model-${name || index + 1}-examples` });
+  return model;
+}
+
+function normalizeDomainModelList(items) {
+  return Array.isArray(items)
+    ? items
+      .map((item, index) => createDomainModelEntry(item, index))
+      .filter((item) => item.name || item.summary || item.description || item.fields.length)
+    : [];
+}
+
+function normalizeDomainProjectionType(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\s+/g, '-');
+  if (['functional', 'experience', 'persistence', 'technical', 'api-request', 'api-response', 'event', 'message', 'test-fixture'].includes(normalized)) return normalized;
+  return normalized || 'functional';
+}
+
+function createDomainModelProjectionEntry(value = {}, index = 0) {
+  const name = String(value?.name || value?.title || '').trim();
+  const stableId = buildDocumentItemStableId('domain_models', 'projection', {
+    stableId: value?.stableId,
+    title: name,
+    description: value?.description || '',
+  }, index, [name, value?.baseModelStableId, value?.owningModule, value?.projectionType]);
+  return {
+    ...(value && typeof value === 'object' ? value : {}),
+    id: String(value?.id || stableId),
+    stableId,
+    baseModelId: String(value?.baseModelId || '').trim(),
+    baseModelStableId: String(value?.baseModelStableId || '').trim(),
+    baseModelName: String(value?.baseModelName || '').trim(),
+    owningModule: String(value?.owningModule || '').trim(),
+    projectionType: normalizeDomainProjectionType(value?.projectionType || value?.type),
+    name,
+    description: String(value?.description || ''),
+    fieldMappings: normalizeModuleDetailList(value?.fieldMappings, { docType: 'domain_models', sectionKey: `projection-${name || index + 1}-field-mappings` }),
+    excludedFields: Array.isArray(value?.excludedFields)
+      ? value.excludedFields.map((item) => String(item || '').trim()).filter(Boolean)
+      : String(value?.excludedFields || '').split(/[,;\n]+/).map((item) => item.trim()).filter(Boolean),
+    additionalFields: normalizeDomainModelFields(value?.additionalFields, { name }),
+    constraints: normalizeModuleDetailList(value?.constraints, { docType: 'domain_models', sectionKey: `projection-${name || index + 1}-constraints` }),
+    sourceRefs: normalizeSourceRefs(value?.sourceRefs),
+    versionDate: String(value?.versionDate || ''),
+  };
+}
+
+function normalizeDomainModelProjectionList(items) {
+  return Array.isArray(items)
+    ? items
+      .map((item, index) => createDomainModelProjectionEntry(item, index))
+      .filter((item) => item.name || item.description || item.baseModelStableId || item.baseModelName)
+    : [];
+}
+
+function renderDomainModelCatalog(models) {
+  const normalized = normalizeDomainModelList(models);
+  if (!normalized.length) return ['No domain models defined yet.', ''];
+  return normalized.flatMap((model, index) => [
+    `### 2.${index + 1} ${model.name || 'Unnamed Model'}`,
+    '',
+    `- Type: ${model.modelType || 'concept'}`,
+    `- Fields: ${model.fields.length}`,
+    `- Relationships: ${model.relationships.length}`,
+    model.summary ? `- Summary: ${model.summary}` : null,
+    '',
+  ].filter((line) => line !== null));
+}
+
+function renderDomainModelFields(model, modelNumber) {
+  if (!model.fields.length) return ['No fields defined yet.', ''];
+  return model.fields.flatMap((field, index) => [
+    ...renderDocumentItemMetadataComment(field),
+    `#### ${modelNumber}.${index + 1} Field: ${field.name || 'Unnamed Field'}`,
+    '',
+    `- Display Name: ${field.displayName || field.name || 'Unnamed Field'}`,
+    `- Conceptual Type: ${field.conceptualType || 'unknown'}`,
+    `- Required: ${field.required ? 'Yes' : 'No'}`,
+    field.defaultValue ? `- Default Value: ${field.defaultValue}` : null,
+    field.allowedValues.length ? `- Allowed Values: ${field.allowedValues.join(', ')}` : null,
+    field.description ? ['', field.description] : null,
+    field.constraints.length ? ['', 'Constraints:', '', ...renderModuleDetailList(field.constraints, 'No field constraints defined yet.', `${modelNumber}.${index + 1}`)] : null,
+    '',
+  ].flat().filter((line) => line !== null));
+}
+
+function renderDomainModelRelationships(model, modelNumber) {
+  if (!model.relationships.length) return ['No relationships defined yet.', ''];
+  return model.relationships.flatMap((relationship, index) => [
+    ...renderDocumentItemMetadataComment(relationship),
+    `#### ${modelNumber}.${index + 1} Relationship: ${relationship.title || relationship.targetModelName || 'Unnamed Relationship'}`,
+    '',
+    relationship.relationshipType ? `- Type: ${relationship.relationshipType}` : null,
+    relationship.targetModelName ? `- Target Model: ${relationship.targetModelName}` : null,
+    relationship.targetModelStableId ? `- Target Model ID: ${relationship.targetModelStableId}` : null,
+    relationship.description ? ['', relationship.description] : null,
+    '',
+  ].flat().filter((line) => line !== null));
+}
+
+function renderDomainModels(models) {
+  const normalized = normalizeDomainModelList(models);
+  if (!normalized.length) return ['No domain model details defined yet.', ''];
+  return normalized.flatMap((model, index) => {
+    const modelNumber = `3.${index + 1}`;
+    return [
+      ...renderDocumentItemMetadataComment(model),
+      `### ${modelNumber} ${model.name || 'Unnamed Model'}`,
+      '',
+      `- Model Type: ${model.modelType || 'concept'}`,
+      model.summary ? `- Summary: ${model.summary}` : null,
+      '',
+      model.description || 'No model description captured yet.',
+      '',
+      `#### ${modelNumber}.1 Fields`,
+      '',
+      ...renderDomainModelFields(model, `${modelNumber}.1`),
+      `#### ${modelNumber}.2 Relationships`,
+      '',
+      ...renderDomainModelRelationships(model, `${modelNumber}.2`),
+      `#### ${modelNumber}.3 Rules`,
+      '',
+      ...renderModuleDetailList(model.rules, 'No model rules defined yet.', `${modelNumber}.3`),
+      `#### ${modelNumber}.4 Examples`,
+      '',
+      ...renderModuleDetailList(model.examples, 'No model examples defined yet.', `${modelNumber}.4`),
+    ].filter((line) => line !== null);
+  });
+}
+
+function renderDomainModelProjections(projections) {
+  const normalized = normalizeDomainModelProjectionList(projections);
+  if (!normalized.length) return ['No model projections defined yet.', ''];
+  return normalized.flatMap((projection, index) => {
+    const projectionNumber = `4.${index + 1}`;
+    return [
+      ...renderDocumentItemMetadataComment(projection),
+      `### ${projectionNumber} ${projection.name || 'Unnamed Projection'}`,
+      '',
+      `- Projection Type: ${projection.projectionType || 'functional'}`,
+      projection.owningModule ? `- Owning Module: ${projection.owningModule}` : null,
+      projection.baseModelName ? `- Base Model: ${projection.baseModelName}` : null,
+      projection.baseModelStableId ? `- Base Model ID: ${projection.baseModelStableId}` : null,
+      projection.excludedFields.length ? `- Excluded Fields: ${projection.excludedFields.join(', ')}` : null,
+      '',
+      projection.description || 'No projection description captured yet.',
+      '',
+      '#### Field Mappings',
+      '',
+      ...renderModuleDetailList(projection.fieldMappings, 'No field mappings defined yet.', `${projectionNumber}.1`),
+      '#### Additional Fields',
+      '',
+      ...(projection.additionalFields.length
+        ? projection.additionalFields.flatMap((field, fieldIndex) => [
+            ...renderDocumentItemMetadataComment(field),
+            `##### ${projectionNumber}.2.${fieldIndex + 1} ${field.name || 'Unnamed Field'}`,
+            '',
+            `- Conceptual Type: ${field.conceptualType || 'unknown'}`,
+            `- Required: ${field.required ? 'Yes' : 'No'}`,
+            field.description || '',
+            '',
+          ])
+        : ['No additional fields defined yet.', '']),
+      '#### Constraints',
+      '',
+      ...renderModuleDetailList(projection.constraints, 'No projection constraints defined yet.', `${projectionNumber}.3`),
+    ].filter((line) => line !== null);
+  });
 }
 
 function createChangelogEntry(value = {}, index = 0) {
@@ -2479,6 +3406,7 @@ function backfillDocumentEditorStateFromChangelog(project, docType, editorState,
         },
       },
       requiredBehaviors: mergeSourceRefsIntoList(editorState.requiredBehaviors, sourceRefMap),
+      termDictionary: mergeSourceRefsIntoList(editorState.termDictionary, sourceRefMap),
       moduleUpdateRules: mergeSourceRefsIntoList(editorState.moduleUpdateRules, sourceRefMap),
       dataPhrasingRules: mergeSourceRefsIntoList(editorState.dataPhrasingRules, sourceRefMap),
       avoidRules: mergeSourceRefsIntoList(editorState.avoidRules, sourceRefMap),
@@ -2715,6 +3643,9 @@ function getDocumentFragmentSectionConfigs(docType) {
   const prdDetail = (key, pathParts, aliases = []) => ({ key, path: pathParts, kind: 'prd-detail', aliases });
   const prdRisk = (key, pathParts, aliases = []) => ({ key, path: pathParts, kind: 'prd-risk', aliases });
   const changelog = (key, pathParts, aliases = []) => ({ key, path: pathParts, kind: 'changelog', aliases });
+  const domainModel = (key, pathParts, aliases = []) => ({ key, path: pathParts, kind: 'domain-model', aliases });
+  const domainProjection = (key, pathParts, aliases = []) => ({ key, path: pathParts, kind: 'domain-projection', aliases });
+  const functionalFlowVisual = (key, pathParts, aliases = []) => ({ key, path: pathParts, kind: 'functional-flow-visual', aliases });
   const map = {
     prd: [
       prdDetail('functional-requirements-workflows', ['functionalRequirements', 'workflows'], ['workflows', 'functionalrequirements.workflows', 'functional-requirements.workflows', '3.1']),
@@ -2742,7 +3673,9 @@ function getDocumentFragmentSectionConfigs(docType) {
       detail('open-questions', ['openQuestions'], ['openquestions']),
     ],
     functional_spec: [
+      detail('functional-areas', ['functionalAreas'], ['functionalareas', 'areas', 'functional-area', '2.areas']),
       detail('logical-flows', ['logicalFlows'], ['workflows', 'workflow-updates', 'logicalflowupdates', '2']),
+      functionalFlowVisual('flow-visuals', ['flowVisuals'], ['flowvisuals', 'visual-flows', 'flow-graphs', 'flowgraphs', 'nodes-and-connections', '4']),
       detail('flow-endpoints', ['flowEndpoints'], ['flow-endpoints-and-return-points', 'flowendpoints', 'endpoints', '3']),
       detail('user-actions-and-system-responses', ['userActionsAndSystemResponses'], ['user-action-and-system-response-updates', 'useractionsandsystemresponses', '4']),
       detail('validation-rules', ['validationRules'], ['validation', 'validation-and-edge-cases', '5']),
@@ -2750,7 +3683,13 @@ function getDocumentFragmentSectionConfigs(docType) {
       detail('edge-cases', ['edgeCases'], ['edgecases', '7']),
       detail('open-questions', ['openQuestions'], ['openquestions', '8']),
     ],
+    domain_models: [
+      domainModel('models', ['models'], ['domain-models', 'domainmodels', 'model-catalog', '3']),
+      domainProjection('projections', ['projections'], ['model-projections', 'modelprojections', 'projections', '4']),
+      detail('open-questions', ['openQuestions'], ['openquestions', '5']),
+    ],
     ai_environment: [
+      detail('term-dictionary', ['termDictionary'], ['terms', 'dictionary', 'glossary', 'termdictionary']),
       detail('required-behaviors', ['requiredBehaviors'], ['requiredbehaviors']),
       detail('module-update-rules', ['moduleUpdateRules'], ['moduleupdaterules']),
       detail('data-phrasing-rules', ['dataPhrasingRules'], ['dataphrasingrules']),
@@ -2839,6 +3778,47 @@ function buildOperationItemValue(docType, sectionConfig, operation, currentItem 
       title: operation.title !== undefined ? operation.title : (payload.title !== undefined ? payload.title : currentItem?.title),
       description: operation.description !== undefined ? operation.description : (payload.description !== undefined ? payload.description : currentItem?.description),
       versionDate,
+      sourceRefs: nextSourceRefs,
+    };
+  }
+
+  if (sectionConfig.kind === 'domain-model') {
+    return createDomainModelEntry({
+      ...(currentItem && typeof currentItem === 'object' ? currentItem : {}),
+      ...payload,
+      stableId: operation.targetItemId || payload.stableId || currentItem?.stableId || '',
+      name: operation.name !== undefined ? operation.name : (payload.name !== undefined ? payload.name : currentItem?.name),
+      title: operation.title !== undefined ? operation.title : (payload.title !== undefined ? payload.title : currentItem?.title),
+      summary: operation.summary !== undefined ? operation.summary : (payload.summary !== undefined ? payload.summary : currentItem?.summary),
+      description: operation.description !== undefined ? operation.description : (payload.description !== undefined ? payload.description : currentItem?.description),
+      versionDate,
+      sourceRefs: nextSourceRefs,
+    }, index);
+  }
+
+  if (sectionConfig.kind === 'domain-projection') {
+    return createDomainModelProjectionEntry({
+      ...(currentItem && typeof currentItem === 'object' ? currentItem : {}),
+      ...payload,
+      stableId: operation.targetItemId || payload.stableId || currentItem?.stableId || '',
+      name: operation.name !== undefined ? operation.name : (payload.name !== undefined ? payload.name : currentItem?.name),
+      title: operation.title !== undefined ? operation.title : (payload.title !== undefined ? payload.title : currentItem?.title),
+      description: operation.description !== undefined ? operation.description : (payload.description !== undefined ? payload.description : currentItem?.description),
+      versionDate,
+      sourceRefs: nextSourceRefs,
+    }, index);
+  }
+
+  if (sectionConfig.kind === 'functional-flow-visual') {
+    return {
+      ...(currentItem && typeof currentItem === 'object' ? currentItem : {}),
+      ...payload,
+      id: operation.targetItemId || payload.id || currentItem?.id || '',
+      flowId: payload.flowId || operation.targetItemId || currentItem?.flowId || '',
+      flowStableId: payload.flowStableId || currentItem?.flowStableId || '',
+      versionDate,
+      nodes: Array.isArray(payload.nodes) ? payload.nodes : (Array.isArray(currentItem?.nodes) ? currentItem.nodes : []),
+      edges: Array.isArray(payload.edges) ? payload.edges : (Array.isArray(currentItem?.edges) ? currentItem.edges : []),
       sourceRefs: nextSourceRefs,
     };
   }
@@ -3419,6 +4399,13 @@ function normalizeDocumentEditorStateForStorage(project, docType, editorState) {
     const state = editorState && typeof editorState === 'object' ? editorState : {};
     const legacyWorkingContentEntries = splitLegacyDocumentTextToDetailEntries(state.workingContent);
     const legacyOpenQuestionEntries = splitLegacyDocumentTextToDetailEntries(state.openQuestions);
+    const logicalFlows = normalizeModuleDetailList(
+      Array.isArray(state.logicalFlows) && state.logicalFlows.length
+        ? state.logicalFlows
+        : (Array.isArray(state.workflows) && state.workflows.length ? state.workflows : legacyWorkingContentEntries),
+      { docType: 'functional_spec', sectionKey: 'logical-flows' }
+    );
+    const flowVisuals = normalizeFunctionalSpecFlowVisuals(state.flowVisuals, logicalFlows);
     return {
       ...defaults,
       ...state,
@@ -3431,22 +4418,10 @@ function normalizeDocumentEditorStateForStorage(project, docType, editorState) {
         }),
         sourceRefs: normalizeSourceRefs(state.overview?.sourceRefs),
       },
-      logicalFlows: normalizeModuleDetailList(
-        Array.isArray(state.logicalFlows) && state.logicalFlows.length
-          ? state.logicalFlows
-          : (Array.isArray(state.workflows) && state.workflows.length ? state.workflows : legacyWorkingContentEntries),
-        { docType: 'functional_spec', sectionKey: 'logical-flows' }
-      ),
-      flowVisuals: normalizeFunctionalSpecFlowVisuals(
-        state.flowVisuals,
-        normalizeModuleDetailList(
-          Array.isArray(state.logicalFlows) && state.logicalFlows.length
-            ? state.logicalFlows
-            : (Array.isArray(state.workflows) && state.workflows.length ? state.workflows : legacyWorkingContentEntries),
-          { docType: 'functional_spec', sectionKey: 'logical-flows' }
-        )
-      ),
-      flowEndpoints: normalizeModuleDetailList(state.flowEndpoints || state.endpoints, { docType: 'functional_spec', sectionKey: 'flow-endpoints' }),
+      functionalAreas: normalizeModuleDetailList(state.functionalAreas, { docType: 'functional_spec', sectionKey: 'functional-areas' }),
+      logicalFlows,
+      flowVisuals,
+      flowEndpoints: normalizeFunctionalSpecFlowEndpoints(state.flowEndpoints || state.endpoints, flowVisuals),
       userActionsAndSystemResponses: normalizeModuleDetailList(state.userActionsAndSystemResponses || state.userActionResponses, { docType: 'functional_spec', sectionKey: 'user-actions-and-system-responses' }),
       validationRules: normalizeModuleDetailList(state.validationRules, { docType: 'functional_spec', sectionKey: 'validation-rules' }),
       interfaceExpectations: normalizeModuleDetailList(state.interfaceExpectations, { docType: 'functional_spec', sectionKey: 'interface-expectations' }),
@@ -3459,6 +4434,28 @@ function normalizeDocumentEditorStateForStorage(project, docType, editorState) {
     };
   }
 
+  if (normalizedDocType === 'domain_models') {
+    const defaults = defaultModuleDocumentEditorState(project || { name: 'Project' }, 'domain_models');
+    const state = editorState && typeof editorState === 'object' ? editorState : {};
+    return {
+      ...defaults,
+      ...state,
+      overview: {
+        ...defaults.overview,
+        ...(state.overview || {}),
+        stableId: buildScalarDocumentItemId('domain_models', 'overview-summary', {
+          stableId: state.overview?.stableId,
+          title: 'Executive Summary',
+        }),
+        sourceRefs: normalizeSourceRefs(state.overview?.sourceRefs),
+      },
+      models: normalizeDomainModelList(state.models),
+      projections: normalizeDomainModelProjectionList(state.projections),
+      openQuestions: normalizeModuleDetailList(state.openQuestions, { docType: 'domain_models', sectionKey: 'open-questions' }),
+      fragmentHistory: Array.isArray(state.fragmentHistory) ? state.fragmentHistory : [],
+    };
+  }
+
   if (normalizedDocType === 'ai_environment') {
     const defaults = defaultAiEnvironmentEditorState(project || { name: 'Project' });
     const state = editorState && typeof editorState === 'object' ? editorState : {};
@@ -3466,6 +4463,7 @@ function normalizeDocumentEditorStateForStorage(project, docType, editorState) {
       ...defaults,
       ...state,
       selectedProfileIds: [...new Set((Array.isArray(state.selectedProfileIds) ? state.selectedProfileIds : []).map((value) => String(value || '').trim()).filter(Boolean))],
+      disabledDirectiveIds: normalizeDirectiveIdList(state.disabledDirectiveIds),
       overview: {
         ...defaults.overview,
         ...(state.overview || {}),
@@ -3486,11 +4484,15 @@ function normalizeDocumentEditorStateForStorage(project, docType, editorState) {
         itemSourceRefs: normalizeScalarItemSourceRefsMap(state.overview?.itemSourceRefs, ['mission', 'operatingModel', 'communicationStyle']),
       },
       requiredBehaviors: normalizeModuleDetailList(state.requiredBehaviors, { docType: 'ai_environment', sectionKey: 'required-behaviors' }),
+      termDictionary: normalizeModuleDetailList(
+        Array.isArray(state.termDictionary) ? state.termDictionary : defaults.termDictionary,
+        { docType: 'ai_environment', sectionKey: 'term-dictionary' }
+      ),
       moduleUpdateRules: normalizeModuleDetailList(state.moduleUpdateRules, { docType: 'ai_environment', sectionKey: 'module-update-rules' }),
       dataPhrasingRules: normalizeModuleDetailList(state.dataPhrasingRules, { docType: 'ai_environment', sectionKey: 'data-phrasing-rules' }),
       avoidRules: normalizeModuleDetailList(state.avoidRules, { docType: 'ai_environment', sectionKey: 'avoid-rules' }),
       handoffChecklist: normalizeModuleDetailList(state.handoffChecklist, { docType: 'ai_environment', sectionKey: 'handoff-checklist' }),
-      customInstructions: String(state.customInstructions || ''),
+      customInstructions: sanitizeAiEnvironmentCustomInstructions(state.customInstructions),
       customInstructionsMeta: {
         stableId: buildScalarDocumentItemId('ai_environment', 'custom-instructions', {
           stableId: state.customInstructionsMeta?.stableId,
@@ -3686,6 +4688,7 @@ function defaultAiEnvironmentEditorState(project) {
   const now = new Date().toISOString();
   return {
     selectedProfileIds: [],
+    disabledDirectiveIds: [],
     overview: {
       mission: `Guide AI agents working on ${project.name}.`,
       operatingModel: 'Read the project context first, update the correct modules, and keep generated artifacts consistent with the database-first workflow.',
@@ -3696,6 +4699,58 @@ function defaultAiEnvironmentEditorState(project) {
       {
         title: 'Read project context first',
         description: 'Review Project Brief, Roadmap, and module-specific state before proposing or applying changes.',
+        versionDate: now,
+      },
+    ],
+    termDictionary: [
+      {
+        title: 'APM',
+        description: 'Angel\'s Project Manager, the application that manages project state, modules, generated documents, fragments, and AI operating context.',
+        versionDate: now,
+      },
+      {
+        title: 'Project',
+        description: 'A managed workspace or folder whose planning, software design, documents, fragments, and AI guidance are tracked by APM.',
+        versionDate: now,
+      },
+      {
+        title: 'Module',
+        description: 'A functional area inside APM, such as PRD, Functional Spec, Domain Models, Database Schema, Architecture, Features, Bugs, or AI Environment.',
+        versionDate: now,
+      },
+      {
+        title: 'AI Environment',
+        description: 'The project-level operating guide that tells AI agents how to read, update, and preserve context for the current project.',
+        versionDate: now,
+      },
+      {
+        title: 'Directive Project',
+        description: 'The project selected in Application Settings where APM writes application-level AI directives that are specific to APM itself.',
+        versionDate: now,
+      },
+      {
+        title: 'Fragment',
+        description: 'A structured proposal file consumed by a module to add, update, remove, or transform managed project data without editing generated documents directly.',
+        versionDate: now,
+      },
+      {
+        title: 'Managed Document',
+        description: 'A markdown document generated from persisted module state and metadata rather than treated as the primary source of truth.',
+        versionDate: now,
+      },
+      {
+        title: 'Stable ID',
+        description: 'A persistent human-readable identifier used by documents, fragments, UI nodes, and cross-module references to target the same concept over time.',
+        versionDate: now,
+      },
+      {
+        title: 'Work Item Code',
+        description: 'A human-readable code such as FEAT-001, BUG-010, or TASK-001 that links document changes to planned work, bugs, or tasks.',
+        versionDate: now,
+      },
+      {
+        title: 'Emitted Directive',
+        description: 'A directive owned by a module template that is surfaced in the AI Environment index so agents know which module-specific instructions to read.',
         versionDate: now,
       },
     ],
@@ -3732,60 +4787,332 @@ function defaultAiEnvironmentEditorState(project) {
   };
 }
 
-function getImmutableAiDirectives(project, options = {}) {
-  const immutableDirectives = [];
+function normalizeDirectiveIdList(values) {
+  return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value || '').trim()).filter(Boolean))];
+}
+
+function normalizeAiDirectiveDefinition(directive, defaults = {}) {
+  const normalized = {
+    ...defaults,
+    ...directive,
+    id: String(directive?.id || '').trim(),
+    title: String(directive?.title || '').trim(),
+    description: String(directive?.description || '').trim(),
+    scope: String(directive?.scope || defaults.scope || 'shared'),
+    source: String(directive?.source || defaults.source || 'code'),
+    moduleKey: String(directive?.moduleKey || defaults.moduleKey || ''),
+    locked: directive?.locked !== undefined ? Boolean(directive.locked) : Boolean(defaults.locked),
+    required: directive?.required !== undefined ? Boolean(directive.required) : Boolean(defaults.required),
+    emitsToAiEnvironment: directive?.emitsToAiEnvironment !== undefined ? Boolean(directive.emitsToAiEnvironment) : Boolean(defaults.emitsToAiEnvironment),
+    templateName: String(directive?.templateName || defaults.templateName || ''),
+    version: String(directive?.version || defaults.version || '1.0'),
+  };
+  return normalized.id && normalized.title && normalized.description ? normalized : null;
+}
+
+function buildCodeOwnedAiDirectiveDefinitions(project, options = {}) {
+  const directives = [];
   const workspaceDir = getProjectWorkspaceDir(project);
   if (workspaceDir) {
-    immutableDirectives.push({
-      id: 'immutable-project-workspace',
+    directives.push({
+      id: 'apm.shared.workspace.volatile-files',
       title: 'Use the project workspace folder for volatile AI work',
       description: `Use ${workspaceDir} for messy AI work such as TODO lists, draft plans, scratch notes, and temporary working files. Keep the project root and docs folder focused on real project artifacts.`,
       locked: true,
+      required: false,
+      scope: 'shared',
+      source: 'code',
     });
   }
-  immutableDirectives.push({
-    id: 'immutable-changelog-traceability',
-    title: 'Record document-impacting changes in the Change Log with stable target references',
-    description: 'When feature or bug work updates a managed document, create or update a Change Log entry that references the work item code, target document, target section number, stable target item id, and a short human-readable summary of the change.',
+  const fragmentsRootDir = options.fragmentsRootDir || getFragmentsRootDir();
+  const projectFragmentsDir = options.projectFragmentsDir || getProjectFragmentsDir(project);
+  const sharedFragmentsDir = options.sharedFragmentsDir || getSharedFragmentsDir();
+  directives.push({
+    id: 'apm.shared.fragments.path',
+    title: 'Use the configured fragments path',
+    description: `Fragments generated for this project must be placed in ${projectFragmentsDir || '[Project Fragments Path]'}. Shared reusable fragments go in ${sharedFragmentsDir || '[Shared Fragments Path]'} only when explicitly intended for reuse across projects. The configured fragments root is ${fragmentsRootDir || '[Fragments Path]'}. Never place fragment files in the project docs folder or a repo-local fallback data folder.`,
     locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
   });
-  immutableDirectives.push({
-    id: 'immutable-storage-safe-titles',
+  directives.push({
+    id: 'apm.shared.storage.safe-titles',
     title: 'Keep generated stored titles short and storage-safe',
     description: 'When AI generates fragments or any structured data that will be stored, keep titles and other short stored fields as short as the database allows. Prefer concise complete titles over truncated prose, and put longer detail in descriptions or body content.',
     locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  directives.push({
+    id: 'apm.shared.stable-id.naming',
+    title: 'Create stable human-readable ids for persisted items',
+    description: 'Directive ID: apm.shared.stable-id.naming. When AI creates or updates any persisted item that supports an id, stableId, node id, edge id, document item id, or fragment target id, use a short lowercase kebab-case identifier scoped by module or item type. IDs must identify the concept rather than truncate the description, must remain stable across title or wording edits, and must not be regenerated unless the item is intentionally replaced. Keep database primary keys, work item codes, document stable ids, and UI/canvas ids distinct but cross-referenceable.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  directives.push({
+    id: 'apm.shared.generated-docs.source-of-truth',
+    title: 'Do not bypass source-of-truth state',
+    description: 'Do not overwrite generated markdown, generated DBML, or generated Mermaid directly when the module uses database-first state. Update the module data, consume a valid fragment, or use the module action that regenerates the artifact.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  directives.push({
+    id: 'apm.shared.fragment-consumers.version-migrators',
+    title: 'Fragment consumers must migrate older versions',
+    description: 'Fragment consumers must load older fragment payloads through explicit versioned migrators before detection, listing, or consumption so unconsumed fragments remain usable after template changes.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  directives.push({
+    id: 'apm.shared.fragment-discovery.content-aware',
+    title: 'Use content-aware fragment discovery',
+    description: 'Fragment discovery must check managed metadata and known docType aliases in addition to filename prefixes so older or renamed fragment files can still appear in the UI.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  directives.push({
+    id: 'apm.shared.templates.versioning',
+    title: 'Version template changes',
+    description: 'When changing a document or fragment template, update Template Version and Last Updated metadata, then ensure project-local template copies can be checked and replaced by the application.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  directives.push({
+    id: 'apm.shared.database.migrations-required',
+    title: 'Generate migrations for database changes',
+    description: 'When work changes database structure or persisted state, add an explicit migration file and update the schema reference through the Database Schema workflow.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
   });
   const selectedProjectId = String(options.fragmentsDirectiveProjectId || '').trim();
   if (!selectedProjectId || String(project?.id || '') !== selectedProjectId) {
-    return immutableDirectives;
+    return directives;
   }
   const runtimeDatabasePath = path.join(config.getDataDir(), 'app.db');
-  immutableDirectives.push(
+  const projectSpecificDirectives = [
     {
-      id: 'immutable-fragments-path',
-      title: 'Fragments generated should use the configured fragments path',
-      description: `Fragments generated should be placed in ${options.fragmentsRootDir || '[Fragments Path]'} when generated. Never place fragment files in the project docs folder.`,
-      locked: true,
-    },
-    {
-      id: 'immutable-source-of-truth',
+      id: 'apm.application.runtime-db.source-of-truth',
       title: 'Treat the live runtime SQLite database as the source of truth for Angel\'s Project Manager',
       description: `For Angel's Project Manager, the live runtime SQLite database at ${runtimeDatabasePath} is the source of truth for project and module state. Generated docs, DBML, and fragments are derived artifacts and should be treated as outputs, proposals, or exchange files unless explicitly stated otherwise.`,
       locked: true,
+      required: true,
+      scope: 'application',
+      source: 'code',
+      directiveProjectOnly: true,
     },
     {
-      id: 'immutable-adr-tracking',
-      title: 'Create ADR records when architectural decisions are made',
-      description: 'When work introduces, changes, or reverses a significant architectural decision, update the Architecture document and create or update an ADR record that captures the decision, rationale, alternatives, and consequences.',
+      id: 'apm.application.directive-project',
+      title: 'Application directives are emitted to the configured Directive Project',
+      description: 'APM application-level directives apply to Angel\'s Project Manager itself and are written only to the project selected in Application Settings -> Projects -> Directive Project.',
       locked: true,
+      required: true,
+      scope: 'application',
+      source: 'code',
+      directiveProjectOnly: true,
     },
-  );
-  return immutableDirectives;
+  ];
+  if (options.shutdownLockedAppBeforeBuildDirectiveEnabled) {
+    projectSpecificDirectives.push({
+      id: 'apm.application.shutdown-before-build',
+      title: 'Shut down locked running application processes before rebuilds',
+      description: 'Before rebuilding or packaging Angel\'s Project Manager, check whether a running APM, Electron, or packaged application process is locking build output. If it is, shut the application down gracefully before building; only force termination when the process will not exit and the build is blocked.',
+      locked: true,
+      required: false,
+      scope: 'application',
+      source: 'code',
+      directiveProjectOnly: true,
+    });
+  }
+  directives.push(...projectSpecificDirectives);
+  return directives;
+}
+
+function buildModuleAiDirectiveDefinitions(options = {}) {
+  const enabledModuleKeys = new Set((Array.isArray(options.enabledModuleKeys) ? options.enabledModuleKeys : [])
+    .map((value) => String(value || '').trim())
+    .filter(Boolean));
+  return AI_MODULE_DIRECTIVE_DEFINITIONS
+    .filter((directive) => !enabledModuleKeys.size || enabledModuleKeys.has(directive.moduleKey))
+    .map((directive) => normalizeAiDirectiveDefinition({
+      ...directive,
+      scope: 'module',
+      source: 'template',
+      locked: directive.locked !== undefined ? directive.locked : true,
+      required: directive.required !== undefined ? directive.required : true,
+      templateName: DOC_TYPES[directive.moduleKey]?.templateName || FRAGMENT_TEMPLATE_NAMES[directive.moduleKey] || '',
+    }))
+    .filter(Boolean);
+}
+
+function buildAiDirectiveRegistry(project, options = {}) {
+  const disabledDirectiveIds = new Set(normalizeDirectiveIdList(options.disabledDirectiveIds));
+  const codeDirectives = buildCodeOwnedAiDirectiveDefinitions(project, options)
+    .map((directive) => normalizeAiDirectiveDefinition(directive, { source: 'code', locked: true }))
+    .filter(Boolean);
+  const moduleDirectives = buildModuleAiDirectiveDefinitions(options);
+  const directives = [...codeDirectives, ...moduleDirectives].map((directive) => {
+    const enabled = directive.required ? true : !disabledDirectiveIds.has(directive.id);
+    return {
+      ...directive,
+      enabled,
+      disabled: !enabled,
+      moduleLabel: directive.moduleKey ? (AI_DIRECTIVE_MODULE_LABELS[directive.moduleKey] || directive.moduleKey) : '',
+    };
+  });
+  return {
+    directives,
+    disabledDirectiveIds: [...disabledDirectiveIds],
+    applicationDirectives: directives.filter((directive) => directive.scope === 'application'),
+    sharedDirectives: directives.filter((directive) => directive.scope === 'shared'),
+    moduleDirectives: directives.filter((directive) => directive.scope === 'module'),
+    emittedModuleDirectives: directives.filter((directive) => directive.scope === 'module' && directive.emitsToAiEnvironment),
+    enabledDirectives: directives.filter((directive) => directive.enabled),
+    disabledDirectives: directives.filter((directive) => !directive.enabled),
+  };
+}
+
+function normalizeDirectiveTitleKey(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function filterEditorStateDirectiveDetails(details, registry) {
+  const registryTitles = new Set((registry?.directives || []).flatMap((directive) => [
+    normalizeDirectiveTitleKey(directive.title),
+    normalizeDirectiveTitleKey(directive.id),
+  ]));
+  [
+    'record document impacting changes in the change log with stable target references',
+    'do not bypass source of truth',
+    'fragments generated should use the configured fragments path',
+    'fragment consumers migrate older versions',
+    'version template changes',
+    'template registry requires migration',
+    'functional spec actions must be readable',
+    'use content aware fragment discovery',
+    'shut down locked running application processes before rebuilds',
+    'create adr records when architectural decisions are made',
+    'create destination fragments after implementation',
+    'treat features as the planning register',
+    'read roadmap and active work item codes before scope changes',
+  ].forEach((title) => registryTitles.add(normalizeDirectiveTitleKey(title)));
+  return (Array.isArray(details) ? details : []).filter((detail) => {
+    const titleKey = normalizeDirectiveTitleKey(detail?.title);
+    const stableIdKey = normalizeDirectiveTitleKey(detail?.stableId);
+    return titleKey && !registryTitles.has(titleKey) && !registryTitles.has(stableIdKey);
+  });
+}
+
+function getImmutableAiDirectives(project, options = {}) {
+  return buildAiDirectiveRegistry(project, options).enabledDirectives
+    .filter((directive) => directive.locked)
+    .map((directive) => ({
+      id: directive.id,
+      title: directive.title,
+      description: directive.description,
+      locked: directive.locked,
+      required: directive.required,
+      scope: directive.scope,
+      source: directive.source,
+      moduleKey: directive.moduleKey,
+    }));
+}
+
+function groupAiDirectivesByModule(directives) {
+  const groups = [];
+  const byKey = new Map();
+  (Array.isArray(directives) ? directives : []).forEach((directive) => {
+    const moduleKey = String(directive?.moduleKey || 'module').trim() || 'module';
+    if (!byKey.has(moduleKey)) {
+      const group = {
+        moduleKey,
+        moduleLabel: directive?.moduleLabel || AI_DIRECTIVE_MODULE_LABELS[moduleKey] || moduleKey,
+        templateName: directive?.templateName || '',
+        directives: [],
+      };
+      byKey.set(moduleKey, group);
+      groups.push(group);
+    }
+    const group = byKey.get(moduleKey);
+    if (!group.templateName && directive?.templateName) group.templateName = directive.templateName;
+    group.directives.push(directive);
+  });
+  return groups;
+}
+
+function escapeMarkdownTableCell(value) {
+  return String(value || '')
+    .replace(/\r?\n/g, '<br>')
+    .replace(/\|/g, '\\|')
+    .trim();
+}
+
+function renderAiEnvironmentTermDictionaryTable(entries) {
+  const normalizedEntries = Array.isArray(entries) ? entries : [];
+  if (!normalizedEntries.length) return ['No APM terms are currently defined.', ''];
+  return [
+    '| Term | Definition | Stable ID | Source Refs |',
+    '| --- | --- | --- | --- |',
+    ...normalizedEntries.map((entry) => {
+      const sourceRefs = normalizeSourceRefs(entry?.sourceRefs).join(', ');
+      return [
+        escapeMarkdownTableCell(entry?.title || 'Untitled term'),
+        escapeMarkdownTableCell(entry?.description || ''),
+        escapeMarkdownTableCell(entry?.stableId || ''),
+        escapeMarkdownTableCell(sourceRefs),
+      ].join(' | ');
+    }).map((row) => `| ${row} |`),
+    '',
+  ];
+}
+
+function renderAiEnvironmentDirectiveTemplateReferences(groups) {
+  const references = [];
+  const seen = new Set();
+  (Array.isArray(groups) ? groups : []).forEach((group) => {
+    const templateName = String(group?.templateName || '').trim();
+    if (!templateName) return;
+    const key = `${group.moduleKey || ''}:${templateName}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    references.push(`- ${group.moduleLabel || group.moduleKey || 'Module'}: \`templates/${templateName}\``);
+  });
+  return references.length ? [...references, ''] : ['No module template directive references are currently emitted.', ''];
 }
 
 function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = {}) {
   const state = normalizeDocumentEditorStateForStorage(project, 'ai_environment', editorState);
-  const immutableDirectives = getImmutableAiDirectives(project, options);
+  const directiveRegistry = buildAiDirectiveRegistry(project, {
+    ...options,
+    disabledDirectiveIds: state.disabledDirectiveIds,
+  });
+  const lockedSystemDirectives = directiveRegistry.enabledDirectives
+    .filter((directive) => directive.locked && ['application', 'shared'].includes(directive.scope))
+    .map((directive) => ({
+      ...directive,
+      stableId: directive.stableId || `ai-directive-${slugifyDocumentToken(directive.id || directive.title, 'directive')}`,
+    }));
+  const emittedModuleDirectives = directiveRegistry.enabledDirectives
+    .filter((directive) => directive.scope === 'module' && directive.emitsToAiEnvironment);
+  const emittedModuleDirectiveGroups = groupAiDirectivesByModule(emittedModuleDirectives);
+  const projectRequiredBehaviors = filterEditorStateDirectiveDetails(state.requiredBehaviors, directiveRegistry);
+  const projectModuleUpdateRules = filterEditorStateDirectiveDetails(state.moduleUpdateRules, directiveRegistry);
+  const projectDataPhrasingRules = filterEditorStateDirectiveDetails(state.dataPhrasingRules, directiveRegistry);
+  const projectAvoidRules = filterEditorStateDirectiveDetails(state.avoidRules, directiveRegistry);
   const sharedProfiles = Array.isArray(options.sharedProfiles) ? options.sharedProfiles : [];
   const overview = state.overview && typeof state.overview === 'object'
     ? state.overview
@@ -3801,24 +5128,7 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
   return [
     `# AI Environment: ${project.name}`,
     '',
-    ...(immutableDirectives.length
-      ? [
-          '## 0. Locked System Directives',
-          '',
-          ...renderModuleDetailList(immutableDirectives, 'No locked system directives defined.', '0'),
-        ]
-      : []),
-    immutableDirectives.length ? '## 1. Applied Shared Profiles' : '## 0. Applied Shared Profiles',
-    '',
-    ...(appliedProfiles.length
-      ? appliedProfiles.flatMap((profile, index) => [
-          `### ${index + 1}. ${profile.name || profile.id || 'Shared Profile'}`,
-          '',
-          profile.content || 'No profile content yet.',
-          '',
-        ])
-      : ['No shared AI profiles are currently applied.', '']),
-    immutableDirectives.length ? '## 2. Mission' : '## 1. Mission',
+    '## 1. Mission',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: overview.itemIds?.mission || '',
@@ -3827,7 +5137,7 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
     }),
     overview.mission || 'Pending AI mission.',
     '',
-    immutableDirectives.length ? '## 3. Operating Model' : '## 2. Operating Model',
+    '## 2. Operating Model',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: overview.itemIds?.operatingModel || '',
@@ -3836,7 +5146,7 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
     }),
     overview.operatingModel || 'Pending operating model.',
     '',
-    immutableDirectives.length ? '## 4. Communication Style' : '## 3. Communication Style',
+    '## 3. Communication Style',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: overview.itemIds?.communicationStyle || '',
@@ -3845,19 +5155,10 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
     }),
     overview.communicationStyle || 'Pending communication style.',
     '',
-    immutableDirectives.length ? '## 5. Required Behaviors' : '## 4. Required Behaviors',
+    '## 4. APM Term Dictionary',
     '',
-    ...renderModuleDetailList(state.requiredBehaviors, 'No required behaviors defined yet.', immutableDirectives.length ? '5' : '4'),
-    immutableDirectives.length ? '## 6. Module Update Rules' : '## 5. Module Update Rules',
-    '',
-    ...renderModuleDetailList(state.moduleUpdateRules, 'No module update rules defined yet.', immutableDirectives.length ? '6' : '5'),
-    immutableDirectives.length ? '## 7. Data Structure and Phrasing Rules' : '## 6. Data Structure and Phrasing Rules',
-    '',
-    ...renderModuleDetailList(state.dataPhrasingRules, 'No phrasing rules defined yet.', immutableDirectives.length ? '7' : '6'),
-    immutableDirectives.length ? '## 8. Avoid / Guardrails' : '## 7. Avoid / Guardrails',
-    '',
-    ...renderModuleDetailList(state.avoidRules, 'No guardrails defined yet.', immutableDirectives.length ? '8' : '7'),
-    immutableDirectives.length ? '## 9. Custom Instructions' : '## 8. Custom Instructions',
+    ...renderAiEnvironmentTermDictionaryTable(state.termDictionary),
+    '## 5. Custom Instructions',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: state.customInstructionsMeta?.stableId || '',
@@ -3866,9 +5167,64 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
     }),
     String(state.customInstructions || '').trim() || 'No custom instructions added yet.',
     '',
-    immutableDirectives.length ? '## 10. Handoff Checklist' : '## 9. Handoff Checklist',
+    '## 6. Applied Shared Profiles',
     '',
-    ...renderModuleDetailList(state.handoffChecklist, 'No handoff checklist defined yet.', immutableDirectives.length ? '10' : '9'),
+    ...(appliedProfiles.length
+      ? appliedProfiles.flatMap((profile, index) => [
+          `### 6.${index + 1} ${profile.name || profile.id || 'Shared Profile'}`,
+          '',
+          profile.content || 'No profile content yet.',
+          '',
+        ])
+      : ['No shared AI profiles are currently applied.', '']),
+    '## 7. Directive Template References',
+    '',
+    'Template-owned AI directives remain authoritative in their source templates. Read these templates when a module-specific directive applies.',
+    '',
+    ...renderAiEnvironmentDirectiveTemplateReferences(emittedModuleDirectiveGroups),
+    ...(lockedSystemDirectives.length
+      ? [
+          '## 8. Locked System Directives',
+          '',
+          ...renderModuleDetailList(lockedSystemDirectives, 'No locked system directives defined.', '8'),
+        ]
+      : []),
+    '## 9. Module Directive Index',
+    '',
+    'Module and template directives are authoritative in their owning module templates. Follow the enabled directive references below, but read the referenced module/template for granular instructions instead of expecting this document to duplicate every module directive body.',
+    '',
+    ...(emittedModuleDirectiveGroups.length
+      ? emittedModuleDirectiveGroups.flatMap((group, groupIndex) => [
+          `### 9.${groupIndex + 1} ${group.moduleLabel || group.moduleKey || 'Module'}`,
+          '',
+          `- Module Key: ${group.moduleKey}`,
+          `- Source Template: ${group.templateName ? `templates/${group.templateName}` : 'Module template'}`,
+          '',
+          ...group.directives.flatMap((directive, directiveIndex) => [
+            `#### 9.${groupIndex + 1}.${directiveIndex + 1} ${directive.title}`,
+            '',
+            `- Directive ID: ${directive.id}`,
+            `- Required: ${directive.required ? 'yes' : 'no'}`,
+            `- Locked: ${directive.locked ? 'yes' : 'no'}`,
+            '',
+          ]),
+        ])
+      : ['No module directives are currently emitted.', '']),
+    '## 10. Project-Level Required Behaviors',
+    '',
+    ...renderModuleDetailList(projectRequiredBehaviors, 'No project-level required behaviors defined yet.', '10'),
+    '## 11. Project-Level Module Update Rules',
+    '',
+    ...renderModuleDetailList(projectModuleUpdateRules, 'No project-level module update rules defined yet.', '11'),
+    '## 12. Project-Level Data Structure and Phrasing Rules',
+    '',
+    ...renderModuleDetailList(projectDataPhrasingRules, 'No project-level phrasing rules defined yet.', '12'),
+    '## 13. Project-Level Avoid / Guardrails',
+    '',
+    ...renderModuleDetailList(projectAvoidRules, 'No project-level guardrails defined yet.', '13'),
+    '## 14. Handoff Checklist',
+    '',
+    ...renderModuleDetailList(state.handoffChecklist, 'No handoff checklist defined yet.', '14'),
     '',
   ].filter((line, index, lines) => !(line === '' && lines[index - 1] === '')).join('\n').trim();
 }
@@ -4646,8 +6002,7 @@ function writeManagedFile(filePath, markdown, label) {
 }
 
 function writeProjectDocument(project, docType, markdown) {
-  syncTemplateForProject(project, docType);
-  syncAllFragmentTemplatesForProject(project);
+  syncProjectTemplateFiles(project, docType);
   syncSoftwareStandardsForProject(project);
   const docPath = getProjectDocPath(project, docType);
   return writeManagedFile(docPath, markdown, `${docType} for project ${project.id}`);
@@ -4664,7 +6019,7 @@ function readProjectManagedDocument(project, docType) {
   const docPath = path.join(docsDir, getDocDefinition(docType).fileName);
   if (!fs.existsSync(docPath)) return null;
   const markdown = fs.readFileSync(docPath, 'utf8');
-  const managed = parseManagedBlock(markdown);
+  const managed = parseManagedBlock(markdown, { fileName: path.basename(docPath), filePath: docPath });
   const stats = fs.statSync(docPath);
   return {
     markdown,
@@ -4678,7 +6033,7 @@ function readProjectManagedDocument(project, docType) {
 function readManagedFileSnapshot(filePath) {
   if (!filePath || !fs.existsSync(filePath)) return null;
   const markdown = fs.readFileSync(filePath, 'utf8');
-  const managed = parseManagedBlock(markdown);
+  const managed = parseManagedBlock(markdown, { fileName: path.basename(filePath), filePath });
   const stats = fs.statSync(filePath);
   return {
     markdown,
@@ -4741,12 +6096,42 @@ function listProjectFragmentFiles(project, pattern) {
     .map((name) => path.join(fragmentsDir, name));
 }
 
+function listFragmentFilesForModuleInDir(dirPath, moduleKey, pattern = null) {
+  if (!dirPath || !fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) return [];
+  const expectedDocTypes = new Set(getFragmentDocTypesForModule(moduleKey));
+  const regex = pattern instanceof RegExp ? pattern : null;
+  return fs.readdirSync(dirPath)
+    .filter((name) => /\.md$/i.test(name) && !/\.template\.md$/i.test(name))
+    .map((name) => path.join(dirPath, name))
+    .filter((filePath) => {
+      if (regex && regex.test(path.basename(filePath))) return true;
+      if (!expectedDocTypes.size) return false;
+      const snapshot = readManagedFileSnapshot(filePath);
+      const docType = normalizeFragmentDocType(
+        snapshot?.managed?.docType || inferFragmentDocTypeFromFileName(path.basename(filePath))
+      );
+      return expectedDocTypes.has(docType);
+    });
+}
+
+function listProjectFragmentFilesForModule(project, moduleKey, pattern = null) {
+  const fragmentsDir = getProjectFragmentsDir(project);
+  return listFragmentFilesForModuleInDir(fragmentsDir, moduleKey, pattern);
+}
+
+function listSharedFragmentFilesForModule(moduleKey, pattern = null) {
+  const sharedDir = ensureSharedFragmentsDir();
+  return listFragmentFilesForModuleInDir(sharedDir, moduleKey, pattern);
+}
+
 module.exports = {
   DOC_TYPES,
   PRD_FRAGMENT_TEMPLATE_NAME,
   ROADMAP_FRAGMENT_TEMPLATE_NAME,
   DATABASE_SCHEMA_FRAGMENT_TEMPLATE_NAME,
   FRAGMENT_TEMPLATE_NAMES,
+  FRAGMENT_DOC_TYPE_ALIASES,
+  FRAGMENT_DOC_TYPES_BY_MODULE,
   TEMPLATE_DIR,
   STANDARDS_DIR,
   SOFTWARE_STANDARDS_REFERENCE_REGISTRY_NAME,
@@ -4771,6 +6156,11 @@ module.exports = {
   syncSoftwareStandardsForProject,
   syncArchivedBugWorkspaceNotes,
   syncTemplateForProject,
+  syncProjectTemplateFiles,
+  syncDocumentTemplateRecordForProject,
+  syncFragmentTemplateRecordForProject,
+  syncAllDocumentTemplateRecordsForProject,
+  syncAllFragmentTemplateRecordsForProject,
   syncSoftwareStandardsRegistryForProject,
   syncPrdFragmentTemplateForProject,
   syncRoadmapFragmentTemplateForProject,
@@ -4778,8 +6168,14 @@ module.exports = {
   syncFragmentTemplateForProject,
   syncAllFragmentTemplatesForProject,
   getTemplateMetadata,
+  normalizeFragmentDocType,
+  getFragmentDocTypesForModule,
+  inferFragmentDocTypeFromFileName,
+  migrateManagedPayload,
+  FRAGMENT_MANAGED_PAYLOAD_MIGRATORS,
   computeMd5,
   parseManagedBlock,
+  sanitizeAiEnvironmentCustomInstructions,
   renderRoadmapMermaid,
   renderFeaturesMermaid,
   renderBugsMermaid,
@@ -4802,6 +6198,7 @@ module.exports = {
   renderArchitectureMarkdown,
   defaultAiEnvironmentEditorState,
   getImmutableAiDirectives,
+  buildAiDirectiveRegistry,
   renderAiEnvironmentEditorStateMarkdown,
   renderAiEnvironmentMarkdown,
   defaultDatabaseSchemaEditorState,
@@ -4827,4 +6224,7 @@ module.exports = {
   readRoadmapFragmentDocument,
   listProjectDocFiles,
   listProjectFragmentFiles,
+  listFragmentFilesForModuleInDir,
+  listProjectFragmentFilesForModule,
+  listSharedFragmentFilesForModule,
 };

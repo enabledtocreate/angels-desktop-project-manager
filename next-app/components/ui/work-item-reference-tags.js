@@ -39,6 +39,34 @@ function titleForItem(ref, item) {
   return ref;
 }
 
+function formatList(values) {
+  return (Array.isArray(values) ? values : []).map((value) => String(value || '').trim()).filter(Boolean);
+}
+
+function ReadableTextBlock({ label, value, empty = 'Not recorded.' }) {
+  const text = String(value || '').trim();
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/55">{label}</p>
+      <div className="mt-2 max-h-40 overflow-auto rounded-xl bg-slate/30 px-3 py-2">
+        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-ink/80">{text || empty}</p>
+      </div>
+    </div>
+  );
+}
+
+function MetadataPills({ values = [] }) {
+  const entries = formatList(values);
+  if (!entries.length) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {entries.map((value) => (
+        <span key={value} className="rounded-full bg-white/8 px-2.5 py-1 text-xs text-ink/75">{value}</span>
+      ))}
+    </div>
+  );
+}
+
 export function WorkItemReferenceTags({ sourceRefs = [], workItemLookup = {}, className = '' }) {
   const refs = useMemo(() => normalizeRefs(sourceRefs), [sourceRefs]);
   const [selectedRef, setSelectedRef] = useState(null);
@@ -79,9 +107,9 @@ export function WorkItemReferenceTags({ sourceRefs = [], workItemLookup = {}, cl
           <div className="absolute inset-0" aria-hidden="true" onClick={() => setSelectedRef(null)} />
           <DialogFrame
             eyebrow={selectedType === 'bug' ? 'Bug Reference' : selectedType === 'feature' ? 'Feature Reference' : 'Work Item Reference'}
-            title={selectedItem ? `${selectedRef} · ${selectedItem.title}` : selectedRef}
+            title={selectedItem ? `${selectedRef} - ${selectedItem.title}` : selectedRef}
             description={selectedItem
-              ? 'This is a read-only view of the linked work item attached to the current document entry.'
+              ? 'This read-only view summarizes the linked work item attached to the current document entry.'
               : 'This reference exists on the document item, but the corresponding work item is not available in the current lookup.'}
             className="relative z-[1251] w-full max-w-3xl"
           >
@@ -100,34 +128,28 @@ export function WorkItemReferenceTags({ sourceRefs = [], workItemLookup = {}, cl
               </div>
 
               {selectedItem ? (
-                <SurfaceCard className="space-y-3 p-4" tone="muted">
+                <SurfaceCard className="space-y-4 p-4" tone="muted">
                   {selectedItem.type === 'feature' ? (
                     <>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">Description</p>
-                        <p className="mt-2 text-sm leading-6 text-ink/80">{selectedItem.description || selectedItem.summary || 'No description recorded.'}</p>
-                      </div>
+                      <ReadableTextBlock label="Summary" value={selectedItem.summary || selectedItem.description} empty="No summary recorded." />
+                      {selectedItem.description && selectedItem.description !== selectedItem.summary ? (
+                        <ReadableTextBlock label="Description" value={selectedItem.description} empty="No description recorded." />
+                      ) : null}
                       {selectedItem.affectedModuleKeys?.length ? (
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">Affected Modules</p>
-                          <p className="mt-2 text-sm leading-6 text-ink/80">{selectedItem.affectedModuleKeys.join(', ')}</p>
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/55">Affected Modules</p>
+                          <MetadataPills values={selectedItem.affectedModuleKeys} />
                         </div>
                       ) : null}
                     </>
                   ) : selectedItem.type === 'bug' ? (
                     <>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">Current Behavior</p>
-                        <p className="mt-2 text-sm leading-6 text-ink/80">{selectedItem.currentBehavior || selectedItem.summary || 'No current behavior recorded.'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">Expected Behavior</p>
-                        <p className="mt-2 text-sm leading-6 text-ink/80">{selectedItem.expectedBehavior || 'No expected behavior recorded.'}</p>
-                      </div>
+                      <ReadableTextBlock label="Current Behavior" value={selectedItem.currentBehavior || selectedItem.summary} empty="No current behavior recorded." />
+                      <ReadableTextBlock label="Expected Behavior" value={selectedItem.expectedBehavior} empty="No expected behavior recorded." />
                       {selectedItem.affectedModuleKeys?.length ? (
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">Affected Modules</p>
-                          <p className="mt-2 text-sm leading-6 text-ink/80">{selectedItem.affectedModuleKeys.join(', ')}</p>
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/55">Affected Modules</p>
+                          <MetadataPills values={selectedItem.affectedModuleKeys} />
                         </div>
                       ) : null}
                     </>

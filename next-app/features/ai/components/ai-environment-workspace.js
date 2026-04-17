@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActionButton } from '@/components/ui/action-button';
 import { DocumentFieldMeta } from '@/components/ui/document-field-meta';
 import { FragmentBrowserModal } from '@/components/ui/fragment-browser-modal';
@@ -18,6 +18,7 @@ function buildEditableState(editorState) {
   const state = editorState || {};
   return {
     selectedProfileIds: Array.isArray(state.selectedProfileIds) ? state.selectedProfileIds : [],
+    disabledDirectiveIds: Array.isArray(state.disabledDirectiveIds) ? state.disabledDirectiveIds : [],
     mission: state.overview?.mission || '',
     operatingModel: state.overview?.operatingModel || '',
     communicationStyle: state.overview?.communicationStyle || '',
@@ -32,6 +33,7 @@ function buildEditableState(editorState) {
       communicationStyle: Array.isArray(state.overview?.itemSourceRefs?.communicationStyle) ? state.overview.itemSourceRefs.communicationStyle : [],
     },
     requiredBehaviors: Array.isArray(state.requiredBehaviors) ? state.requiredBehaviors : [],
+    termDictionary: Array.isArray(state.termDictionary) ? state.termDictionary : [],
     moduleUpdateRules: Array.isArray(state.moduleUpdateRules) ? state.moduleUpdateRules : [],
     dataPhrasingRules: Array.isArray(state.dataPhrasingRules) ? state.dataPhrasingRules : [],
     avoidRules: Array.isArray(state.avoidRules) ? state.avoidRules : [],
@@ -48,6 +50,7 @@ function buildEditorState(editableState) {
   const now = new Date().toISOString();
   return {
     selectedProfileIds: Array.isArray(editableState.selectedProfileIds) ? editableState.selectedProfileIds : [],
+    disabledDirectiveIds: Array.isArray(editableState.disabledDirectiveIds) ? editableState.disabledDirectiveIds : [],
     overview: {
       mission: editableState.mission,
       operatingModel: editableState.operatingModel,
@@ -57,6 +60,7 @@ function buildEditorState(editableState) {
       versionDate: now,
     },
     requiredBehaviors: editableState.requiredBehaviors,
+    termDictionary: editableState.termDictionary,
     moduleUpdateRules: editableState.moduleUpdateRules,
     dataPhrasingRules: editableState.dataPhrasingRules,
     avoidRules: editableState.avoidRules,
@@ -66,21 +70,30 @@ function buildEditorState(editableState) {
   };
 }
 
-function parseManagedBlock(markdown) {
-  const match = String(markdown || '').match(/<!-- APM:DATA\s*([\s\S]*?)\s*-->/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[1]);
-  } catch {
-    return null;
-  }
+function groupDirectivesByModule(directives = []) {
+  const groups = [];
+  const byKey = new Map();
+  directives.forEach((directive) => {
+    const moduleKey = String(directive?.moduleKey || 'module').trim() || 'module';
+    if (!byKey.has(moduleKey)) {
+      const group = {
+        moduleKey,
+        moduleLabel: directive?.moduleLabel || moduleKey,
+        templateName: directive?.templateName || '',
+        directives: [],
+      };
+      byKey.set(moduleKey, group);
+      groups.push(group);
+    }
+    const group = byKey.get(moduleKey);
+    if (!group.templateName && directive?.templateName) group.templateName = directive.templateName;
+    group.directives.push(directive);
+  });
+  return groups;
 }
 
-function createImportedInstructionBlock(fileName, content) {
-  const normalizedContent = String(content || '').trim();
-  if (!normalizedContent) return '';
-  const prefix = `Imported directives from ${fileName || 'uploaded file'}:`;
-  return [prefix, normalizedContent].join('\n\n');
+function domToken(value) {
+  return String(value || 'item').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item';
 }
 
 function AiEnvironmentTextArea({ label, value, onChange, rows = 4, help, stableId = '', sourceRefs = [], workItemLookup = {} }) {
@@ -100,7 +113,6 @@ function AiEnvironmentTextArea({ label, value, onChange, rows = 4, help, stableI
 }
 
 export function AiEnvironmentWorkspace({ project }) {
-  const fileInputRef = useRef(null);
   const {
     aiEnvironment,
     fragments,
@@ -116,9 +128,14 @@ export function AiEnvironmentWorkspace({ project }) {
   const [sharedProfiles, setSharedProfiles] = useState([]);
   const [projectTypes, setProjectTypes] = useState([]);
   const [sharedSaveStatus, setSharedSaveStatus] = useState('idle');
-  const [fragmentsDirectiveProjectId, setFragmentsDirectiveProjectId] = useState('');
-  const [importStatus, setImportStatus] = useState('');
   const [fragmentsOpen, setFragmentsOpen] = useState(false);
+  const [expandedDirectiveGroups, setExpandedDirectiveGroups] = useState(() => new Set([
+    'Application Directives',
+    'Shared APM Directives',
+    'Emitted Module Directives',
+  ]));
+  const [expandedDirectiveModules, setExpandedDirectiveModules] = useState(() => new Set());
+  const [expandedDirectiveDescriptions, setExpandedDirectiveDescriptions] = useState(() => new Set());
   const activeFragmentCount = countActiveFragments(fragments);
 
   useEffect(() => {
@@ -135,7 +152,6 @@ export function AiEnvironmentWorkspace({ project }) {
         ]);
         if (cancelled) return;
         setSharedProfiles(Array.isArray(settings?.ai?.profiles) ? settings.ai.profiles : []);
-        setFragmentsDirectiveProjectId(String(settings?.ai?.fragmentsDirectiveProjectId || ''));
         setProjectTypes(Array.isArray(types) ? types : []);
       } catch (loadError) {
         if (!cancelled) console.error('Failed to load AI profile settings:', loadError);
@@ -188,63 +204,116 @@ export function AiEnvironmentWorkspace({ project }) {
     return scope === 'global' || (scope === 'project_type' && String(profile.projectType || '') === String(project.projectType || ''));
   });
   const selectableProfiles = sharedProfiles.filter((profile) => !autoAppliedProfiles.some((entry) => entry.id === profile.id));
-  const immutableDirectives = String(project?.id || '') === fragmentsDirectiveProjectId
-        ? [
-          {
-            id: 'immutable-changelog-traceability',
-            title: 'Record document-impacting changes in the Change Log with stable target references',
-            description: 'When feature or bug work updates a managed document, create or update a Change Log entry that references the work item code, target document, target section number, stable target item id, and a short human-readable summary of the change.',
-          },
-          {
-            id: 'immutable-storage-safe-titles',
-            title: 'Keep generated stored titles short and storage-safe',
-            description: 'When AI generates fragments or any structured data that will be stored, keep titles and other short stored fields as short as the database allows. Prefer concise complete titles over truncated prose, and put longer detail in descriptions or body content.',
-          },
-          {
-            id: 'immutable-fragments-path',
-            title: 'Fragments generated should use the configured fragments path',
-            description: `Fragments generated should be placed in ${aiEnvironment?.fragmentsRootDir || '[Fragments Path]'} when generated. Never place fragment files in the project docs folder.`,
-          },
-        {
-          id: 'immutable-source-of-truth',
-          title: 'Treat the live runtime SQLite database as the source of truth for Angel\'s Project Manager',
-          description: `For Angel's Project Manager, the live runtime SQLite database at ${aiEnvironment?.runtimeDatabasePath || '[Runtime Database Path]'} is the source of truth for project and module state. Generated docs, DBML, and fragments are derived artifacts and should be treated as outputs, proposals, or exchange files unless explicitly stated otherwise.`,
-        },
-        {
-          id: 'immutable-adr-tracking',
-          title: 'Create ADR records when architectural decisions are made',
-          description: 'When work introduces, changes, or reverses a significant architectural decision, update the Architecture document and create or update an ADR record that captures the decision, rationale, alternatives, and consequences.',
-        },
-      ]
-    : [];
+  const directiveRegistry = aiEnvironment?.directiveRegistry || {};
+  const localDisabledDirectiveIds = new Set(Array.isArray(editableState.disabledDirectiveIds) ? editableState.disabledDirectiveIds : []);
+  const applyLocalDirectiveState = (directives = []) => directives.map((directive) => {
+    const enabled = directive.required ? true : !localDisabledDirectiveIds.has(directive.id);
+    return {
+      ...directive,
+      enabled,
+      disabled: !enabled,
+    };
+  });
+  const localApplicationDirectives = applyLocalDirectiveState(directiveRegistry.applicationDirectives || []);
+  const localSharedDirectives = applyLocalDirectiveState(directiveRegistry.sharedDirectives || []);
+  const localModuleDirectives = applyLocalDirectiveState(directiveRegistry.emittedModuleDirectives || directiveRegistry.moduleDirectives || []);
+  const localDisabledDirectives = [...localApplicationDirectives, ...localSharedDirectives, ...localModuleDirectives].filter((directive) => !directive.enabled);
+  const localModuleDirectiveGroups = groupDirectivesByModule(localModuleDirectives.filter((directive) => directive.enabled));
+  const localDisabledDirectiveGroups = groupDirectivesByModule(localDisabledDirectives.filter((directive) => directive.moduleKey));
+  const groupedDirectives = [
+    { label: 'Application Directives', directives: localApplicationDirectives.filter((directive) => directive.enabled) },
+    { label: 'Shared APM Directives', directives: localSharedDirectives.filter((directive) => directive.enabled) },
+    { label: 'Emitted Module Directives', moduleGroups: localModuleDirectiveGroups },
+    { label: 'Disabled Directives', directives: localDisabledDirectives.filter((directive) => !directive.moduleKey), moduleGroups: localDisabledDirectiveGroups },
+  ].filter((group) => (group.directives || []).length || (group.moduleGroups || []).some((moduleGroup) => moduleGroup.directives.length));
+  const countDirectiveGroupItems = (group) => (group.directives || []).length
+    + (group.moduleGroups || []).reduce((total, moduleGroup) => total + moduleGroup.directives.length, 0);
+  const isDirectiveGroupExpanded = (label) => expandedDirectiveGroups.has(label);
+  const isDirectiveModuleExpanded = (groupLabel, moduleKey) => expandedDirectiveModules.has(`${groupLabel}:${moduleKey}`);
+  const isDirectiveDescriptionExpanded = (key) => expandedDirectiveDescriptions.has(key);
 
-  async function handleDirectiveFileChange(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const managed = parseManagedBlock(text);
-      if (managed?.docType === 'ai_environment' && managed?.editorState && typeof managed.editorState === 'object') {
-        setEditableState(buildEditableState(managed.editorState));
-        setImportStatus(`Loaded structured AI directives from ${file.name}. Review and save when ready.`);
-      } else {
-        setEditableState((current) => {
-          const importedBlock = createImportedInstructionBlock(file.name, text);
-          return {
-            ...current,
-            customInstructions: [String(current.customInstructions || '').trim(), importedBlock]
-              .filter(Boolean)
-              .join('\n\n---\n\n'),
-          };
-        });
-        setImportStatus(`Imported directives from ${file.name} into Custom Instructions. Review and save when ready.`);
-      }
-    } catch (importError) {
-      console.error('Failed to import AI directives:', importError);
-      setImportStatus(`Failed to import directives from ${file.name}.`);
-    } finally {
-      event.target.value = '';
-    }
+  function toggleExpansion(setter, key) {
+    setter((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleDirective(directive) {
+    if (!directive || directive.required) return;
+    setEditableState((current) => {
+      const currentIds = new Set(Array.isArray(current.disabledDirectiveIds) ? current.disabledDirectiveIds : []);
+      if (currentIds.has(directive.id)) currentIds.delete(directive.id);
+      else currentIds.add(directive.id);
+      return {
+        ...current,
+        disabledDirectiveIds: [...currentIds],
+      };
+    });
+  }
+
+  function renderDirectiveCard(directive, keyPrefix = 'directive') {
+    const detailKey = `${keyPrefix}:${directive.id}`;
+    const expanded = isDirectiveDescriptionExpanded(detailKey);
+    const domId = `ai-directive-${domToken(keyPrefix)}-${domToken(directive.id)}`;
+    return (
+      <div
+        key={detailKey}
+        id={domId}
+        className="ai-directive-item rounded-xl border border-white/10 bg-slate/20 px-3 py-3"
+        data-directive-id={directive.id}
+        data-directive-scope={directive.scope || ''}
+        data-directive-module={directive.moduleKey || ''}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <p className="min-w-0 break-words text-sm font-semibold text-ink">{directive.title}</p>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink/70 transition hover:border-accent/50 hover:text-ink"
+              aria-expanded={expanded}
+              aria-controls={`${domId}-details`}
+              onClick={() => toggleExpansion(setExpandedDirectiveDescriptions, detailKey)}
+            >
+              {expanded ? 'Hide Details' : 'Details'}
+            </button>
+            {!directive.required ? (
+              <button
+                type="button"
+                className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink/70 transition hover:border-accent/50 hover:text-ink"
+                onClick={() => toggleDirective(directive)}
+              >
+                {directive.enabled ? 'Disable' : 'Enable'}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {expanded ? (
+          <div id={`${domId}-details`} className="ai-directive-details mt-3 space-y-2 border-t border-white/10 pt-3">
+            <div className="flex flex-wrap gap-1">
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/65">
+                {directive.locked ? 'Locked' : 'Editable'}
+              </span>
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/65">
+                {directive.required ? 'Required' : 'Optional'}
+              </span>
+              {directive.moduleLabel ? (
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/65">
+                  {directive.moduleLabel}
+                </span>
+              ) : null}
+            </div>
+            <p className="break-words text-[11px] uppercase tracking-[0.14em] text-ink/45">Directive ID: {directive.id}</p>
+            <p className="text-sm leading-6 text-ink/75">{directive.description}</p>
+            {directive.templateName ? (
+              <p className="text-xs text-ink/55">Source Template: templates/{directive.templateName}</p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   if (status === 'loading' || status === 'idle') {
@@ -266,9 +335,6 @@ export function AiEnvironmentWorkspace({ project }) {
             <ActionButton variant="ghost" onClick={() => setFragmentsOpen(true)}>
               {`Load Fragments${activeFragmentCount ? ` (${activeFragmentCount})` : ''}`}
             </ActionButton>
-            <ActionButton variant="ghost" onClick={() => fileInputRef.current?.click()}>
-              Upload Directives
-            </ActionButton>
             <ActionButton variant="subtle" onClick={refresh}>Refresh AI environment</ActionButton>
             <ActionButton variant="accent" onClick={handleSave} disabled={saveStatus === 'saving'}>
               {saveStatus === 'saving' ? 'Saving...' : 'Save AI environment'}
@@ -276,16 +342,12 @@ export function AiEnvironmentWorkspace({ project }) {
           </>
         )}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".md,.txt,.json"
-          className="hidden"
-          onChange={handleDirectiveFileChange}
-        />
-        {importStatus ? (
-          <p className="mb-4 text-sm text-ink/70">{importStatus}</p>
-        ) : null}
+        <SurfaceCard className="mb-4 p-3" tone="muted">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Fragment-first directive updates</p>
+          <p className="mt-2 text-sm leading-6 text-ink/75">
+            AI directive changes should be loaded through AI Environment fragments so versioned migrators, validation, and source references stay intact.
+          </p>
+        </SurfaceCard>
         <SurfaceCard className="mb-4 p-3" tone="muted">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -311,9 +373,9 @@ export function AiEnvironmentWorkspace({ project }) {
         <StatisticsDisclosure>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <InfoTile eyebrow="Required Behaviors" title={`${aiEnvironment?.editorState?.requiredBehaviors?.length || 0}`} body="Non-optional operating rules for agents." />
+            <InfoTile eyebrow="Term Dictionary" title={`${aiEnvironment?.editorState?.termDictionary?.length || 0}`} body="APM-specific terms agents should understand." />
             <InfoTile eyebrow="Module Rules" title={`${aiEnvironment?.editorState?.moduleUpdateRules?.length || 0}`} body="Which modules need follow-up when scope changes." />
             <InfoTile eyebrow="Phrasing Rules" title={`${aiEnvironment?.editorState?.dataPhrasingRules?.length || 0}`} body="How agents should phrase structured updates." />
-            <InfoTile eyebrow="Guardrails" title={`${aiEnvironment?.editorState?.avoidRules?.length || 0}`} body="What agents should explicitly avoid." />
           </div>
         </StatisticsDisclosure>
       </SectionShell>
@@ -367,6 +429,9 @@ export function AiEnvironmentWorkspace({ project }) {
             </div>
             <div className="md:col-span-2">
               <StructuredEntryListEditor label="Required Behaviors" entries={editableState.requiredBehaviors} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, requiredBehaviors: value }))} emptyLabel="No required behaviors yet." />
+            </div>
+            <div className="md:col-span-2">
+              <StructuredEntryListEditor label="APM Term Dictionary" entries={editableState.termDictionary} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, termDictionary: value }))} emptyLabel="No APM terms yet." />
             </div>
             <div className="md:col-span-2">
               <StructuredEntryListEditor label="Module Update Rules" entries={editableState.moduleUpdateRules} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, moduleUpdateRules: value }))} emptyLabel="No module update rules yet." />
@@ -472,20 +537,58 @@ export function AiEnvironmentWorkspace({ project }) {
           </SectionShell>
 
           <SurfaceCard className="p-4" tone="muted">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Locked Directives</p>
-            <div className="mt-3 space-y-2">
-              {immutableDirectives.length ? immutableDirectives.map((directive) => (
-                <div key={directive.id} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-ink">{directive.title}</p>
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/65">
-                      Locked
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Directive Hierarchy</p>
+            <p className="mt-2 text-sm leading-6 text-ink/75">
+              Code-owned required directives cannot be edited or disabled. Optional locked directives can be disabled here, and disabled directives disappear from generated documents.
+            </p>
+            <div className="mt-3 space-y-3">
+              {groupedDirectives.length ? groupedDirectives.map((group) => (
+                <div key={group.label} id={`ai-directive-group-${domToken(group.label)}`} className="ai-directive-group rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 text-left text-sm font-semibold text-ink"
+                    aria-expanded={isDirectiveGroupExpanded(group.label)}
+                    onClick={() => toggleExpansion(setExpandedDirectiveGroups, group.label)}
+                  >
+                    <span>{group.label} ({countDirectiveGroupItems(group)})</span>
+                    <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs text-ink/70">
+                      {isDirectiveGroupExpanded(group.label) ? 'Collapse' : 'Expand'}
                     </span>
+                  </button>
+                  {isDirectiveGroupExpanded(group.label) ? (
+                  <div className="mt-3 space-y-2">
+                    {(group.moduleGroups || []).map((moduleGroup) => (
+                      <div key={`${group.label}-${moduleGroup.moduleKey}`} id={`ai-directive-module-${domToken(group.label)}-${domToken(moduleGroup.moduleKey)}`} className="ai-directive-module rounded-xl border border-accent/20 bg-slate/20 px-3 py-3">
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between gap-3 text-left"
+                          aria-expanded={isDirectiveModuleExpanded(group.label, moduleGroup.moduleKey)}
+                          onClick={() => toggleExpansion(setExpandedDirectiveModules, `${group.label}:${moduleGroup.moduleKey}`)}
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-ink">{moduleGroup.moduleLabel}</span>
+                            <span className="block text-xs text-ink/55">
+                              {moduleGroup.directives.length} emitted directive{moduleGroup.directives.length === 1 ? '' : 's'}
+                              {moduleGroup.templateName ? ` from ${moduleGroup.templateName}` : ''}
+                            </span>
+                          </span>
+                          <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs font-semibold text-ink/70">
+                            {isDirectiveModuleExpanded(group.label, moduleGroup.moduleKey) ? 'Collapse Module' : 'Expand Module'}
+                          </span>
+                        </button>
+                        {isDirectiveModuleExpanded(group.label, moduleGroup.moduleKey) ? (
+                          <div className="mt-3 space-y-2 border-l border-accent/25 pl-3">
+                            {moduleGroup.directives.map((directive) => renderDirectiveCard(directive, `${group.label}-${moduleGroup.moduleKey}`))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                    {(group.directives || []).map((directive) => renderDirectiveCard(directive, group.label))}
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-ink/75">{directive.description}</p>
+                  ) : null}
                 </div>
               )) : (
-                <p className="text-sm leading-6 text-ink/70">No locked directives are applied to this project.</p>
+                <p className="text-sm leading-6 text-ink/70">No directives are currently registered for this project.</p>
               )}
             </div>
           </SurfaceCard>

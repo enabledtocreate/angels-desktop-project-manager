@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchJson } from '@/lib/api-client';
+import { useFragmentFileWatcher } from '@/hooks/use-fragment-file-watcher';
 
 export function useDatabaseSchema(project, enabled = true) {
   const [databaseSchema, setDatabaseSchema] = useState(null);
@@ -142,6 +143,14 @@ export function useDatabaseSchema(project, enabled = true) {
       throw saveError;
     }
   }
+
+  useFragmentFileWatcher({
+    projectId: project?.id || '',
+    enabled: Boolean(enabled && project?.id),
+    onChange: () => {
+      refresh().catch(() => {});
+    },
+  });
 
   return {
     databaseSchema,

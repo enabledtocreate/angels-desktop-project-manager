@@ -446,7 +446,8 @@ export function DatabaseSchemaWorkspace({ project }) {
   const changeSourceLabel = formatSyncLabel(syncTracking.changeSource, 'Unknown');
   const syncBadgeTone = syncToneForStatus(syncTracking.syncStatus, syncTracking.driftSeverity);
   const saveBadgeTone = saveToneForStatus(saveStatus);
-  const canMarkRuntimeUpdated = ['apply_intended_to_runtime', 'capture_runtime_schema'].includes(String(syncTracking.recommendedAction || ''));
+  const canCaptureRuntime = true;
+  const canMarkRuntimeUpdated = ['apply_intended_to_runtime'].includes(String(syncTracking.recommendedAction || ''));
   const canAdoptObserved = ['reconcile_runtime_to_intended', 'define_intended_schema', 'review_drift_and_reconcile'].includes(String(syncTracking.recommendedAction || ''));
 
   async function handleSave() {
@@ -960,6 +961,13 @@ export function DatabaseSchemaWorkspace({ project }) {
           <div className="mt-4 flex flex-wrap gap-2">
             <ActionButton variant="ghost" onClick={() => handleSyncAction('refresh_comparison')} disabled={saveStatus === 'saving'}>
               Refresh comparison
+            </ActionButton>
+            <ActionButton
+              variant="ghost"
+              onClick={() => handleSyncAction('capture_runtime_schema')}
+              disabled={saveStatus === 'saving' || !canCaptureRuntime}
+            >
+              Capture runtime schema
             </ActionButton>
             <ActionButton
               variant="ghost"

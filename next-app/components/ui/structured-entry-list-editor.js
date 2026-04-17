@@ -166,7 +166,7 @@ export function StructuredEntryListEditor({
                 </div>
               </div>
               <div className="mt-2 space-y-1">
-                <p className="text-[11px] font-mono text-sky-100/45">
+                <p className="apm-stable-id text-[11px] font-mono text-sky-100/45">
                   ID: {entry.stableId || 'pending-save'}
                 </p>
                 {entry.versionDate ? (

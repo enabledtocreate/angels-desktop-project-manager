@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchJson } from '@/lib/api-client';
+import { useFragmentFileWatcher } from '@/hooks/use-fragment-file-watcher';
 
 export function useModuleDocument(project, moduleKey, enabled = true) {
   const [documentState, setDocumentState] = useState(null);
@@ -91,6 +92,14 @@ export function useModuleDocument(project, moduleKey, enabled = true) {
     setStatus('ready');
     return payload;
   }
+
+  useFragmentFileWatcher({
+    projectId: project?.id || '',
+    enabled: Boolean(enabled && project?.id && moduleKey),
+    onChange: () => {
+      refresh().catch(() => {});
+    },
+  });
 
   return {
     documentState,

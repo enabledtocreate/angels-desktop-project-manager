@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchJson } from '@/lib/api-client';
+import { useFragmentFileWatcher } from '@/hooks/use-fragment-file-watcher';
 
 export function useBugs(project, enabled = true) {
   const [bugsState, setBugsState] = useState(null);
@@ -119,6 +120,14 @@ export function useBugs(project, enabled = true) {
     await refresh();
     return payload;
   }
+
+  useFragmentFileWatcher({
+    projectId: project?.id || '',
+    enabled: Boolean(enabled && project?.id),
+    onChange: () => {
+      refresh().catch(() => {});
+    },
+  });
 
   return {
     bugsState,

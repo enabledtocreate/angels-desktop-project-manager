@@ -10,7 +10,7 @@
   "editorState": {
     "overview": {
       "summary": "ADR for Angel's Project Manager is still being defined.",
-      "versionDate": "2026-04-02T23:29:04.243Z",
+      "versionDate": "2026-04-14T03:28:58.893Z",
       "stableId": "adr-overview-summary-executive-summary",
       "sourceRefs": []
     },
@@ -20,7 +20,7 @@
       "scope": "",
       "owners": "",
       "decisionDate": "",
-      "versionDate": "2026-04-04T16:36:34.419Z",
+      "versionDate": "2026-04-14T03:28:58.893Z",
       "itemIds": {
         "decisionTitle": "adr-metadata-decision-title-decision-title",
         "status": "adr-metadata-status-decision-status",
@@ -71,7 +71,7 @@
 
 <!--
 APM-ID: adr-overview-summary-executive-summary
-APM-LAST-UPDATED: 2026-04-02
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 ADR for Angel's Project Manager is still being defined.
@@ -80,31 +80,31 @@ ADR for Angel's Project Manager is still being defined.
 
 <!--
 APM-ID: adr-metadata-decision-title-decision-title
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 - Title: Pending decision title.
 <!--
 APM-ID: adr-metadata-status-decision-status
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 - Status: proposed
 <!--
 APM-ID: adr-metadata-scope-scope
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 - Scope: Pending scope.
 <!--
 APM-ID: adr-metadata-owners-owners
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 - Owners: Pending owners.
 <!--
 APM-ID: adr-metadata-decision-date-decision-date
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 - Decision Date: Pending decision date.
@@ -113,7 +113,7 @@ APM-LAST-UPDATED: 2026-04-04
 
 <!--
 APM-ID: adr-context-context
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 No ADR context captured yet.
@@ -122,7 +122,7 @@ No ADR context captured yet.
 
 <!--
 APM-ID: adr-decision-decision
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 No decision recorded yet.
@@ -131,7 +131,7 @@ No decision recorded yet.
 
 <!--
 APM-ID: adr-rationale-rationale
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 No rationale recorded yet.
@@ -152,7 +152,7 @@ No related modules or workflows captured yet.
 
 <!--
 APM-ID: adr-follow-up-notes-follow-up-notes
-APM-LAST-UPDATED: 2026-04-04
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 No follow-up notes yet.

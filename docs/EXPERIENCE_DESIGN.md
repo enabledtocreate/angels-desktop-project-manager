@@ -10,7 +10,7 @@
   "editorState": {
     "overview": {
       "summary": "Experience Design for Angel's Project Manager is still being defined.",
-      "versionDate": "2026-04-02T23:28:50.123Z",
+      "versionDate": "2026-04-14T03:28:36.185Z",
       "stableId": "experience-design-overview-summary-executive-summary",
       "sourceRefs": []
     },
@@ -33,7 +33,7 @@
 
 <!--
 APM-ID: experience-design-overview-summary-executive-summary
-APM-LAST-UPDATED: 2026-04-02
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 Experience Design for Angel's Project Manager is still being defined.
@@ -42,7 +42,7 @@ Experience Design for Angel's Project Manager is still being defined.
 
 <!--
 APM-ID: experience-design-working-content-working-content
-APM-LAST-UPDATED: 2026-04-02
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 No experience design working content yet.
@@ -55,7 +55,7 @@ No applied fragments yet.
 
 <!--
 APM-ID: experience-design-open-questions-open-questions
-APM-LAST-UPDATED: 2026-04-02
+APM-LAST-UPDATED: 2026-04-14
 -->
 
 No open questions yet.

@@ -18,6 +18,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
     saveProject,
     deleteProject,
     readProjectModules,
+    syncProjectModules,
     saveProjectDocument,
     readEntityRelationships,
     saveEntityRelationship,
@@ -330,7 +331,9 @@ module.exports = function registerProjectRoutes(app, ctx) {
       res.json({
         projectId: project.id,
         projectType: project.projectType || 'general',
-        modules: await readProjectModules(project.id),
+        modules: typeof syncProjectModules === 'function'
+          ? await syncProjectModules(project)
+          : await readProjectModules(project.id),
         dependencies: await readEntityRelationships(project.id, {
           sourceEntityType: 'module',
           relationshipType: 'depends_on',
@@ -372,7 +375,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
           : 'flowchart TD\n  ai["AI Environment"] --> brief["Project Brief"]\n  ai --> modules["Affected Modules"]\n  ai --> fragments["Managed Fragments"]',
         editorState: nextEditorState,
       });
-      res.json(await syncAiEnvironmentDocument(project));
+      res.json(await syncAiEnvironmentDocument(project, { skipImport: true }));
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to save AI Environment' });
     }

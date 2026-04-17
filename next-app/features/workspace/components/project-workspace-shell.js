@@ -11,6 +11,7 @@ import { AdrWorkspace } from '@/features/adr/components/adr-workspace';
 import { BugsWorkspace } from '@/features/bugs/components/bugs-workspace';
 import { ChangelogWorkspace } from '@/features/changelog/components/changelog-workspace';
 import { DatabaseSchemaWorkspace } from '@/features/database-schema/components/database-schema-workspace';
+import { DomainModelsWorkspace } from '@/features/domain-models/components/domain-models-workspace';
 import { FeaturesWorkspace } from '@/features/features/components/features-workspace';
 import { FunctionalSpecWorkspace } from '@/features/functional-spec/components/functional-spec-workspace';
 import { PrdWorkspace } from '@/features/prd/components/prd-workspace';
@@ -138,6 +139,10 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
       case 'functional_spec':
         return activeSoftwareModule?.moduleKey === 'functional_spec'
           ? <FunctionalSpecWorkspace project={project} module={activeSoftwareModule} />
+          : <ProjectBriefWorkspace project={project} modules={moduleRegistry} onProjectUpdated={onProjectUpdated} />;
+      case 'domain_models':
+        return activeSoftwareModule?.moduleKey === 'domain_models'
+          ? <DomainModelsWorkspace project={project} module={activeSoftwareModule} />
           : <ProjectBriefWorkspace project={project} modules={moduleRegistry} onProjectUpdated={onProjectUpdated} />;
       case 'technical_design':
       case 'experience_design':

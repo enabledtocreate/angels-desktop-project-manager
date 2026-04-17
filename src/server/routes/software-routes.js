@@ -57,7 +57,11 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
     tryDeleteFile,
     listProjectDocFiles,
     listProjectFragmentFiles,
+    listProjectFragmentFilesForModule,
+    listSharedFragmentFilesForModule,
     getFragmentsRootDir,
+    getProjectFragmentsDir,
+    getSharedFragmentsDir,
     ensureProjectFragmentsDir,
     ensureSharedFragmentsDir,
     readManagedFileSnapshot,
@@ -75,6 +79,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
     defaultDatabaseSchemaEditorState,
     defaultDatabaseSchemaMermaid,
     renderDatabaseSchemaEditorStateMarkdown,
+    sanitizeAiEnvironmentCustomInstructions,
   } = ctx;
 
   function listDatabaseSchemaFragmentsInDir(dirPath) {
@@ -109,7 +114,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
     ])];
   }
 
-  const GENERIC_MODULE_KEYS = new Set(['functional_spec', 'technical_design', 'experience_design', 'adr', 'test_strategy', 'changelog']);
+  const GENERIC_MODULE_KEYS = new Set(['functional_spec', 'domain_models', 'technical_design', 'experience_design', 'adr', 'test_strategy', 'changelog']);
 
   function getFragmentPrefixes(moduleKey) {
     return {
@@ -123,6 +128,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       database_schema: 'DATABASE_SCHEMA_FRAGMENT',
       ai_environment: 'AI_ENVIRONMENT_FRAGMENT',
       functional_spec: 'FUNCTIONAL_SPEC_FRAGMENT',
+      domain_models: 'DOMAIN_MODELS_FRAGMENT',
       technical_design: 'TECHNICAL_DESIGN_FRAGMENT',
       experience_design: ['EXPERIENCE_DESIGN_FRAGMENT', 'UX_UI_FRAGMENT'],
       adr: 'ADR_FRAGMENT',
@@ -147,6 +153,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
   }
 
   function listSharedModuleFragmentFiles(moduleKey) {
+    if (typeof listSharedFragmentFilesForModule === 'function') {
+      return listSharedFragmentFilesForModule(moduleKey, moduleFragmentRegex(moduleKey));
+    }
     const runtimeSharedDir = ensureSharedFragmentsDir();
     return [...new Set([
       ...listModuleFragmentsInDir(runtimeSharedDir, moduleKey),
@@ -511,6 +520,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
                 : currentSummary,
               versionDate,
             },
+            functionalAreas: appendEntries(withOperations.functionalAreas, parseLooseSectionEntries(markdown, ['Functional Area Updates', 'Functional Areas'])),
             logicalFlows: appendEntries(withOperations.logicalFlows, parseLooseSectionEntries(markdown, ['Logical Flow Updates', 'Workflow Updates', 'Logical Flows', 'Workflows'])),
             flowEndpoints: appendEntries(withOperations.flowEndpoints, parseLooseSectionEntries(markdown, ['Flow Endpoints and Return Points', 'Flow Endpoints', 'Endpoints and Return Points'])),
             userActionsAndSystemResponses: appendEntries(withOperations.userActionsAndSystemResponses, parseLooseSectionEntries(markdown, ['User Action and System Response Updates', 'User Actions and System Responses'])),
@@ -518,6 +528,84 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
             interfaceExpectations: appendEntries(withOperations.interfaceExpectations, parseLooseSectionEntries(markdown, ['Interface Expectations'])),
             edgeCases: appendEntries(withOperations.edgeCases, parseLooseSectionEntries(markdown, ['Edge Cases'])),
             openQuestions: appendEntries(withOperations.openQuestions, parseLooseSectionEntries(markdown, ['Open Questions'])),
+          };
+      return {
+        ...mergedState,
+        fragmentHistory: [
+          {
+            id: importedFragment.id || importedFragment.fileName,
+            code: importedFragment.code || importedFragment.fileName,
+            title: importedFragment.title || importedFragment.code || 'Imported fragment',
+            status: 'integrated',
+            sourceScope: importedFragment.sourceScope || 'project',
+            integratedAt: new Date().toISOString(),
+            summary: importedSummary || importedFragment.summary || 'Imported fragment',
+            revision: importedFragment.revision || 1,
+            lineageKey: importedFragment.lineageKey || importedFragment.code || importedFragment.fileName,
+            supersedesCode: importedFragment.supersedesCode || '',
+            supersedesRevision: importedFragment.supersedesRevision || null,
+          },
+          ...history.filter((entry) => (
+            `${String(entry?.lineageKey || entry?.code || entry?.id || entry?.fileName || '')}::${normalizeFragmentRevision(entry?.revision)}` !== importedHistoryKey
+          )),
+        ],
+      };
+    }
+    if (moduleKey === 'domain_models') {
+      const nextState = currentState && typeof currentState === 'object'
+        ? { ...currentState }
+        : defaultModuleDocumentEditorState(project, moduleKey);
+      const history = Array.isArray(nextState.fragmentHistory) ? nextState.fragmentHistory : [];
+      const importedHistoryKey = `${String(importedFragment.lineageKey || importedFragment.code || importedFragment.id || importedFragment.fileName || '')}::${normalizeFragmentRevision(importedFragment.revision)}`;
+      const markdown = String(importedFragment?.markdown || '');
+      const importedSummary = String(
+        extractMarkdownSection(markdown, 'Executive Summary')
+        || importedFragment?.summary
+        || ''
+      ).trim();
+      const defaultSummary = String(defaultModuleDocumentEditorState(project, moduleKey)?.overview?.summary || '').trim();
+      const currentSummary = String(nextState.overview?.summary || '').trim();
+      const withOperations = fragmentOperations.length
+        ? applyDocumentFragmentOperations(project, 'domain_models', nextState, fragmentOperations, {
+            defaultVersionDate: importedFragment?.updatedAt || new Date().toISOString(),
+            defaultSourceRefs: importedFragment?.code ? [importedFragment.code] : [],
+          })
+        : nextState;
+      const sourceRefs = importedFragment?.code ? [importedFragment.code] : [];
+      const versionDate = importedFragment?.updatedAt || new Date().toISOString();
+      const appendEntries = (items, entries) => [
+        ...(Array.isArray(items) ? items : []),
+        ...entries.map((description) => ({
+          title: '',
+          name: '',
+          summary: description,
+          description,
+          versionDate,
+          sourceRefs,
+        })),
+      ];
+      const mergedState = fragmentOperations.length
+        ? withOperations
+        : {
+            ...withOperations,
+            overview: {
+              ...(withOperations.overview || {}),
+              summary: !currentSummary || currentSummary === defaultSummary
+                ? (importedSummary || currentSummary || defaultSummary)
+                : currentSummary,
+              versionDate,
+            },
+            models: appendEntries(withOperations.models, parseLooseSectionEntries(markdown, ['Domain Models', 'Model Catalog', 'Models'])),
+            projections: appendEntries(withOperations.projections, parseLooseSectionEntries(markdown, ['Model Projections', 'Projections'])),
+            openQuestions: [
+              ...(Array.isArray(withOperations.openQuestions) ? withOperations.openQuestions : []),
+              ...parseLooseSectionEntries(markdown, ['Open Questions']).map((description) => ({
+                title: importedFragment.title || importedFragment.code || 'Imported open question',
+                description,
+                versionDate,
+                sourceRefs,
+              })),
+            ],
           };
       return {
         ...mergedState,
@@ -934,9 +1022,12 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       return currentValue;
     }
 
-    const importedCustomInstructions = String(nextState.customInstructions || '').trim();
+    const cleanAiCustomInstructions = typeof sanitizeAiEnvironmentCustomInstructions === 'function'
+      ? sanitizeAiEnvironmentCustomInstructions
+      : (value) => String(value || '').trim();
+    const importedCustomInstructions = cleanAiCustomInstructions(nextState.customInstructions);
     const mergedCustomInstructions = [
-      String(baseState.customInstructions || '').trim(),
+      cleanAiCustomInstructions(baseState.customInstructions),
       importedCustomInstructions,
       importNotes.join('\n\n'),
     ].filter(Boolean).join('\n\n---\n\n');
@@ -1122,7 +1213,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         ? featuresDocument.editorState.fragmentHistory.map((fragment) => buildArchivedFragmentEntry(fragment, fragment.sourceScope || 'history'))
         : legacyHistory.map((fragment) => buildArchivedFragmentEntry(fragment, fragment.sourceScope || 'history'));
       const fragmentPaths = [
-        ...listProjectFragmentFiles(project, moduleFragmentRegex('features')).map((filePath) => ({ filePath, sourceScope: 'project' })),
+        ...((typeof listProjectFragmentFilesForModule === 'function'
+          ? listProjectFragmentFilesForModule(project, 'features', moduleFragmentRegex('features'))
+          : listProjectFragmentFiles(project, moduleFragmentRegex('features'))).map((filePath) => ({ filePath, sourceScope: 'project' }))),
         ...listSharedModuleFragmentFiles('features').map((filePath) => ({ filePath, sourceScope: 'shared' })),
       ];
       const fragments = mergeFragmentLists(
@@ -1310,7 +1403,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         ? bugsDocument.editorState.fragmentHistory.map((fragment) => buildArchivedFragmentEntry(fragment, fragment.sourceScope || 'history'))
         : legacyHistory.map((fragment) => buildArchivedFragmentEntry(fragment, fragment.sourceScope || 'history'));
       const fragmentPaths = [
-        ...listProjectFragmentFiles(project, moduleFragmentRegex('bugs')).map((filePath) => ({ filePath, sourceScope: 'project' })),
+        ...((typeof listProjectFragmentFilesForModule === 'function'
+          ? listProjectFragmentFilesForModule(project, 'bugs', moduleFragmentRegex('bugs'))
+          : listProjectFragmentFiles(project, moduleFragmentRegex('bugs'))).map((filePath) => ({ filePath, sourceScope: 'project' }))),
         ...listSharedModuleFragmentFiles('bugs').map((filePath) => ({ filePath, sourceScope: 'shared' })),
       ];
       const fragments = mergeFragmentLists(
@@ -1652,7 +1747,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         ? architectureDocument.editorState.fragmentHistory
         : [];
       const fragmentPaths = [
-        ...listProjectFragmentFiles(project, moduleFragmentRegex('architecture')).map((filePath) => ({ filePath, sourceScope: 'project' })),
+        ...((typeof listProjectFragmentFilesForModule === 'function'
+          ? listProjectFragmentFilesForModule(project, 'architecture', moduleFragmentRegex('architecture'))
+          : listProjectFragmentFiles(project, moduleFragmentRegex('architecture'))).map((filePath) => ({ filePath, sourceScope: 'project' }))),
         ...listSharedModuleFragmentFiles('architecture').map((filePath) => ({ filePath, sourceScope: 'shared' })),
       ];
       const fileFragments = fragmentPaths
@@ -1711,7 +1808,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         architecture: await syncArchitectureDocument(project, { skipImport: true }),
         fragments: mergeFragmentLists(
           [
-            ...listProjectFragmentFiles(project, moduleFragmentRegex('architecture')).map((filePath) => ({ filePath, sourceScope: 'project' })),
+            ...((typeof listProjectFragmentFilesForModule === 'function'
+              ? listProjectFragmentFilesForModule(project, 'architecture', moduleFragmentRegex('architecture'))
+              : listProjectFragmentFiles(project, moduleFragmentRegex('architecture'))).map((filePath) => ({ filePath, sourceScope: 'project' }))),
             ...listSharedModuleFragmentFiles('architecture').map((filePath) => ({ filePath, sourceScope: 'shared' })),
           ]
             .map((entry) => buildGenericModuleFragmentEntry(readManagedFileSnapshot(entry.filePath), entry.filePath, entry.sourceScope, 'architecture'))
@@ -1779,7 +1878,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         return res.status(400).json({ error: `${moduleKey} module is not enabled for this project` });
       }
       const fragmentPaths = [
-        ...listProjectFragmentFiles(project, moduleFragmentRegex(moduleKey)).map((filePath) => ({ filePath, sourceScope: 'project' })),
+        ...((typeof listProjectFragmentFilesForModule === 'function'
+          ? listProjectFragmentFilesForModule(project, moduleKey, moduleFragmentRegex(moduleKey))
+          : listProjectFragmentFiles(project, moduleFragmentRegex(moduleKey))).map((filePath) => ({ filePath, sourceScope: 'project' }))),
         ...listSharedModuleFragmentFiles(moduleKey).map((filePath) => ({ filePath, sourceScope: 'shared' })),
       ];
       const documentState = await syncGenericModuleDocument(project, moduleKey, { skipImport: true });
@@ -1842,7 +1943,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         syncGenericModuleDocument(project, moduleKey, { skipImport: true }),
         (async () => {
           const remaining = [
-            ...listProjectFragmentFiles(project, moduleFragmentRegex(moduleKey)).map((filePath) => ({ filePath, sourceScope: 'project' })),
+            ...((typeof listProjectFragmentFilesForModule === 'function'
+              ? listProjectFragmentFilesForModule(project, moduleKey, moduleFragmentRegex(moduleKey))
+              : listProjectFragmentFiles(project, moduleFragmentRegex(moduleKey))).map((filePath) => ({ filePath, sourceScope: 'project' }))),
             ...listSharedModuleFragmentFiles(moduleKey).map((filePath) => ({ filePath, sourceScope: 'shared' })),
           ];
           return mergeFragmentLists(
@@ -1890,7 +1993,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         ? schemaDocument.editorState.fragmentHistory
         : [];
       const fragmentPaths = [
-        ...listProjectFragmentFiles(project, /^DATABASE_SCHEMA_FRAGMENT_.*\.md$/i).map((filePath) => ({ filePath, sourceScope: 'project' })),
+        ...((typeof listProjectFragmentFilesForModule === 'function'
+          ? listProjectFragmentFilesForModule(project, 'database_schema', /^DATABASE_SCHEMA_FRAGMENT_.*\.md$/i)
+          : listProjectFragmentFiles(project, /^DATABASE_SCHEMA_FRAGMENT_.*\.md$/i)).map((filePath) => ({ filePath, sourceScope: 'project' }))),
         ...listProjectDocFiles(project, /^DATABASE_SCHEMA_FRAGMENT_.*\.md$/i).map((filePath) => ({ filePath, sourceScope: 'legacy_project_docs' })),
         ...listSharedDatabaseSchemaFragmentFiles().map((filePath) => ({ filePath, sourceScope: 'shared' })),
       ];
@@ -1959,7 +2064,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         return res.status(400).json({ error: 'Database Schema sync action is required' });
       }
       const existingDocument = await syncDatabaseSchemaDocument(project);
-      const nextEditorState = applyDatabaseSchemaSyncAction(
+      const nextEditorState = await applyDatabaseSchemaSyncAction(
         project,
         existingDocument?.editorState || defaultDatabaseSchemaEditorState(project),
         action
@@ -1987,7 +2092,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         ? aiEnvironmentDocument.editorState.fragmentHistory
         : [];
       const fragmentPaths = [
-        ...listProjectFragmentFiles(project, /^AI_ENVIRONMENT_(SUGGESTED|DIRECTIVE|FRAGMENT)_.*\.md$/i).map((filePath) => ({ filePath, sourceScope: 'project' })),
+        ...((typeof listProjectFragmentFilesForModule === 'function'
+          ? listProjectFragmentFilesForModule(project, 'ai_environment', /^AI_ENVIRONMENT_(SUGGESTED|DIRECTIVE|FRAGMENT)_.*\.md$/i)
+          : listProjectFragmentFiles(project, /^AI_ENVIRONMENT_(SUGGESTED|DIRECTIVE|FRAGMENT)_.*\.md$/i)).map((filePath) => ({ filePath, sourceScope: 'project' }))),
         ...listSharedAiEnvironmentDirectiveFiles().map((filePath) => ({ filePath, sourceScope: 'shared' })),
       ];
       const fileFragments = fragmentPaths
@@ -2043,7 +2150,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         ? managed.editorState
         : {
             ...defaultAiEnvironmentEditorState(project),
-            customInstructions: String(snapshot?.markdown || '').trim(),
+            customInstructions: typeof sanitizeAiEnvironmentCustomInstructions === 'function'
+              ? sanitizeAiEnvironmentCustomInstructions(snapshot?.markdown)
+              : stripManagedBlock(snapshot?.markdown),
           };
       const fragmentOperations = extractDocumentFragmentOperations(snapshot?.markdown, managed?.fragment || managed, {
         versionDate: snapshot?.updatedAt || new Date().toISOString(),
@@ -2081,16 +2190,22 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
           sharedProfiles: currentState?.sharedProfiles || [],
           fragmentsDirectiveProjectId: currentState?.fragmentsDirectiveProjectId || '',
           fragmentsRootDir: currentState?.fragmentsRootDir || getFragmentsRootDir(),
+          projectFragmentsDir: currentState?.projectFragmentsDir || getProjectFragmentsDir(project),
+          sharedFragmentsDir: currentState?.sharedFragmentsDir || getSharedFragmentsDir(),
+          shutdownLockedAppBeforeBuildDirectiveEnabled: Boolean(currentState?.shutdownLockedAppBeforeBuildDirectiveEnabled),
+          enabledModuleKeys: currentState?.enabledModuleKeys || [],
         }),
         mermaid: currentState?.mermaid || 'flowchart TD\n  ai["AI Environment"] --> brief["Project Brief"]\n  ai --> modules["Affected Modules"]\n  ai --> fragments["Managed Fragments"]',
         editorState: nextEditorState,
       });
       tryDeleteFile(fragmentPath, `phase5: consume ai environment fragment ${fileName}`);
       const [aiEnvironment, fragmentPayload] = await Promise.all([
-        syncAiEnvironmentDocument(project),
+        syncAiEnvironmentDocument(project, { skipImport: true }),
         (async () => {
           const remaining = [
-            ...listProjectFragmentFiles(project, /^AI_ENVIRONMENT_(SUGGESTED|DIRECTIVE|FRAGMENT)_.*\.md$/i).map((filePath) => ({ filePath, sourceScope: 'project' })),
+            ...((typeof listProjectFragmentFilesForModule === 'function'
+              ? listProjectFragmentFilesForModule(project, 'ai_environment', /^AI_ENVIRONMENT_(SUGGESTED|DIRECTIVE|FRAGMENT)_.*\.md$/i)
+              : listProjectFragmentFiles(project, /^AI_ENVIRONMENT_(SUGGESTED|DIRECTIVE|FRAGMENT)_.*\.md$/i)).map((filePath) => ({ filePath, sourceScope: 'project' }))),
             ...listSharedAiEnvironmentDirectiveFiles().map((filePath) => ({ filePath, sourceScope: 'shared' })),
           ];
           return mergeFragmentLists(

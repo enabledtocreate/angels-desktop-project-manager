@@ -6,8 +6,12 @@ import { COLOR_SCHEME_KEY, DEFAULT_SCHEME, SCHEMES } from '@/lib/color-schemes';
 const ThemeContext = createContext({
   colorScheme: DEFAULT_SCHEME,
   setColorScheme: () => {},
+  showStableIds: true,
+  setShowStableIds: () => {},
   schemes: SCHEMES,
 });
+
+const SHOW_STABLE_IDS_KEY = 'apm:show-stable-ids';
 
 function applyScheme(schemeId) {
   const scheme = SCHEMES[schemeId] || SCHEMES[DEFAULT_SCHEME];
@@ -27,6 +31,17 @@ function applyScheme(schemeId) {
     console.error('Failed to apply Electron theme:', error);
   }
   return nextScheme;
+}
+
+function applyStableIdVisibility(showStableIds) {
+  const nextValue = showStableIds !== false;
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.showStableIds = nextValue ? 'true' : 'false';
+  }
+  try {
+    window.localStorage.setItem(SHOW_STABLE_IDS_KEY, nextValue ? '1' : '0');
+  } catch {}
+  return nextValue;
 }
 
 function getApiBaseUrl() {
@@ -59,6 +74,7 @@ function sendClientError(payload) {
 
 export function AppThemeProvider({ children }) {
   const [colorScheme, setColorSchemeState] = useState(DEFAULT_SCHEME);
+  const [showStableIds, setShowStableIdsState] = useState(true);
 
   useEffect(() => {
     let savedScheme = DEFAULT_SCHEME;
@@ -68,6 +84,27 @@ export function AppThemeProvider({ children }) {
     } catch {}
     const applied = applyScheme(savedScheme);
     setColorSchemeState(applied);
+  }, []);
+
+  useEffect(() => {
+    let savedShowStableIds = true;
+    try {
+      const stored = window.localStorage.getItem(SHOW_STABLE_IDS_KEY);
+      if (stored === '0') savedShowStableIds = false;
+    } catch {}
+    setShowStableIdsState(applyStableIdVisibility(savedShowStableIds));
+
+    let cancelled = false;
+    fetch(`${getApiBaseUrl()}/api/settings`, { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((settings) => {
+        if (cancelled || !settings) return;
+        setShowStableIdsState(applyStableIdVisibility(settings?.ui?.showStableIds !== false));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -106,12 +143,16 @@ export function AppThemeProvider({ children }) {
     () => ({
       colorScheme,
       schemes: SCHEMES,
+      showStableIds,
       setColorScheme: (schemeId) => {
         const applied = applyScheme(schemeId);
         setColorSchemeState(applied);
       },
+      setShowStableIds: (nextValue) => {
+        setShowStableIdsState(applyStableIdVisibility(nextValue));
+      },
     }),
-    [colorScheme]
+    [colorScheme, showStableIds]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

@@ -33,8 +33,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-03T23:53:01.690Z",
-      "updatedAt": "2026-04-03T23:55:20.697Z"
+      "createdAt": "2026-04-11T17:50:45.652Z",
+      "updatedAt": "2026-04-11T17:50:45.652Z"
     },
     {
       "id": "feature-1775260380700-sdd7v5k",
@@ -62,8 +62,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-03T23:53:00.689Z",
-      "updatedAt": "2026-04-03T23:55:18.313Z"
+      "createdAt": "2026-04-11T17:50:45.558Z",
+      "updatedAt": "2026-04-11T17:50:45.558Z"
     },
     {
       "id": "feature-1775260379767-zfgviv6",
@@ -91,8 +91,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-03T23:52:59.756Z",
-      "updatedAt": "2026-04-03T23:55:16.072Z"
+      "createdAt": "2026-04-11T17:50:45.498Z",
+      "updatedAt": "2026-04-11T17:50:45.498Z"
     },
     {
       "id": "feature-1775260378833-9d8qnae",
@@ -120,8 +120,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-03T23:52:58.819Z",
-      "updatedAt": "2026-04-03T23:55:13.056Z"
+      "createdAt": "2026-04-11T17:50:45.444Z",
+      "updatedAt": "2026-04-11T17:50:45.444Z"
     },
     {
       "id": "feature-1775258976737-55uz6y2",
@@ -149,8 +149,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-03T23:29:36.726Z",
-      "updatedAt": "2026-04-03T23:30:34.200Z"
+      "createdAt": "2026-04-11T17:50:45.389Z",
+      "updatedAt": "2026-04-11T17:50:45.389Z"
     },
     {
       "id": "feature-1775258975946-jxox920",
@@ -178,8 +178,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-03T23:29:35.933Z",
-      "updatedAt": "2026-04-03T23:30:32.552Z"
+      "createdAt": "2026-04-11T17:50:45.337Z",
+      "updatedAt": "2026-04-11T17:50:45.337Z"
     },
     {
       "id": "feature-1775258975140-a32rxbi",
@@ -207,8 +207,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-03T23:29:35.126Z",
-      "updatedAt": "2026-04-03T23:30:30.765Z"
+      "createdAt": "2026-04-11T17:50:45.282Z",
+      "updatedAt": "2026-04-11T17:50:45.282Z"
     },
     {
       "id": "feature-1775258974158-m2j0789",
@@ -236,13 +236,13 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-03T23:29:34.138Z",
-      "updatedAt": "2026-04-03T23:30:27.232Z"
+      "createdAt": "2026-04-11T17:50:45.226Z",
+      "updatedAt": "2026-04-11T17:50:45.226Z"
     },
     {
       "id": "feature-1774623875235-0g23i3n",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "FEAT-002",
+      "code": "FEAT-004",
       "title": "Features added by AI should create fragment files",
       "summary": "Change the directive in the FEATURES produced md file that when an AI agent creates a feature, it creates a fragment that the PRD module can consume and add to new features.  This will produce a PRD_FRAGMENT_[date].md file that still follows the structure of the PRD.template, but the PRD module can now consume and merge into the greater PRD.md.  But it saves it to the database first, that way it can appropriate reproduce the PRD. file\n\nCurrently there is an AI Agent Instruction that is: \"AI Agent instruction: When this feature is implemented, update PRD.md appropriately and keep the document compliant with its template.\"  The AI agent will no longer update the PRD.md directly.  This feature has a higher instruction than what is currently in FEATURES.md.\n\nOnce code modifications is finished, the AI agent needs to turn this very feature (FEAT-001) into a fragment for PRD to consume.",
       "description": "Change the directive in the FEATURES produced md file that when an AI agent creates a feature, it creates a fragment that the PRD module can consume and add to new features.  This will produce a PRD_FRAGMENT_[date].md file that still follows the structure of the PRD.template, but the PRD module can now consume and merge into the greater PRD.md.  But it saves it to the database first, that way it can appropriate reproduce the PRD. file\n\nCurrently there is an AI Agent Instruction that is: \"AI Agent instruction: When this feature is implemented, update PRD.md appropriately and keep the document compliant with its template.\"  The AI agent will no longer update the PRD.md directly.  This feature has a higher instruction than what is currently in FEATURES.md.\n\nOnce code modifications is finished, the AI agent needs to turn this very feature (FEAT-001) into a fragment for PRD to consume.",
@@ -265,8 +265,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-02T21:27:57.818Z",
-      "updatedAt": "2026-04-02T23:44:36.164Z"
+      "createdAt": "2026-04-11T17:50:45.172Z",
+      "updatedAt": "2026-04-11T17:50:45.172Z"
     },
     {
       "id": "feature-1774627471182-flirfys",
@@ -294,13 +294,13 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-02T21:27:57.836Z",
-      "updatedAt": "2026-04-02T23:44:32.564Z"
+      "createdAt": "2026-04-11T17:50:45.021Z",
+      "updatedAt": "2026-04-11T17:50:45.021Z"
     },
     {
       "id": "feature-1774712511916-fjl2wr7",
       "projectId": "1772489365575-mj2xfcm",
-      "code": "FEAT-004",
+      "code": "FEAT-002",
       "title": "New Module for UX/UI Design",
       "summary": "I need a generic UI/UX generator that generates an MDX file for Markdown, JSON/Tokens/JSX Components.\n\nThe module should let me create the standard UI components, and enable me to define common UX behavior.  Generates an MDX file.",
       "description": "I need a generic UI/UX generator that generates an MDX file for Markdown, JSON/Tokens/JSX Components.\n\nThe module should let me create the standard UI components, and enable me to define common UX behavior.  Generates an MDX file.",
@@ -323,8 +323,8 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-02T21:27:57.853Z",
-      "updatedAt": "2026-04-02T23:44:28.925Z"
+      "createdAt": "2026-04-11T17:50:44.811Z",
+      "updatedAt": "2026-04-11T17:50:44.811Z"
     },
     {
       "id": "feature-1775007815284-mxx2cxf",
@@ -354,11 +354,11 @@
       "milestone": false,
       "sortOrder": 0,
       "archived": true,
-      "createdAt": "2026-04-02T21:27:57.796Z",
-      "updatedAt": "2026-04-02T23:44:21.002Z"
+      "createdAt": "2026-04-11T17:50:44.631Z",
+      "updatedAt": "2026-04-11T17:50:44.632Z"
     }
   ],
-  "mermaid": "flowchart TD\n  features[\"Features\"]\n  features --\u003e feature_feature_1775007815284_mxx2cxf[\"FEAT-001: Database Module has a way of selecting known persistent modules\"]"
+  "mermaid": "flowchart TD\n  features[\"Features\"]"
 }
 -->
 
@@ -440,7 +440,7 @@ No entries.
 
 > AI Agent instruction: When this feature is implemented, create or update the matching PRD fragment in the database first, keep the fragment compliant with PRD_FRAGMENT.template.md, and let the PRD module merge it into PRD.md.
 
-### FEAT-002: Features added by AI should create fragment files
+### FEAT-004: Features added by AI should create fragment files
 
 - Status: done
 - Roadmap Phase: Unassigned
@@ -492,7 +492,7 @@ ROADMAP.md instructions: AI Agents should refer to the ROADMAP, as Feature ids w
 
 > AI Agent instruction: When this feature is implemented, create or update the matching PRD fragment in the database first, keep the fragment compliant with PRD_FRAGMENT.template.md, and let the PRD module merge it into PRD.md.
 
-### FEAT-004: New Module for UX/UI Design
+### FEAT-002: New Module for UX/UI Design
 
 - Status: done
 - Roadmap Phase: Unassigned
@@ -517,5 +517,4 @@ The module should let me create the standard UI components, and enable me to def
 ```mermaid
 flowchart TD
   features["Features"]
-  features --> feature_feature_1775007815284_mxx2cxf["FEAT-001: Database Module has a way of selecting known persistent modules"]
 ```

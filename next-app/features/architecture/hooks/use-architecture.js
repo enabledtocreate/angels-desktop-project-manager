@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchJson } from '@/lib/api-client';
+import { useFragmentFileWatcher } from '@/hooks/use-fragment-file-watcher';
 
 export function useArchitecture(project, enabled = true) {
   const [architecture, setArchitecture] = useState(null);
@@ -90,6 +91,14 @@ export function useArchitecture(project, enabled = true) {
     setStatus('ready');
     return payload;
   }
+
+  useFragmentFileWatcher({
+    projectId: project?.id || '',
+    enabled: Boolean(enabled && project?.id),
+    onChange: () => {
+      refresh().catch(() => {});
+    },
+  });
 
   return {
     architecture,
