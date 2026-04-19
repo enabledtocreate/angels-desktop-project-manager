@@ -25,8 +25,29 @@ function getFrontendDir() {
   return FRONTEND_DIR;
 }
 
-function getProjectImagesDir() {
-  return path.join(getDataDir(), 'project-images');
+function sanitizeDataFolderName(value, fallback = 'project') {
+  return String(value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '') || fallback;
+}
+
+function getProjectsDataDir() {
+  return path.join(getDataDir(), 'projects');
+}
+
+function getProjectDataDir(projectId) {
+  return path.join(getProjectsDataDir(), sanitizeDataFolderName(projectId));
+}
+
+function getSharedProjectDataDir() {
+  return path.join(getProjectsDataDir(), 'shared');
+}
+
+function getProjectImagesDir(projectId = '') {
+  return projectId
+    ? path.join(getProjectDataDir(projectId), 'project-images')
+    : path.join(getSharedProjectDataDir(), 'project-images');
 }
 
 function getLogsDir() {
@@ -82,6 +103,9 @@ const exported = {
   SFTP_MANIFEST,
   getProjectsRoot,
   getDataDir,
+  getProjectsDataDir,
+  getProjectDataDir,
+  getSharedProjectDataDir,
   getPublicDir,
   getFrontendDir,
   getProjectImagesDir,

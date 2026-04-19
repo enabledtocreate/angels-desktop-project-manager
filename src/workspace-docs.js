@@ -161,10 +161,10 @@ const AI_MODULE_DIRECTIVE_DEFINITIONS = [
   {
     id: 'apm.module.bugs.regression-test-followup',
     moduleKey: 'bugs',
-    title: 'Generate regression test follow-up for bugs',
-    description: 'When a bug fix is implemented, add or update regression-test guidance in the appropriate Test Strategy or downstream module.',
+    title: 'Generate regression tests for bug fixes',
+    description: 'When a bug fix is implemented, create or update regression-test guidance in Test Strategy and any affected downstream module so the fixed behavior can be verified before the bug is closed.',
     locked: true,
-    required: false,
+    required: true,
     emitsToAiEnvironment: true,
   },
   {
@@ -274,16 +274,29 @@ function getProjectApmDir(project) {
   return path.join(projectDir, '.apm');
 }
 
+function getProjectsDataDir() {
+  return config.getProjectsDataDir();
+}
+
+function getProjectDataDir(project) {
+  if (!project || !project.id) return null;
+  return config.getProjectDataDir(project.id);
+}
+
+function getSharedProjectDataDir() {
+  return config.getSharedProjectDataDir();
+}
+
 function getProjectTemplatesDir(project) {
-  const apmDir = getProjectApmDir(project);
-  if (!apmDir) return null;
-  return path.join(apmDir, 'templates');
+  const projectDataDir = getProjectDataDir(project);
+  if (!projectDataDir) return null;
+  return path.join(projectDataDir, 'templates');
 }
 
 function getProjectStandardsDir(project) {
-  const apmDir = getProjectApmDir(project);
-  if (!apmDir) return null;
-  return path.join(apmDir, 'standards');
+  const projectDataDir = getProjectDataDir(project);
+  if (!projectDataDir) return null;
+  return path.join(projectDataDir, 'standards');
 }
 
 function getProjectSoftwareStandardsDir(project) {
@@ -306,24 +319,19 @@ function sanitizeFragmentFolderName(value) {
 }
 
 function getFragmentsRootDir() {
-  return path.join(config.getDataDir(), 'Fragments');
+  return getProjectsDataDir();
 }
 
 function getSharedFragmentsDir() {
-  return path.join(getFragmentsRootDir(), 'shared');
+  return path.join(getSharedProjectDataDir(), 'fragments');
 }
 
 function getProjectFragmentsDir(project) {
   if (!project || !project.id) return null;
-  return path.join(getFragmentsRootDir(), sanitizeFragmentFolderName(project.id));
+  return path.join(config.getProjectDataDir(project.id), 'fragments');
 }
 
 function ensureProjectFragmentsDir(project) {
-  const fragmentsRoot = getFragmentsRootDir();
-  if (!fs.existsSync(fragmentsRoot)) {
-    fs.mkdirSync(fragmentsRoot, { recursive: true });
-    config.log(`workspace-docs: created fragments root ${fragmentsRoot}`);
-  }
   const projectFragmentsDir = getProjectFragmentsDir(project);
   if (!projectFragmentsDir) throw new Error('Project id is required to manage fragment documents.');
   if (!fs.existsSync(projectFragmentsDir)) {
@@ -334,11 +342,6 @@ function ensureProjectFragmentsDir(project) {
 }
 
 function ensureSharedFragmentsDir() {
-  const fragmentsRoot = getFragmentsRootDir();
-  if (!fs.existsSync(fragmentsRoot)) {
-    fs.mkdirSync(fragmentsRoot, { recursive: true });
-    config.log(`workspace-docs: created fragments root ${fragmentsRoot}`);
-  }
   const sharedDir = getSharedFragmentsDir();
   if (!fs.existsSync(sharedDir)) {
     fs.mkdirSync(sharedDir, { recursive: true });
@@ -363,20 +366,8 @@ function ensureProjectDocsDir(project) {
 }
 
 function ensureProjectTemplatesDir(project) {
-  const projectDir = resolveProjectDirectory(project);
-  if (!projectDir) throw new Error('Project must be a folder project to manage templates.');
-  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) {
-    throw new Error(`Project folder does not exist: ${projectDir}`);
-  }
-  const apmDir = getProjectApmDir(project);
-  if (!apmDir) throw new Error('Project must be a folder project to manage templates.');
-  if (!fs.existsSync(apmDir)) {
-    fs.mkdirSync(apmDir, { recursive: true });
-    config.log(`workspace-docs: created .apm directory ${apmDir}`);
-  }
-  ensureProjectWorkspaceDir(project);
   const templatesDir = getProjectTemplatesDir(project);
-  if (!templatesDir) throw new Error('Project must be a folder project to manage templates.');
+  if (!templatesDir) throw new Error('Project id is required to manage templates.');
   if (!fs.existsSync(templatesDir)) {
     fs.mkdirSync(templatesDir, { recursive: true });
     config.log(`workspace-docs: created templates directory ${templatesDir}`);
@@ -385,25 +376,14 @@ function ensureProjectTemplatesDir(project) {
 }
 
 function ensureProjectStandardsDir(project) {
-  const projectDir = resolveProjectDirectory(project);
-  if (!projectDir) throw new Error('Project must be a folder project to manage standards references.');
-  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) {
-    throw new Error(`Project folder does not exist: ${projectDir}`);
-  }
-  const apmDir = getProjectApmDir(project);
-  if (!apmDir) throw new Error('Project must be a folder project to manage standards references.');
-  if (!fs.existsSync(apmDir)) {
-    fs.mkdirSync(apmDir, { recursive: true });
-    config.log(`workspace-docs: created .apm directory ${apmDir}`);
-  }
   const standardsDir = getProjectStandardsDir(project);
-  if (!standardsDir) throw new Error('Project must be a folder project to manage standards references.');
+  if (!standardsDir) throw new Error('Project id is required to manage standards references.');
   if (!fs.existsSync(standardsDir)) {
     fs.mkdirSync(standardsDir, { recursive: true });
     config.log(`workspace-docs: created standards directory ${standardsDir}`);
   }
   const softwareStandardsDir = getProjectSoftwareStandardsDir(project);
-  if (!softwareStandardsDir) throw new Error('Project must be a folder project to manage software standards references.');
+  if (!softwareStandardsDir) throw new Error('Project id is required to manage software standards references.');
   if (!fs.existsSync(softwareStandardsDir)) {
     fs.mkdirSync(softwareStandardsDir, { recursive: true });
     config.log(`workspace-docs: created software standards directory ${softwareStandardsDir}`);
@@ -899,31 +879,51 @@ function toMermaidNodeId(value) {
     .replace(/^_+|_+$/g, '') || 'node';
 }
 
+function isFinishedPlanningStatus(value) {
+  return ['done', 'completed', 'implemented', 'resolved', 'closed'].includes(String(value || '').trim().toLowerCase());
+}
+
+function isActiveTaskItem(task) {
+  if (!task || typeof task !== 'object') return false;
+  if (String(task.planningBucket || '').trim().toLowerCase() === 'archived') return false;
+  return !isFinishedPlanningStatus(task.status);
+}
+
+function isActiveFeatureItem(feature) {
+  if (!feature || typeof feature !== 'object') return false;
+  if (feature.archived) return false;
+  if (String(feature.planningBucket || '').trim().toLowerCase() === 'archived') return false;
+  return !isFinishedPlanningStatus(feature.status);
+}
+
 function renderRoadmapMermaid(phases, tasks, features, bugs = []) {
   const lines = ['flowchart TD', '  roadmap["Roadmap"]', '  planned["Planned Items"]', '  considered["Considered Items"]'];
+  const activeTasks = (Array.isArray(tasks) ? tasks : []).filter(isActiveTaskItem);
+  const activeFeatures = (Array.isArray(features) ? features : []).filter(isActiveFeatureItem);
+  const activeBugs = (Array.isArray(bugs) ? bugs : []).filter((bug) => !isArchivedBugLifecycleItem(bug));
   for (const phase of orderRoadmapPhases(phases)) {
     const phaseNode = `phase_${toMermaidNodeId(phase.code || phase.id)}`;
     lines.push(`  roadmap --> ${phaseNode}["${escapeMermaidLabel(`${phase.code}: ${phase.name}`)}"]`);
-    for (const task of tasks.filter((item) => item.roadmapPhaseId === phase.id)) {
+    for (const task of activeTasks.filter((item) => item.roadmapPhaseId === phase.id)) {
       lines.push(`  ${phaseNode} --> task_${toMermaidNodeId(task.id)}["${escapeMermaidLabel(task.title)}"]`);
     }
-    for (const feature of features.filter((item) => item.roadmapPhaseId === phase.id && !item.archived)) {
+    for (const feature of activeFeatures.filter((item) => item.roadmapPhaseId === phase.id)) {
       lines.push(`  ${phaseNode} --> feature_${toMermaidNodeId(feature.id)}["${escapeMermaidLabel(`${feature.code}: ${feature.title}`)}"]`);
     }
-    for (const bug of bugs.filter((item) => item.roadmapPhaseId === phase.id && !item.archived)) {
+    for (const bug of activeBugs.filter((item) => item.roadmapPhaseId === phase.id)) {
       lines.push(`  ${phaseNode} --> bug_${toMermaidNodeId(bug.id)}["${escapeMermaidLabel(`${bug.code}: ${bug.title}`)}"]`);
     }
   }
-  for (const feature of features.filter((item) => !item.archived && item.planningBucket === 'planned')) {
+  for (const feature of activeFeatures.filter((item) => item.planningBucket === 'planned')) {
     lines.push(`  planned --> feature_${toMermaidNodeId(feature.id)}["${escapeMermaidLabel(`${feature.code}: ${feature.title}`)}"]`);
   }
-  for (const bug of bugs.filter((item) => !item.archived && item.planningBucket === 'planned')) {
+  for (const bug of activeBugs.filter((item) => item.planningBucket === 'planned')) {
     lines.push(`  planned --> bug_${toMermaidNodeId(bug.id)}["${escapeMermaidLabel(`${bug.code}: ${bug.title}`)}"]`);
   }
-  for (const feature of features.filter((item) => !item.archived && item.planningBucket === 'considered')) {
+  for (const feature of activeFeatures.filter((item) => item.planningBucket === 'considered')) {
     lines.push(`  considered --> feature_${toMermaidNodeId(feature.id)}["${escapeMermaidLabel(`${feature.code}: ${feature.title}`)}"]`);
   }
-  for (const bug of bugs.filter((item) => !item.archived && item.planningBucket === 'considered')) {
+  for (const bug of activeBugs.filter((item) => item.planningBucket === 'considered')) {
     lines.push(`  considered --> bug_${toMermaidNodeId(bug.id)}["${escapeMermaidLabel(`${bug.code}: ${bug.title}`)}"]`);
   }
   return lines.join('\n');
@@ -931,7 +931,7 @@ function renderRoadmapMermaid(phases, tasks, features, bugs = []) {
 
 function renderFeaturesMermaid(phases, features) {
   const lines = ['flowchart TD', '  features["Features"]'];
-  for (const feature of features.filter((item) => !item.archived)) {
+  for (const feature of (Array.isArray(features) ? features : []).filter(isActiveFeatureItem)) {
     const phase = phases.find((item) => item.id === feature.roadmapPhaseId);
     const parentNode = phase ? `phase_${toMermaidNodeId(phase.code || phase.id)}` : 'features';
     if (phase) lines.push(`  features --> ${parentNode}["${escapeMermaidLabel(`${phase.code}: ${phase.name}`)}"]`);
@@ -1800,22 +1800,25 @@ function orderRoadmapPhases(phases) {
 
 function renderRoadmapMarkdown(project, phases, tasks, features, bugs, mermaid, templateMeta = null) {
   const activePhases = orderRoadmapPhases(phases);
+  const activeTasks = (Array.isArray(tasks) ? tasks : []).filter(isActiveTaskItem);
+  const activeFeatures = (Array.isArray(features) ? features : []).filter(isActiveFeatureItem);
+  const activeBugs = (Array.isArray(bugs) ? bugs : []).filter((bug) => !isArchivedBugLifecycleItem(bug));
   const roadmapTemplateMeta = templateMeta || getTemplateMetadata(DOC_TYPES.roadmap.templateName);
   const managed = {
     docType: 'roadmap',
     version: 1,
-    phases,
-    tasks,
-    features,
-    bugs,
+    phases: activePhases,
+    tasks: activeTasks,
+    features: activeFeatures,
+    bugs: activeBugs,
     templateVersion: roadmapTemplateMeta.version || '',
     mermaid,
   };
   const phaseSections = activePhases.length
     ? activePhases.map((phase) => {
-        const phaseTasks = tasks.filter((task) => task.roadmapPhaseId === phase.id);
-        const phaseFeatures = features.filter((feature) => feature.roadmapPhaseId === phase.id && !feature.archived);
-        const phaseBugs = bugs.filter((bug) => bug.planningBucket === 'phase' && bug.roadmapPhaseId === phase.id && !bug.archived);
+        const phaseTasks = activeTasks.filter((task) => task.roadmapPhaseId === phase.id);
+        const phaseFeatures = activeFeatures.filter((feature) => feature.roadmapPhaseId === phase.id);
+        const phaseBugs = activeBugs.filter((bug) => bug.planningBucket === 'phase' && bug.roadmapPhaseId === phase.id);
         return [
           `### ${phase.code}: ${phase.name}`,
           '',
@@ -1839,8 +1842,8 @@ function renderRoadmapMarkdown(project, phases, tasks, features, bugs, mermaid, 
         ].join('\n');
       }).join('\n')
     : '## Phases\n\nNo roadmap phases yet.\n';
-  const plannedFeatures = features.filter((feature) => !feature.archived && feature.planningBucket !== 'considered');
-  const consideredFeatures = features.filter((feature) => !feature.archived && feature.planningBucket === 'considered');
+  const plannedFeatures = activeFeatures.filter((feature) => feature.planningBucket !== 'considered');
+  const consideredFeatures = activeFeatures.filter((feature) => feature.planningBucket === 'considered');
 
   return [
     buildDocumentHeader('roadmap', project),
@@ -1853,7 +1856,7 @@ function renderRoadmapMarkdown(project, phases, tasks, features, bugs, mermaid, 
     `- Template Version: ${roadmapTemplateMeta.version || 'Unversioned'}`,
     `- Template Last Updated: ${roadmapTemplateMeta.lastUpdated || 'Unknown'}`,
     '',
-    '> AI Agent instruction: Use feature IDs in this roadmap to cross-reference planned entries in FEATURES.md. Ignore implemented features unless explicitly asked to review history.',
+    '> AI Agent instruction: Use feature IDs in this roadmap to cross-reference active planned entries in FEATURES.md. Implemented, completed, resolved, closed, and archived work is omitted from this document unless explicitly requested as history.',
     '> AI Agent instruction: If you need to propose roadmap changes, create or update a ROADMAP_FRAGMENT document that complies with ROADMAP_FRAGMENT.template.md instead of editing ROADMAP.md directly.',
     '> AI Agent instruction: If roadmap work changes implementation scope, create or update a PRD fragment instead of editing PRD.md directly.',
     '',
@@ -1884,15 +1887,13 @@ function renderRoadmapMarkdown(project, phases, tasks, features, bugs, mermaid, 
 }
 
 function renderFeaturesMarkdown(project, phases, features, mermaid) {
+  const activeFeatures = (Array.isArray(features) ? features : []).filter(isActiveFeatureItem);
   const managed = {
     docType: 'features',
     version: 1,
-    features,
+    features: activeFeatures,
     mermaid,
   };
-
-  const planned = features.filter((feature) => !feature.archived);
-  const implemented = features.filter((feature) => feature.archived);
 
   function renderFeatureList(list) {
     return list.length
@@ -1919,10 +1920,7 @@ function renderFeaturesMarkdown(project, phases, features, mermaid) {
     '',
     '## Planned Features',
     '',
-    renderFeatureList(planned),
-    '## Implemented Features',
-    '',
-    renderFeatureList(implemented),
+    renderFeatureList(activeFeatures),
     '## Mermaid',
     '',
     '```mermaid',
@@ -1934,15 +1932,14 @@ function renderFeaturesMarkdown(project, phases, features, mermaid) {
 
 function renderBugsMarkdown(project, bugs, mermaid) {
   const sanitizedBugs = (Array.isArray(bugs) ? bugs : []).map(sanitizeBugForMarkdown);
+  const active = dedupeVisibleBugs(sanitizedBugs.filter((bug) => !isArchivedBugLifecycleItem(bug)));
+  const archived = sanitizedBugs.filter((bug) => isArchivedBugLifecycleItem(bug));
   const managed = {
     docType: 'bugs',
     version: 1,
-    bugs: sanitizedBugs,
+    bugs: active,
     mermaid,
   };
-
-  const active = dedupeVisibleBugs(sanitizedBugs.filter((bug) => !isArchivedBugLifecycleItem(bug)));
-  const archived = sanitizedBugs.filter((bug) => isArchivedBugLifecycleItem(bug));
 
   function renderLifecycleSection() {
     return BUG_LIFECYCLE_STATES.map((state, index) => (
@@ -4060,6 +4057,12 @@ function renderModuleDetailList(items, emptyLabel, sectionNumber = '') {
       `### ${itemNumber}${item.title ? ` ${item.title}` : ''}`,
     ];
     if (item.description) lines.push('', item.description);
+    if (Array.isArray(item.pathHints) && item.pathHints.length) {
+      lines.push('', 'Paths:');
+      item.pathHints.forEach((hint) => {
+        if (hint?.label && hint?.path) lines.push(`- ${hint.label}: \`${hint.path}\``);
+      });
+    }
     if (item.versionDate) lines.push('', `- Version Date: ${formatPrdDate(item.versionDate)}`);
     lines.push('');
     return lines;
@@ -4791,6 +4794,23 @@ function normalizeDirectiveIdList(values) {
   return [...new Set((Array.isArray(values) ? values : []).map((value) => String(value || '').trim()).filter(Boolean))];
 }
 
+function normalizeAiDirectivePathHints(pathHints) {
+  return (Array.isArray(pathHints) ? pathHints : [])
+    .map((hint) => {
+      if (typeof hint === 'string') {
+        return {
+          label: 'Path',
+          path: String(hint || '').trim(),
+        };
+      }
+      return {
+        label: String(hint?.label || 'Path').trim(),
+        path: String(hint?.path || '').trim(),
+      };
+    })
+    .filter((hint) => hint.label && hint.path);
+}
+
 function normalizeAiDirectiveDefinition(directive, defaults = {}) {
   const normalized = {
     ...defaults,
@@ -4806,6 +4826,7 @@ function normalizeAiDirectiveDefinition(directive, defaults = {}) {
     emitsToAiEnvironment: directive?.emitsToAiEnvironment !== undefined ? Boolean(directive.emitsToAiEnvironment) : Boolean(defaults.emitsToAiEnvironment),
     templateName: String(directive?.templateName || defaults.templateName || ''),
     version: String(directive?.version || defaults.version || '1.0'),
+    pathHints: normalizeAiDirectivePathHints(directive?.pathHints !== undefined ? directive.pathHints : defaults.pathHints),
   };
   return normalized.id && normalized.title && normalized.description ? normalized : null;
 }
@@ -4818,6 +4839,9 @@ function buildCodeOwnedAiDirectiveDefinitions(project, options = {}) {
       id: 'apm.shared.workspace.volatile-files',
       title: 'Use the project workspace folder for volatile AI work',
       description: `Use ${workspaceDir} for messy AI work such as TODO lists, draft plans, scratch notes, and temporary working files. Keep the project root and docs folder focused on real project artifacts.`,
+      pathHints: [
+        { label: 'Project Workspace', path: workspaceDir },
+      ],
       locked: true,
       required: false,
       scope: 'shared',
@@ -4831,6 +4855,11 @@ function buildCodeOwnedAiDirectiveDefinitions(project, options = {}) {
     id: 'apm.shared.fragments.path',
     title: 'Use the configured fragments path',
     description: `Fragments generated for this project must be placed in ${projectFragmentsDir || '[Project Fragments Path]'}. Shared reusable fragments go in ${sharedFragmentsDir || '[Shared Fragments Path]'} only when explicitly intended for reuse across projects. The configured fragments root is ${fragmentsRootDir || '[Fragments Path]'}. Never place fragment files in the project docs folder or a repo-local fallback data folder.`,
+    pathHints: [
+      { label: 'Project Fragments Path', path: projectFragmentsDir || '[Project Fragments Path]' },
+      { label: 'Shared Fragments Path', path: sharedFragmentsDir || '[Shared Fragments Path]' },
+      { label: 'Fragments Root', path: fragmentsRootDir || '[Fragments Path]' },
+    ],
     locked: true,
     required: true,
     scope: 'shared',
@@ -4840,6 +4869,21 @@ function buildCodeOwnedAiDirectiveDefinitions(project, options = {}) {
     id: 'apm.shared.storage.safe-titles',
     title: 'Keep generated stored titles short and storage-safe',
     description: 'When AI generates fragments or any structured data that will be stored, keep titles and other short stored fields as short as the database allows. Prefer concise complete titles over truncated prose, and put longer detail in descriptions or body content.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  const softwareStandardsSourcePath = getSoftwareStandardsRegistrySourcePath();
+  const softwareStandardsProjectPath = getProjectSoftwareStandardsRegistryPath(project);
+  directives.push({
+    id: 'apm.shared.document.standard-verbiage',
+    title: 'Use module-standard document wording',
+    description: 'When generating or updating managed documents and fragments, use the module template and software standards reference registry to choose industry-standard phrasing. Do not invent casual headings when a module has prescribed vocabulary; keep user-provided freeform content in description or body fields.',
+    pathHints: [
+      { label: 'Project Software Standards Registry', path: softwareStandardsProjectPath || '[Project Software Standards Registry]' },
+      { label: 'Repository Software Standards Registry', path: softwareStandardsSourcePath },
+    ],
     locked: true,
     required: true,
     scope: 'shared',
@@ -4909,6 +4953,9 @@ function buildCodeOwnedAiDirectiveDefinitions(project, options = {}) {
       id: 'apm.application.runtime-db.source-of-truth',
       title: 'Treat the live runtime SQLite database as the source of truth for Angel\'s Project Manager',
       description: `For Angel's Project Manager, the live runtime SQLite database at ${runtimeDatabasePath} is the source of truth for project and module state. Generated docs, DBML, and fragments are derived artifacts and should be treated as outputs, proposals, or exchange files unless explicitly stated otherwise.`,
+      pathHints: [
+        { label: 'Runtime SQLite Database', path: runtimeDatabasePath },
+      ],
       locked: true,
       required: true,
       scope: 'application',
@@ -4943,19 +4990,29 @@ function buildCodeOwnedAiDirectiveDefinitions(project, options = {}) {
 }
 
 function buildModuleAiDirectiveDefinitions(options = {}) {
+  const projectId = String(options?.project?.id || options?.projectId || '[project-id]');
   const enabledModuleKeys = new Set((Array.isArray(options.enabledModuleKeys) ? options.enabledModuleKeys : [])
     .map((value) => String(value || '').trim())
     .filter(Boolean));
   return AI_MODULE_DIRECTIVE_DEFINITIONS
     .filter((directive) => !enabledModuleKeys.size || enabledModuleKeys.has(directive.moduleKey))
-    .map((directive) => normalizeAiDirectiveDefinition({
-      ...directive,
-      scope: 'module',
-      source: 'template',
-      locked: directive.locked !== undefined ? directive.locked : true,
-      required: directive.required !== undefined ? directive.required : true,
-      templateName: DOC_TYPES[directive.moduleKey]?.templateName || FRAGMENT_TEMPLATE_NAMES[directive.moduleKey] || '',
-    }))
+    .map((directive) => {
+      const templateName = DOC_TYPES[directive.moduleKey]?.templateName || FRAGMENT_TEMPLATE_NAMES[directive.moduleKey] || '';
+      return normalizeAiDirectiveDefinition({
+        ...directive,
+        scope: 'module',
+        source: 'template',
+        locked: directive.locked !== undefined ? directive.locked : true,
+        required: directive.required !== undefined ? directive.required : true,
+        templateName,
+        pathHints: templateName
+          ? [
+              { label: 'Project Template Copy', path: `data/projects/${projectId}/templates/${templateName}` },
+              { label: 'Repository Template Source', path: path.join(TEMPLATE_DIR, templateName) },
+            ]
+          : [],
+      });
+    })
     .filter(Boolean);
 }
 
@@ -4964,7 +5021,7 @@ function buildAiDirectiveRegistry(project, options = {}) {
   const codeDirectives = buildCodeOwnedAiDirectiveDefinitions(project, options)
     .map((directive) => normalizeAiDirectiveDefinition(directive, { source: 'code', locked: true }))
     .filter(Boolean);
-  const moduleDirectives = buildModuleAiDirectiveDefinitions(options);
+  const moduleDirectives = buildModuleAiDirectiveDefinitions({ ...options, project });
   const directives = [...codeDirectives, ...moduleDirectives].map((directive) => {
     const enabled = directive.required ? true : !disabledDirectiveIds.has(directive.id);
     return {
@@ -5004,6 +5061,8 @@ function filterEditorStateDirectiveDetails(details, registry) {
     'template registry requires migration',
     'functional spec actions must be readable',
     'use content aware fragment discovery',
+    'use module standard document wording',
+    'generate regression tests for bug fixes',
     'shut down locked running application processes before rebuilds',
     'create adr records when architectural decisions are made',
     'create destination fragments after implementation',
@@ -5029,6 +5088,8 @@ function getImmutableAiDirectives(project, options = {}) {
       scope: directive.scope,
       source: directive.source,
       moduleKey: directive.moduleKey,
+      templateName: directive.templateName,
+      pathHints: directive.pathHints,
     }));
 }
 
@@ -6124,6 +6185,23 @@ function listSharedFragmentFilesForModule(moduleKey, pattern = null) {
   return listFragmentFilesForModuleInDir(sharedDir, moduleKey, pattern);
 }
 
+function isPendingFragmentFile(filePath) {
+  if (!filePath || !/\.md$/i.test(filePath) || /\.template\.md$/i.test(filePath)) return false;
+  const snapshot = readManagedFileSnapshot(filePath);
+  const managed = snapshot?.managed || {};
+  const status = String(
+    managed?.fragment?.status
+    || managed?.status
+    || managed?.editorState?.status
+    || ''
+  ).trim().toLowerCase();
+  return !['archived', 'consumed', 'integrated', 'merged', 'resolved'].includes(status);
+}
+
+function countPendingProjectFragments(project) {
+  return listProjectFragmentFiles(project).filter(isPendingFragmentFile).length;
+}
+
 module.exports = {
   DOC_TYPES,
   PRD_FRAGMENT_TEMPLATE_NAME,
@@ -6143,6 +6221,9 @@ module.exports = {
   ensureSharedFragmentsDir,
   getProjectDocsDir,
   getProjectApmDir,
+  getProjectsDataDir,
+  getProjectDataDir,
+  getSharedProjectDataDir,
   getProjectTemplatesDir,
   getProjectStandardsDir,
   getProjectSoftwareStandardsDir,
@@ -6227,4 +6308,5 @@ module.exports = {
   listFragmentFilesForModuleInDir,
   listProjectFragmentFilesForModule,
   listSharedFragmentFilesForModule,
+  countPendingProjectFragments,
 };

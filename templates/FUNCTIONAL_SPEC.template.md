@@ -27,7 +27,7 @@ Describe how the software should behave in precise, testable terms.
 
 - The template version is the contract for generated Functional Specification documents and fragments.
 - When this template changes, update `Template Version` and `Last Updated`.
-- Project-local copies in `.apm/templates` must be replaced when the source template version or content hash changes.
+- Project-local copies in `data/projects/<project-id>/templates` must be replaced when the source template version or content hash changes.
 - AI agents must follow the latest copied template before generating or applying Functional Specification fragments.
 
 ## Functional Flowchart Action Vocabulary

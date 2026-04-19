@@ -162,6 +162,7 @@ const {
   getFragmentsRootDir,
   getSharedFragmentsDir,
   ensureSharedFragmentsDir,
+  countPendingProjectFragments,
   readManagedFileSnapshot,
   parseManagedBlock,
   normalizeDocumentEditorStateForStorage,
@@ -225,7 +226,7 @@ function createApp() {
         projectRoot: config.getProjectsRoot(),
         dataDir: config.getDataDir(),
         logsDir: config.getLogsDir(),
-        fragmentsRootDir: path.join(config.getDataDir(), 'Fragments'),
+        fragmentsRootDir: getFragmentsRootDir(),
       },
       ui: appSettings.ui,
       ai: appSettings.ai,
@@ -579,7 +580,7 @@ function createApp() {
       '## Integration Guidance',
       '',
       '- AI agents should update this roadmap fragment instead of editing ROADMAP.md directly.',
-      `- Store roadmap fragment files under data/Fragments/${project.id}/.`,
+      `- Store roadmap fragment files under data/projects/${project.id}/fragments/.`,
       '- The roadmap module consumes this fragment and applies the approved changes to the application database.',
       '- Prefer stable feature IDs, task IDs, and existing phase IDs when possible.',
     ].join('\n');
@@ -616,7 +617,7 @@ function createApp() {
       '## Merge Guidance',
       '',
       '- AI agents should update this fragment instead of editing PRD.md directly.',
-      `- Store PRD fragment files under data/Fragments/${feature.projectId || 'project'}/.`,
+      `- Store PRD fragment files under data/projects/${feature.projectId || 'project'}/fragments/.`,
       '- The PRD module consumes this fragment and merges it into the main PRD when approved.',
       '',
     ].join('\n');
@@ -1280,7 +1281,7 @@ function createApp() {
       '',
       '- AI agents should read the roadmap, linked features, linked bugs, and phase sequencing before changing implementation scope.',
       '- Update this fragment instead of editing PRD.md directly.',
-      `- Store PRD fragment files under data/Fragments/${project.id}/.`,
+      `- Store PRD fragment files under data/projects/${project.id}/fragments/.`,
       '- When implementation changes are approved, merge or integrate this fragment through the PRD module.',
       '',
     ].join('\n');
@@ -1763,9 +1764,7 @@ function createApp() {
       readRoadmapFragments(project.id, { includeMerged: true }),
     ]);
     const templateMeta = getTemplateMetadata('ROADMAP.template.md');
-    const mermaid = stored && stored.mermaid
-      ? stored.mermaid
-      : renderRoadmapMermaid(phases, tasks, features, bugs);
+    const mermaid = renderRoadmapMermaid(phases, tasks, features, bugs);
     return {
       phases,
       tasks,
@@ -1807,9 +1806,7 @@ function createApp() {
       readFeatureItems(project.id, { includeArchived: true }),
       readPrdFragments(project.id, { includeMerged: true }),
     ]);
-    const mermaid = stored && stored.mermaid
-      ? stored.mermaid
-      : renderFeaturesMermaid(phases, features);
+    const mermaid = renderFeaturesMermaid(phases, features);
     return {
       features,
       phases,
@@ -3509,6 +3506,7 @@ function createApp() {
     getFragmentsRootDir,
     getSharedFragmentsDir,
     ensureSharedFragmentsDir,
+    countPendingProjectFragments,
     readManagedFileSnapshot,
     renderPrdEditorStateMarkdown,
     normalizeDocumentEditorStateForStorage,

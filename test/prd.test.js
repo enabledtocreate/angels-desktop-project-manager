@@ -144,9 +144,15 @@ test('bootstraps SQLite from legacy JSON and preserves schema needed for roadmap
   assert.equal(projects[0].absolutePath, path.join(workspaceRoot, 'Alpha'));
   assert.equal(projects[0].serverId, 'cred-legacy-1');
   assert.equal(projects[0].primaryAction, 'cursor');
+  assert.equal(projects[0].pendingFragmentCount, 0);
   assert.equal(projects[0].mappingGroups[0].downloadMappings[0].remotePath, '/var/www/alpha/.env');
+  const projectDataManifestPath = path.join(dataDir, 'projects', 'PROJECT_MANIFEST.md');
+  assert.equal(fs.existsSync(projectDataManifestPath), true);
+  const projectDataManifest = fs.readFileSync(projectDataManifestPath, 'utf8');
+  assert.match(projectDataManifest, /legacy-project-1/);
+  assert.match(projectDataManifest, /Legacy Alpha/);
   assert.equal(
-    fs.existsSync(path.join(workspaceRoot, 'Alpha', '.apm', 'standards', 'software', 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')),
+    fs.existsSync(path.join(dataDir, 'projects', 'legacy-project-1', 'standards', 'software', 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')),
     true
   );
 
@@ -549,7 +555,7 @@ test('AI environment module syncs a managed document and persists structured edi
   assert.match(result.body.markdown, /Fragments generated for this project must be placed in/);
   assert.equal(
     result.body.softwareStandardsPath,
-    path.join(currentRoots.body.projectsRoot, 'Alpha', '.apm', 'standards', 'software', 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')
+    path.join(currentRoots.body.dataDir, 'projects', project.id, 'standards', 'software', 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')
   );
   assert.match(result.body.markdown, /templates\/ROADMAP\.template\.md/);
   assert.match(result.body.markdown, /## 9\. Module Directive Index/);
@@ -1408,10 +1414,10 @@ test('architecture and database schema modules are editable through the shared d
   assert.doesNotMatch(result.body.dbml, /Table stale/);
 
   const projectDocsDir = path.join(project.absolutePath, 'docs');
-  const projectTemplatesDir = path.join(project.absolutePath, '.apm', 'templates');
-  const projectWorkspaceDir = path.join(project.absolutePath, '.apm', '_WORKSPACE');
   const rootsForSchema = await request('/api/roots');
-  const projectFragmentsDir = path.join(rootsForSchema.body.dataDir, 'Fragments', project.id);
+  const projectTemplatesDir = path.join(rootsForSchema.body.dataDir, 'projects', project.id, 'templates');
+  const projectWorkspaceDir = path.join(project.absolutePath, '.apm', '_WORKSPACE');
+  const projectFragmentsDir = path.join(rootsForSchema.body.dataDir, 'projects', project.id, 'fragments');
   const architectureDocPath = path.join(projectDocsDir, 'ARCHITECTURE.md');
   const schemaDocPath = path.join(projectDocsDir, 'DATABASE_SCHEMA.md');
   const schemaDbmlPath = path.join(projectDocsDir, 'DATABASE_SCHEMA.dbml');
@@ -2218,14 +2224,14 @@ test('database schema fragment browser lists discoverable files and consuming a 
   const project = result.body;
   const projectDocsDir = path.join(project.absolutePath, 'docs');
   const rootsForFragmentBrowser = await request('/api/roots');
-  const projectFragmentsDir = path.join(rootsForFragmentBrowser.body.dataDir, 'Fragments', project.id);
+  const projectFragmentsDir = path.join(rootsForFragmentBrowser.body.dataDir, 'projects', project.id, 'fragments');
   fs.mkdirSync(projectFragmentsDir, { recursive: true });
   fs.mkdirSync(projectDocsDir, { recursive: true });
   const fragmentFileName = 'DATABASE_SCHEMA_FRAGMENT_20260331_010101010.md';
   const fragmentPath = path.join(projectFragmentsDir, fragmentFileName);
   const sharedFragmentFileName = 'DATABASE_SCHEMA_FRAGMENT_20260331_020202020.md';
   const roots = await request('/api/roots');
-  const sharedFragmentsDir = path.join(roots.body.dataDir, 'Fragments', 'shared');
+  const sharedFragmentsDir = path.join(roots.body.dataDir, 'projects', 'shared', 'fragments');
   const sharedFragmentPath = path.join(sharedFragmentsDir, sharedFragmentFileName);
   const malformedSharedFragmentFileName = 'DATABASE_SCHEMA_FRAGMENT_20260331_030303030.md';
   const malformedSharedFragmentPath = path.join(sharedFragmentsDir, malformedSharedFragmentFileName);
@@ -2333,8 +2339,8 @@ test('database schema fragment browser lists discoverable files and consuming a 
   try {
     result = await request(`/api/projects/${project.id}/database-schema/fragments`);
     assert.equal(result.response.status, 200);
-    assert.match(String(result.body.paths.projectFragmentsDir || ''), /Fragments/);
-    assert.match(String(result.body.paths.sharedFragmentsDir || ''), /Fragments/);
+    assert.match(String(result.body.paths.projectFragmentsDir || ''), /projects/);
+    assert.match(String(result.body.paths.sharedFragmentsDir || ''), /projects/);
     const discoveredFragment = result.body.fragments.find((fragment) => fragment.code === 'DBFRAG-002');
     assert(discoveredFragment);
     assert.equal(discoveredFragment.fileName, fragmentFileName);
@@ -3004,9 +3010,9 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   assert.match(featurePrdFragment.markdown, /AI agents should update this fragment instead of editing PRD\.md directly\./);
 
   const alphaDocsDir = path.join(roots.projectsRoot, 'Alpha', 'docs');
-  const alphaTemplatesDir = path.join(roots.projectsRoot, 'Alpha', '.apm', 'templates');
-  const alphaSoftwareStandardsDir = path.join(roots.projectsRoot, 'Alpha', '.apm', 'standards', 'software');
-  const alphaFragmentsDir = path.join(roots.dataDir, 'Fragments', project.id);
+  const alphaTemplatesDir = path.join(roots.dataDir, 'projects', project.id, 'templates');
+  const alphaSoftwareStandardsDir = path.join(roots.dataDir, 'projects', project.id, 'standards', 'software');
+  const alphaFragmentsDir = path.join(roots.dataDir, 'projects', project.id, 'fragments');
   assert.equal(fs.existsSync(path.join(alphaDocsDir, 'ROADMAP.md')), true);
   assert.equal(fs.existsSync(path.join(alphaDocsDir, 'FEATURES.md')), true);
   assert.equal(fs.existsSync(path.join(alphaDocsDir, 'BUGS.md')), true);
@@ -3023,7 +3029,7 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   }
   const generatedRoadmapTemplate = fs.readFileSync(path.join(alphaTemplatesDir, 'ROADMAP.template.md'), 'utf8');
   assert.match(generatedRoadmapTemplate, /## Version/);
-  assert.match(generatedRoadmapTemplate, /Template Version: `2\.0`/);
+  assert.match(generatedRoadmapTemplate, /Template Version: `2\.1`/);
   assert.match(generatedRoadmapTemplate, /## Model Context Protocol/);
   assert.match(generatedRoadmapTemplate, /### Phases/);
   assert.match(generatedRoadmapTemplate, /### Planned Features/);
@@ -3195,8 +3201,8 @@ test('imported shared PRD fragments are persisted once, source-cleaned, and rewr
   const project = (await request('/api/projects')).body.find((item) => item.id === 'legacy-project-1');
   assert(project);
 
-  const sharedFragmentsDir = path.join(roots.dataDir, 'Fragments', 'shared');
-  const projectFragmentsDir = path.join(roots.dataDir, 'Fragments', project.id);
+  const sharedFragmentsDir = path.join(roots.dataDir, 'projects', 'shared', 'fragments');
+  const projectFragmentsDir = path.join(roots.dataDir, 'projects', project.id, 'fragments');
   fs.mkdirSync(sharedFragmentsDir, { recursive: true });
   fs.mkdirSync(projectFragmentsDir, { recursive: true });
 
@@ -3239,7 +3245,7 @@ test('PRD load tolerates and imports managed PRD fragment files that use markdow
   const project = (await request('/api/projects')).body.find((item) => item.id === 'legacy-project-1');
   assert(project);
 
-  const projectFragmentsDir = path.join(roots.dataDir, 'Fragments', project.id);
+  const projectFragmentsDir = path.join(roots.dataDir, 'projects', project.id, 'fragments');
   fs.mkdirSync(projectFragmentsDir, { recursive: true });
 
   const fileName = 'PRD_FRAGMENT_20260403_managed_body_shape_001.md';
@@ -3993,9 +3999,15 @@ test('AI environment markdown always includes locked system directives for fragm
   assert.match(markdown, /Record document-impacting changes in the Change Log/);
   assert.match(markdown, /Keep generated stored titles short and storage-safe/);
   assert.match(markdown, /keep titles and other short stored fields as short as the database allows/i);
+  assert.match(markdown, /Use module-standard document wording/);
+  assert.match(markdown, /software standards reference registry/);
   assert.match(markdown, /Create stable human-readable ids for persisted items/);
   assert.match(markdown, /apm\.shared\.stable-id\.naming/);
   assert.match(markdown, /short lowercase kebab-case identifier scoped by module or item type/);
+  assert.match(markdown, /Generate regression tests for bug fixes/);
+  assert.match(markdown, /apm\.module\.bugs\.regression-test-followup/);
+  assert.match(markdown, /Paths:/);
+  assert.match(markdown, /Project Fragments Path/);
   assert.match(markdown, /templates\/CHANGELOG\.template\.md/);
   assert.match(markdown, /\| Stable ID \|/);
   assert.match(markdown, /ai-environment-term-dictionary-apm/);
@@ -4448,7 +4460,7 @@ test('AI environment markdown omits application-only directives for non-selected
   assert.match(markdown, /## 6\. Applied Shared Profiles/);
 });
 
-test('roadmap and features markdown use planned and implemented feature language', () => {
+test('roadmap and features markdown only render active unfinished feature work', () => {
   const project = { id: 'project-1', name: 'Language Check' };
   const phases = [{ id: 'phase-1', code: 'P1', name: 'Phase 1', status: 'planned' }];
   const features = [
@@ -4459,10 +4471,12 @@ test('roadmap and features markdown use planned and implemented feature language
   const roadmapMarkdown = workspaceDocs.renderRoadmapMarkdown(project, phases, [], features, [], 'graph TD');
   const featuresMarkdown = workspaceDocs.renderFeaturesMarkdown(project, phases, features, 'graph TD');
 
-  assert.match(roadmapMarkdown, /planned entries in FEATURES\.md/);
-  assert.match(roadmapMarkdown, /implemented features unless explicitly asked to review history/);
+  assert.match(roadmapMarkdown, /active planned entries in FEATURES\.md/);
+  assert.match(roadmapMarkdown, /archived work is omitted/);
   assert.match(featuresMarkdown, /## Planned Features/);
-  assert.match(featuresMarkdown, /## Implemented Features/);
+  assert.match(featuresMarkdown, /FEAT-001: Planned feature/);
+  assert.doesNotMatch(featuresMarkdown, /## Implemented Features/);
+  assert.doesNotMatch(featuresMarkdown, /FEAT-002: Implemented feature/);
   assert.doesNotMatch(featuresMarkdown, /## Active Features/);
   assert.doesNotMatch(featuresMarkdown, /## Archived Features/);
 });
@@ -4486,7 +4500,7 @@ test('software standards registry is available from the top-level standards dire
   );
 });
 
-test('software standards source directory syncs into the project .apm standards folder', () => {
+test('software standards source directory syncs into the project data standards folder', () => {
   const project = {
     id: 'standards-sync-project',
     type: 'folder',
@@ -4495,7 +4509,7 @@ test('software standards source directory syncs into the project .apm standards 
 
   fs.mkdirSync(project.absolutePath, { recursive: true });
   const syncedRegistryPath = workspaceDocs.syncSoftwareStandardsForProject(project);
-  const projectSoftwareStandardsDir = path.join(project.absolutePath, '.apm', 'standards', 'software');
+  const projectSoftwareStandardsDir = workspaceDocs.getProjectSoftwareStandardsDir(project);
 
   assert.equal(path.normalize(syncedRegistryPath), path.join(projectSoftwareStandardsDir, 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md'));
   assert.equal(fs.existsSync(projectSoftwareStandardsDir), true);
@@ -4527,9 +4541,17 @@ test('AI environment workspace exposes save path, fragments path, and custom ins
   assert.match(aiWorkspace, /Custom Instructions/);
   assert.match(aiWorkspace, /AI_ENVIRONMENT\.md:/);
   assert.match(aiWorkspace, /Fragments Path:/);
+  assert.match(aiWorkspace, /Project Fragments:/);
+  assert.match(aiWorkspace, /Runtime Database:/);
   assert.match(aiWorkspace, /Software Standards:/);
   assert.match(aiWorkspace, /Load Fragments/);
   assert.match(aiWorkspace, /APM Term Dictionary/);
+  assert.match(aiWorkspace, /AI_SECTION_GUIDES/);
+  assert.match(aiWorkspace, /AI Section Guide/);
+  assert.match(aiWorkspace, /Custom Instruction Review Buffer/);
+  assert.match(aiWorkspace, /Resolved Paths/);
+  assert.match(aiWorkspace, /pathHints/);
+  assert.match(aiWorkspace, /code-owned directive instead of leaving it in this freeform buffer/);
   assert.match(aiWorkspace, /termDictionary/);
   assert.match(aiWorkspace, /Directive Hierarchy/);
   assert.match(aiWorkspace, /function groupDirectivesByModule/);
@@ -4945,7 +4967,7 @@ test('AI environment fragments can be discovered and consumed from fragment dire
   const importedMarkdownBody = workspaceDocs.renderAiEnvironmentEditorStateMarkdown(project, importedState, {
     sharedProfiles: [],
     fragmentsDirectiveProjectId: project.id,
-    fragmentsRootDir: path.join(workspaceRoot, 'data', 'Fragments'),
+    fragmentsRootDir: path.join(workspaceRoot, 'data', 'projects'),
   });
   const importedMarkdown = workspaceDocs.renderAiEnvironmentMarkdown(
     project,

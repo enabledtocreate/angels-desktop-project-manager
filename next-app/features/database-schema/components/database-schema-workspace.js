@@ -1083,8 +1083,8 @@ export function DatabaseSchemaWorkspace({ project }) {
         title="Database Schema AI Instructions"
         instructions={[
           'Use database schema fragments for proposed schema changes instead of editing the canonical schema document directly.',
-          `Place project schema fragments in ${fragmentPaths?.projectFragmentsDir || 'data/Fragments/<project-id>/'}.`,
-          `Place shared schema fragments in ${fragmentPaths?.sharedFragmentsDir || 'data/Fragments/shared/'}.`,
+          `Place project schema fragments in ${fragmentPaths?.projectFragmentsDir || 'data/projects/<project-id>/fragments/'}.`,
+          `Place shared schema fragments in ${fragmentPaths?.sharedFragmentsDir || 'data/projects/shared/fragments/'}.`,
           'Treat the schema model as the source of truth for DBML, Mermaid, and narrative schema output.',
           'Mark observed facts separately from inferred structure when importing or drafting schema fragments.',
         ]}

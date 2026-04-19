@@ -96,6 +96,19 @@ function domToken(value) {
   return String(value || 'item').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item';
 }
 
+const AI_SECTION_GUIDES = {
+  mission: 'The project-level purpose for AI agents. This should tell an agent what the project exists to accomplish before it reads detailed directives.',
+  communicationStyle: 'How agents should communicate with the human user, including tone, brevity, escalation, and collaboration expectations.',
+  operatingModel: 'The default workflow for reading project context, making changes, using fragments, validating work, and handing results back.',
+  requiredBehaviors: 'Project-specific rules that should always be followed unless a code-owned directive says otherwise.',
+  termDictionary: 'APM vocabulary that may not mean the same thing in other tools. These terms are generated into the AI Environment document as a table.',
+  moduleUpdateRules: 'Rules that tell an agent which other modules or documents may need updates when one area changes.',
+  dataPhrasingRules: 'Rules for structured data, stored titles, section wording, and generated document phrasing.',
+  avoidRules: 'Guardrails for behaviors that can damage source-of-truth state, generated files, or project traceability.',
+  customInstructions: 'A review buffer for temporary or unusual project-specific guidance. Durable rules should be moved into structured entries or code-owned directives.',
+  handoffChecklist: 'The final verification checklist an agent should use before reporting that work is complete.',
+};
+
 function AiEnvironmentTextArea({ label, value, onChange, rows = 4, help, stableId = '', sourceRefs = [], workItemLookup = {} }) {
   return (
     <label className="space-y-2 text-sm text-ink/75">
@@ -109,6 +122,16 @@ function AiEnvironmentTextArea({ label, value, onChange, rows = 4, help, stableI
       />
       <DocumentFieldMeta stableId={stableId} sourceRefs={sourceRefs} workItemLookup={workItemLookup} />
     </label>
+  );
+}
+
+function SectionGuide({ title, children }) {
+  return (
+    <SurfaceCard className="p-3" tone="muted">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/55">AI Section Guide</p>
+      <p className="mt-1 text-sm font-semibold text-ink">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-ink/72">{children}</p>
+    </SurfaceCard>
   );
 }
 
@@ -258,6 +281,7 @@ export function AiEnvironmentWorkspace({ project }) {
     const detailKey = `${keyPrefix}:${directive.id}`;
     const expanded = isDirectiveDescriptionExpanded(detailKey);
     const domId = `ai-directive-${domToken(keyPrefix)}-${domToken(directive.id)}`;
+    const pathHints = Array.isArray(directive.pathHints) ? directive.pathHints.filter((hint) => hint?.path) : [];
     return (
       <div
         key={detailKey}
@@ -309,6 +333,18 @@ export function AiEnvironmentWorkspace({ project }) {
             <p className="text-sm leading-6 text-ink/75">{directive.description}</p>
             {directive.templateName ? (
               <p className="text-xs text-ink/55">Source Template: templates/{directive.templateName}</p>
+            ) : null}
+            {pathHints.length ? (
+              <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink/50">Resolved Paths</p>
+                <div className="mt-2 space-y-1">
+                  {pathHints.map((hint, index) => (
+                    <p key={`${directive.id}-path-${index}`} className="break-words text-xs leading-5 text-ink/65">
+                      <span className="font-semibold text-ink/75">{hint.label || 'Path'}:</span> {hint.path}
+                    </p>
+                  ))}
+                </div>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -387,9 +423,16 @@ export function AiEnvironmentWorkspace({ project }) {
           description="Structured lists are edited as real title-and-description entries now, so we do not rely on brittle inline delimiters. Use Custom Instructions for project-specific guidance that does not fit a structured list."
         >
           <div className="grid gap-4 md:grid-cols-2">
-            <AiEnvironmentTextArea label="Mission" stableId={editableState.overviewItemIds?.mission} sourceRefs={editableState.overviewItemSourceRefs?.mission} workItemLookup={workItemLookup} value={editableState.mission} onChange={(event) => setEditableState((current) => ({ ...current, mission: event.target.value }))} />
-            <AiEnvironmentTextArea label="Communication Style" stableId={editableState.overviewItemIds?.communicationStyle} sourceRefs={editableState.overviewItemSourceRefs?.communicationStyle} workItemLookup={workItemLookup} value={editableState.communicationStyle} onChange={(event) => setEditableState((current) => ({ ...current, communicationStyle: event.target.value }))} />
-            <div className="md:col-span-2">
+            <div className="space-y-3">
+              <SectionGuide title="Mission">{AI_SECTION_GUIDES.mission}</SectionGuide>
+              <AiEnvironmentTextArea label="Mission" stableId={editableState.overviewItemIds?.mission} sourceRefs={editableState.overviewItemSourceRefs?.mission} workItemLookup={workItemLookup} value={editableState.mission} onChange={(event) => setEditableState((current) => ({ ...current, mission: event.target.value }))} />
+            </div>
+            <div className="space-y-3">
+              <SectionGuide title="Communication Style">{AI_SECTION_GUIDES.communicationStyle}</SectionGuide>
+              <AiEnvironmentTextArea label="Communication Style" stableId={editableState.overviewItemIds?.communicationStyle} sourceRefs={editableState.overviewItemSourceRefs?.communicationStyle} workItemLookup={workItemLookup} value={editableState.communicationStyle} onChange={(event) => setEditableState((current) => ({ ...current, communicationStyle: event.target.value }))} />
+            </div>
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="Operating Model">{AI_SECTION_GUIDES.operatingModel}</SectionGuide>
               <AiEnvironmentTextArea label="Operating Model" rows={4} stableId={editableState.overviewItemIds?.operatingModel} sourceRefs={editableState.overviewItemSourceRefs?.operatingModel} workItemLookup={workItemLookup} value={editableState.operatingModel} onChange={(event) => setEditableState((current) => ({ ...current, operatingModel: event.target.value }))} />
             </div>
             <div className="md:col-span-2 space-y-3">
@@ -427,26 +470,37 @@ export function AiEnvironmentWorkspace({ project }) {
                 </div>
               </div>
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="Required Behaviors">{AI_SECTION_GUIDES.requiredBehaviors}</SectionGuide>
               <StructuredEntryListEditor label="Required Behaviors" entries={editableState.requiredBehaviors} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, requiredBehaviors: value }))} emptyLabel="No required behaviors yet." />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="APM Term Dictionary">{AI_SECTION_GUIDES.termDictionary}</SectionGuide>
               <StructuredEntryListEditor label="APM Term Dictionary" entries={editableState.termDictionary} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, termDictionary: value }))} emptyLabel="No APM terms yet." />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="Module Update Rules">{AI_SECTION_GUIDES.moduleUpdateRules}</SectionGuide>
               <StructuredEntryListEditor label="Module Update Rules" entries={editableState.moduleUpdateRules} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, moduleUpdateRules: value }))} emptyLabel="No module update rules yet." />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="Data Structure / Phrasing Rules">{AI_SECTION_GUIDES.dataPhrasingRules}</SectionGuide>
               <StructuredEntryListEditor label="Data Structure / Phrasing Rules" entries={editableState.dataPhrasingRules} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, dataPhrasingRules: value }))} emptyLabel="No data phrasing rules yet." />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="Avoid / Guardrails">{AI_SECTION_GUIDES.avoidRules}</SectionGuide>
               <StructuredEntryListEditor label="Avoid / Guardrails" entries={editableState.avoidRules} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, avoidRules: value }))} emptyLabel="No guardrails yet." />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
+              <SurfaceCard className="mb-3 p-3" tone="muted">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/55">Custom Instruction Review Buffer</p>
+                <p className="mt-2 text-sm leading-6 text-ink/72">
+                  {AI_SECTION_GUIDES.customInstructions} If a custom instruction becomes permanent, convert it into a structured section or code-owned directive instead of leaving it in this freeform buffer.
+                </p>
+              </SurfaceCard>
               <AiEnvironmentTextArea
                 label="Custom Instructions"
                 rows={5}
-                help="Add plain-language project-specific instructions here. This is the easiest place to add new AI guidance that does not belong in a structured list."
+                help="Add plain-language project-specific instructions here only when the guidance does not belong in a structured list or module-owned directive."
                 stableId={editableState.customInstructionsMeta?.stableId}
                 sourceRefs={editableState.customInstructionsMeta?.sourceRefs}
                 workItemLookup={workItemLookup}
@@ -454,7 +508,8 @@ export function AiEnvironmentWorkspace({ project }) {
                 onChange={(event) => setEditableState((current) => ({ ...current, customInstructions: event.target.value }))}
               />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="Handoff Checklist">{AI_SECTION_GUIDES.handoffChecklist}</SectionGuide>
               <StructuredEntryListEditor label="Handoff Checklist" entries={editableState.handoffChecklist} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, handoffChecklist: value }))} emptyLabel="No handoff checklist yet." />
             </div>
           </div>
@@ -604,7 +659,10 @@ export function AiEnvironmentWorkspace({ project }) {
             <div className="mt-3 space-y-2 text-sm text-ink/75">
               <p><span className="font-semibold text-ink">AI_ENVIRONMENT.md:</span> {aiEnvironment?.documentPath || 'Not available yet.'}</p>
               <p><span className="font-semibold text-ink">Fragments Path:</span> {aiEnvironment?.fragmentsRootDir || 'Not available yet.'}</p>
+              <p><span className="font-semibold text-ink">Project Fragments:</span> {aiEnvironment?.projectFragmentsDir || 'Not available yet.'}</p>
+              <p><span className="font-semibold text-ink">Shared Fragments:</span> {aiEnvironment?.sharedFragmentsDir || 'Not available yet.'}</p>
               <p><span className="font-semibold text-ink">Software Standards:</span> {aiEnvironment?.softwareStandardsPath || 'Not available yet.'}</p>
+              <p><span className="font-semibold text-ink">Runtime Database:</span> {aiEnvironment?.runtimeDatabasePath || 'Not available yet.'}</p>
             </div>
           </SurfaceCard>
           <SurfaceCard className="p-4" tone="muted">

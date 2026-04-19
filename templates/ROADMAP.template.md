@@ -14,8 +14,8 @@ This document defines the required structure for `ROADMAP.md`.
 ## Version
 
 - Template Name: `ROADMAP.template.md`
-- Template Version: `2.0`
-- Last Updated: `2026-03-28`
+- Template Version: `2.1`
+- Last Updated: `2026-04-18`
 - AI Agent instruction: Whenever this template is updated, update the template version and last updated date before making any other structural edits.
 
 ## Model Context Protocol
@@ -25,9 +25,9 @@ This section defines how an AI agent must treat `ROADMAP.md` when reading or edi
 - `ROADMAP.md` is a managed document generated from application state.
 - The application database is the source of truth for phases, linked tasks, planned features, and considered features.
 - The roadmap document must remain structurally readable by both the application and an AI agent.
-- Feature IDs in `ROADMAP.md` refer to active and archived entries in `FEATURES.md`.
+- Feature IDs in `ROADMAP.md` refer to active unfinished entries in `FEATURES.md`.
 - AI agents should use active feature IDs for planning and implementation context.
-- AI agents should ignore archived features unless explicitly asked to review project history.
+- AI agents should ignore implemented, completed, resolved, closed, and archived work unless explicitly asked to review project history.
 - Tasks referenced in roadmap phases are linked to the Kanban board and Gantt/timeline scheduling.
 - If a document edit conflicts with application data, the application may regenerate the file from the database.
 
@@ -54,7 +54,7 @@ Unique section.
 - Purpose: Summarize the roadmap at a project level.
 - Expected content:
   - Plain-language summary of what the roadmap represents
-  - AI-agent guidance for how to interpret feature IDs and archived features
+  - AI-agent guidance for how to interpret active feature IDs and omitted historical work
 
 ### Phased Implementation Plan
 
@@ -95,7 +95,7 @@ Unique section with repeating entries.
 Unique section with repeating entries.
 
 - Heading: `## Considered Features`
-- Purpose: Hold archived or completed features that remain useful as project history.
+- Purpose: Hold active, unfinished features that are under consideration but not yet planned.
 - Entry format:
   - `- {{FEATURE_ID}}: {{FEATURE_TITLE}} ({{FEATURE_STATUS}})`
 
@@ -122,7 +122,7 @@ Unique section.
 
 {{EXECUTIVE_SUMMARY}}
 
-> AI Agent instruction: Use feature IDs in this roadmap to cross-reference planned entries in FEATURES.md. Ignore implemented features unless explicitly asked to review history.
+> AI Agent instruction: Use feature IDs in this roadmap to cross-reference active planned entries in FEATURES.md. Implemented, completed, resolved, closed, and archived work is omitted unless explicitly asked to review history.
 
 ## Phased Implementation Plan
 
@@ -150,7 +150,7 @@ Unique section.
 
 ## Considered Features
 
-- {{ARCHIVED_FEATURE_ID}}: {{ARCHIVED_FEATURE_TITLE}} ({{ARCHIVED_FEATURE_STATUS}})
+- {{FEATURE_ID}}: {{FEATURE_TITLE}} ({{FEATURE_STATUS}})
 
 ## Mermaid
 

@@ -12,8 +12,8 @@ This document governs how AI agents should operate within the project.
 ## Top-Level Fragment Rule
 
 - Generate managed fragments in the runtime fragments directory, not in project `docs`.
-- Use `data/Fragments/<project-id>/` for project-specific fragments.
-- Use `data/Fragments/shared/` only for intentionally shared fragment library files.
+- Use `data/projects/<project-id>/fragments/` for project-specific fragments.
+- Use `data/projects/shared/fragments/` only for intentionally shared fragment library files.
 - Generated markdown documents in `docs` are outputs, not the place to draft new fragments.
 
 ## Required Sections

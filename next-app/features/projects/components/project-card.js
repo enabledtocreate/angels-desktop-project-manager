@@ -68,6 +68,7 @@ export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpen
   const isGrid = viewMode === 'grid';
   const imageSource = project.imageUrl || (project.imagePath ? `/api/project-image/${project.id}` : null);
   const visibleLinks = Array.isArray(project.links) ? project.links.filter((link) => link && (link.description || link.url)).slice(0, 6) : [];
+  const pendingFragmentCount = Number.isFinite(Number(project.pendingFragmentCount)) ? Number(project.pendingFragmentCount) : 0;
 
   return (
     <SurfaceCard
@@ -104,7 +105,20 @@ export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpen
             ) : null}
             <div className="project-card-body min-w-0 flex-1">
               <p className="project-card-kind text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">{getProjectKind(project)}</p>
-              <h3 className="project-card-title truncate text-lg font-semibold text-ink">{project.name}</h3>
+              <h3 className="project-card-title flex min-w-0 items-center gap-2 text-lg font-semibold text-ink">
+                <span className="truncate">{project.name}</span>
+                <span
+                  className={[
+                    'shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold',
+                    pendingFragmentCount > 0
+                      ? 'border-amber-400/50 bg-amber-400/15 text-amber-100'
+                      : 'border-white/12 bg-white/6 text-ink/55',
+                  ].join(' ')}
+                  title={`${pendingFragmentCount} fragment${pendingFragmentCount === 1 ? '' : 's'} need merging`}
+                >
+                  ({pendingFragmentCount})
+                </span>
+              </h3>
               {visibleLinks.length ? (
                 <div className="project-card-links mt-1 flex min-w-0 items-center gap-2">
                   <span className="project-card-links-label text-xs font-medium text-ink/60">Links</span>

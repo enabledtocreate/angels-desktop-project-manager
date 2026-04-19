@@ -1250,7 +1250,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       const fragmentPath = (sourceScope === 'shared'
         ? [
             path.join(ensureSharedFragmentsDir(), fileName),
-            path.join(getFragmentsRootDir(), 'shared', fileName),
+            path.join(getFragmentsRootDir(), 'shared', 'fragments', fileName),
           ]
         : [
             path.join(ensureProjectFragmentsDir(project), fileName),
@@ -1440,7 +1440,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       const fragmentPath = (sourceScope === 'shared'
         ? [
             path.join(ensureSharedFragmentsDir(), fileName),
-            path.join(getFragmentsRootDir(), 'shared', fileName),
+            path.join(getFragmentsRootDir(), 'shared', 'fragments', fileName),
           ]
         : [
             path.join(ensureProjectFragmentsDir(project), fileName),
@@ -1783,7 +1783,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       const fragmentPath = (sourceScope === 'shared'
         ? [
             path.join(ensureSharedFragmentsDir(), fileName),
-            path.join(getFragmentsRootDir(), 'shared', fileName),
+            path.join(getFragmentsRootDir(), 'shared', 'fragments', fileName),
           ]
         : [
             path.join(ensureProjectFragmentsDir(project), fileName),
@@ -1923,7 +1923,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       const fragmentPath = (sourceScope === 'shared'
         ? [
             path.join(ensureSharedFragmentsDir(), fileName),
-            path.join(getFragmentsRootDir(), 'shared', fileName),
+            path.join(getFragmentsRootDir(), 'shared', 'fragments', fileName),
           ]
         : [
             path.join(ensureProjectFragmentsDir(project), fileName),
@@ -2134,7 +2134,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       const candidatePaths = sourceScope === 'shared'
         ? [
             path.join(ensureSharedFragmentsDir(), fileName),
-            path.join(getFragmentsRootDir(), 'shared', fileName),
+            path.join(getFragmentsRootDir(), 'shared', 'fragments', fileName),
           ]
         : [
             path.join(ensureProjectFragmentsDir(project), fileName),
@@ -2319,7 +2319,7 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       } else {
         if (sourceScope === 'shared') {
           const sharedCandidates = [
-            path.join(getFragmentsRootDir(), 'shared', fileName),
+            path.join(getFragmentsRootDir(), 'shared', 'fragments', fileName),
             path.join(config.getProjectsRoot(), 'docs', fileName),
             path.join(config.APP_DIR, 'docs', fileName),
           ];

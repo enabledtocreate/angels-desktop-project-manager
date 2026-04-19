@@ -31,12 +31,81 @@ module.exports = function registerProjectRoutes(app, ctx) {
     syncAiEnvironmentDocument,
     syncDatabaseSchemaDocument,
     ensureWorkspaceProject,
+    countPendingProjectFragments,
     sanitizeProject,
     normalizeRequestedProjectType,
     removeWorkspacePluginArtifacts,
     removeProjectModuleArtifacts,
     isProjectModuleEnabled,
   } = ctx;
+
+  const PROJECT_DATA_CHILDREN = ['project-images', 'templates', 'fragments', 'standards'];
+  const PROJECT_MANIFEST_FILE = 'PROJECT_MANIFEST.md';
+
+  function ensureProjectDataLayout(projects = []) {
+    config.ensureDataDir();
+    const projectsDataDir = config.getProjectsDataDir();
+    const sharedDataDir = config.getSharedProjectDataDir();
+    fs.mkdirSync(projectsDataDir, { recursive: true });
+    fs.mkdirSync(sharedDataDir, { recursive: true });
+    fs.mkdirSync(path.join(sharedDataDir, 'fragments'), { recursive: true });
+    fs.mkdirSync(path.join(sharedDataDir, 'project-images'), { recursive: true });
+    for (const project of Array.isArray(projects) ? projects : []) {
+      if (!project?.id) continue;
+      const projectDataDir = config.getProjectDataDir(project.id);
+      fs.mkdirSync(projectDataDir, { recursive: true });
+      for (const child of PROJECT_DATA_CHILDREN) {
+        fs.mkdirSync(path.join(projectDataDir, child), { recursive: true });
+      }
+    }
+    return projectsDataDir;
+  }
+
+  function escapeManifestCell(value) {
+    return String(value ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
+  }
+
+  async function writeProjectDataManifest(projects = null) {
+    const sourceProjects = Array.isArray(projects) ? projects : await readProjects();
+    const projectsDataDir = ensureProjectDataLayout(sourceProjects);
+    const lines = [
+      '# APM Project Data Manifest',
+      '',
+      'This file maps project data folders to the human-readable project names managed by APM.',
+      '',
+      '| Project ID | Project Name | Type | Data Folder | Project Path or URL |',
+      '| --- | --- | --- | --- | --- |',
+      `| shared | Shared project data | shared | ${escapeManifestCell(path.join(projectsDataDir, 'shared'))} | Shared fragments and reusable assets |`,
+      ...sourceProjects.map((project) => {
+        const dataFolder = project?.id ? config.getProjectDataDir(project.id) : '';
+        const location = project?.type === 'url' ? project.url : (project?.absolutePath || project?.path || '');
+        return `| ${escapeManifestCell(project?.id)} | ${escapeManifestCell(project?.name)} | ${escapeManifestCell(project?.type)} | ${escapeManifestCell(dataFolder)} | ${escapeManifestCell(location)} |`;
+      }),
+      '',
+    ];
+    fs.writeFileSync(path.join(projectsDataDir, PROJECT_MANIFEST_FILE), lines.join('\n'), 'utf8');
+  }
+
+  function decorateProject(project) {
+    const sanitized = sanitizeProject(project);
+    if (!sanitized) return sanitized;
+    let pendingFragmentCount = 0;
+    try {
+      pendingFragmentCount = typeof countPendingProjectFragments === 'function'
+        ? countPendingProjectFragments(sanitized)
+        : 0;
+    } catch (error) {
+      config.log(`project-routes: failed to count pending fragments for project ${sanitized.id || 'unknown'}: ${error.message || 'unknown error'}`);
+    }
+    return {
+      ...sanitized,
+      pendingFragmentCount,
+    };
+  }
+
+  function decorateProjects(projects) {
+    return (Array.isArray(projects) ? projects : []).map((project) => decorateProject(project));
+  }
 
   app.get('/api/projects', async (req, res) => {
     try {
@@ -49,7 +118,8 @@ module.exports = function registerProjectRoutes(app, ctx) {
           config.log(`phase5: startup workspace reconciliation skipped for project ${project?.id || 'unknown'}: ${error.message || 'unknown error'}`);
         }
       }
-      res.json(projects);
+      await writeProjectDataManifest(projects);
+      res.json(decorateProjects(projects));
     } catch (error) {
       console.error('Error fetching projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });
@@ -144,7 +214,9 @@ module.exports = function registerProjectRoutes(app, ctx) {
         };
       }
 
-      res.json(sanitizeProject(await saveProject(project)));
+      const savedProject = await saveProject(project);
+      await writeProjectDataManifest();
+      res.json(decorateProject(savedProject));
     } catch (error) {
       console.error('Error creating project:', error);
       res.status(500).json({ error: 'Failed to create project' });
@@ -234,7 +306,9 @@ module.exports = function registerProjectRoutes(app, ctx) {
         }
       }
 
-      res.json(sanitizeProject(await saveProject(project)));
+      const savedProject = await saveProject(project);
+      await writeProjectDataManifest();
+      res.json(decorateProject(savedProject));
     } catch (error) {
       console.error('Error updating project:', error);
       res.status(500).json({ error: 'Failed to update project' });
@@ -244,6 +318,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
   app.delete('/api/projects/:id', async (req, res) => {
     try {
       await deleteProject(req.params.id);
+      await writeProjectDataManifest();
       res.json({ ok: true });
     } catch (error) {
       console.error('Error deleting project:', error);
@@ -260,16 +335,17 @@ module.exports = function registerProjectRoutes(app, ctx) {
       const project = await getProjectById(req.params.id);
       if (!project) return res.status(404).json({ error: 'Project not found' });
       config.ensureDataDir();
-      const projectImagesDir = config.getProjectImagesDir();
+      const projectImagesDir = config.getProjectImagesDir(project.id);
       if (!fs.existsSync(projectImagesDir)) fs.mkdirSync(projectImagesDir, { recursive: true });
       const match = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
       if (!match) return res.status(400).json({ error: 'Invalid image data' });
       const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
       const filename = `${req.params.id}.${ext}`;
-      fs.writeFileSync(path.join(projectImagesDir, filename), Buffer.from(match[2], 'base64'));
-      project.imagePath = `project-images/${filename}`;
+      const imagePath = path.join(projectImagesDir, filename);
+      fs.writeFileSync(imagePath, Buffer.from(match[2], 'base64'));
+      project.imagePath = path.relative(config.getDataDir(), imagePath).replace(/\\/g, '/');
       project.imageUrl = null;
-      res.json(sanitizeProject(await saveProject(project)));
+      res.json(decorateProject(await saveProject(project)));
     } catch (error) {
       console.error('Error saving project image:', error);
       res.status(500).json({ error: 'Failed to save project image' });
