@@ -13,6 +13,7 @@ import { SurfaceCard } from '@/components/ui/surface-card';
 import { FunctionalFlowchartCanvas } from '@/features/functional-spec/components/flowchart/functional-flowchart-interface';
 import { WorkflowNodeIcon } from '@/features/functional-spec/components/flowchart/workflow-node-visuals';
 import { useModuleDocument } from '@/features/software/hooks/use-module-document';
+import { ProjectFamilyDocumentContext } from '@/features/workspace/components/project-family-document-context';
 import { useProjectWorkItemLookup } from '@/hooks/use-project-work-item-lookup';
 import { countActiveFragments } from '@/lib/fragment-utils';
 
@@ -707,6 +708,8 @@ export function FunctionalSpecWorkspace({ project, module }) {
           </div>
         </StatisticsDisclosure>
       </SectionShell>
+
+      <ProjectFamilyDocumentContext project={project} moduleLabel="Functional Spec" />
 
       <SectionShell eyebrow="Workflow Designer" title={activeTabMeta.title} description={activeTabMeta.description}>
         <div className="flex flex-wrap gap-2">{TABS.map((tab) => <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={['rounded-full border px-3 py-2 text-xs font-semibold tracking-[0.12em] transition', tab.id === activeTab ? 'border-cyan-200/80 bg-cyan-200 text-slate shadow-[0_0_0_1px_rgba(186,230,253,0.2)]' : 'border-white/10 bg-white/5 text-sky-100/65 hover:border-white/20 hover:bg-white/10 hover:text-white'].join(' ')}>{tab.label}</button>)}</div>

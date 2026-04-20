@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { StructuredEntryListEditor } from '@/components/ui/structured-entry-list-editor';
 import { SurfaceCard } from '@/components/ui/surface-card';
 import { useModuleDocument } from '@/features/software/hooks/use-module-document';
+import { ProjectFamilyDocumentContext } from '@/features/workspace/components/project-family-document-context';
 import { useProjectWorkItemLookup } from '@/hooks/use-project-work-item-lookup';
 import { countActiveFragments } from '@/lib/fragment-utils';
 
@@ -468,6 +469,8 @@ export function DomainModelsWorkspace({ project, module }) {
           </div>
         </StatisticsDisclosure>
       </SectionShell>
+
+      <ProjectFamilyDocumentContext project={project} moduleLabel="Domain Models" />
 
       <SectionShell eyebrow="Structured Editor" title={activeTabMeta.title} description={activeTabMeta.description}>
         <div className="flex flex-wrap gap-2">

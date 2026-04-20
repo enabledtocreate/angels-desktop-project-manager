@@ -10,6 +10,7 @@ import { StatisticsDisclosure } from '@/components/ui/statistics-disclosure';
 import { StructuredEntryListEditor } from '@/components/ui/structured-entry-list-editor';
 import { SurfaceCard } from '@/components/ui/surface-card';
 import { useAiEnvironment } from '@/features/ai/hooks/use-ai-environment';
+import { ProjectFamilyDocumentContext } from '@/features/workspace/components/project-family-document-context';
 import { useProjectWorkItemLookup } from '@/hooks/use-project-work-item-lookup';
 import { countActiveFragments } from '@/lib/fragment-utils';
 import { fetchJson } from '@/lib/api-client';
@@ -415,6 +416,8 @@ export function AiEnvironmentWorkspace({ project }) {
           </div>
         </StatisticsDisclosure>
       </SectionShell>
+
+      <ProjectFamilyDocumentContext project={project} moduleLabel="AI Environment" />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.8fr)]">
         <SectionShell

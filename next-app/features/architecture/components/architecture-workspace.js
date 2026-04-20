@@ -14,6 +14,7 @@ import { StructuredEntryListEditor } from '@/components/ui/structured-entry-list
 import { SurfaceCard } from '@/components/ui/surface-card';
 import { ArchitectureFlowNode } from '@/features/architecture/components/architecture-flow-node';
 import { useArchitecture } from '@/features/architecture/hooks/use-architecture';
+import { ProjectFamilyDocumentContext } from '@/features/workspace/components/project-family-document-context';
 import { useProjectWorkItemLookup } from '@/hooks/use-project-work-item-lookup';
 import { countActiveFragments } from '@/lib/fragment-utils';
 
@@ -485,6 +486,8 @@ export function ArchitectureWorkspace({ project }) {
           </div>
         </StatisticsDisclosure>
       </SectionShell>
+
+      <ProjectFamilyDocumentContext project={project} moduleLabel="Architecture" />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.8fr)]">
         <SectionShell

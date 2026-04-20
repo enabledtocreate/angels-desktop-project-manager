@@ -1250,6 +1250,8 @@ test('nextjs migration sweep wires remaining software and core workspaces into t
   const coreNav = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'workspace', 'components', 'core-nav.js'), 'utf8');
   const architectureHook = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'architecture', 'hooks', 'use-architecture.js'), 'utf8');
   const architectureWorkspace = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'architecture', 'components', 'architecture-workspace.js'), 'utf8');
+  const domainModelsWorkspace = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'domain-models', 'components', 'domain-models-workspace.js'), 'utf8');
+  const projectFamilyDocumentContext = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'workspace', 'components', 'project-family-document-context.js'), 'utf8');
   const adrWorkspace = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'adr', 'components', 'adr-workspace.js'), 'utf8');
   const changelogWorkspace = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'changelog', 'components', 'changelog-workspace.js'), 'utf8');
   const featuresHook = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'features', 'hooks', 'use-features.js'), 'utf8');
@@ -1286,6 +1288,11 @@ test('nextjs migration sweep wires remaining software and core workspaces into t
   assert.match(architectureWorkspace, /ReactFlow/);
   assert.match(architectureWorkspace, /Add component/);
   assert.match(architectureWorkspace, /Load Fragments/);
+  assert.match(architectureWorkspace, /ProjectFamilyDocumentContext/);
+  assert.match(domainModelsWorkspace, /ProjectFamilyDocumentContext/);
+  assert.match(projectFamilyDocumentContext, /Project Family Context/);
+  assert.match(projectFamilyDocumentContext, /Parent orchestration/);
+  assert.match(projectFamilyDocumentContext, /Child autonomous/);
   assert.match(adrWorkspace, /ADR workspace/);
   assert.match(adrWorkspace, /Related Architecture Elements/);
   assert.match(adrWorkspace, /Load Fragments/);
@@ -4666,6 +4673,7 @@ test('AI environment workspace exposes save path, fragments path, and custom ins
   assert.match(aiWorkspace, /toggleDirective/);
   assert.match(aiWorkspace, /Fragment-first directive updates/);
   assert.match(aiWorkspace, /AI directive changes should be loaded through AI Environment fragments/);
+  assert.match(aiWorkspace, /ProjectFamilyDocumentContext/);
   assert.doesNotMatch(aiWorkspace, /Upload Directives/);
   assert.doesNotMatch(aiWorkspace, /Imported directives from/);
 });
@@ -4704,6 +4712,7 @@ test('functional spec workspace exposes a visual flow canvas with node controls'
   const workspaceDocs = fs.readFileSync(path.join(repoRoot, 'src', 'workspace-docs.js'), 'utf8');
   const nextPackage = JSON.parse(fs.readFileSync(path.join(repoRoot, 'next-app', 'package.json'), 'utf8'));
   assert.match(functionalSpecWorkspace, /FunctionalFlowchartCanvas/);
+  assert.match(functionalSpecWorkspace, /ProjectFamilyDocumentContext/);
   assert.doesNotMatch(functionalSpecWorkspace, /@xyflow\/react/);
   assert.match(functionalSpecWorkspace, /function FunctionalSpecTextArea/);
   assert.match(functionalSpecWorkspace, /function FunctionalAreaTree/);
