@@ -828,6 +828,8 @@ test('nextjs migration pass 3 backend route registration is split into domain mo
   assert.match(coreRoutes, /\/api\/settings/);
   assert.match(coreRoutes, /\/api\/browse/);
   assert.match(projectRoutes, /\/api\/projects/);
+  assert.match(projectRoutes, /\/api\/projects\/:id\/rollups/);
+  assert.match(projectRoutes, /buildProjectFamilyRollupDetails/);
   assert.match(projectRoutes, /\/api\/projects\/:id\/modules/);
   assert.match(workItemRoutes, /\/api\/projects\/:id\/tasks/);
   assert.match(workItemRoutes, /\/api\/projects\/:id\/work-items/);
@@ -960,7 +962,8 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(workspacePage, /matchesProject/);
   assert.match(workspacePage, /buildVisibleProjectHierarchy/);
   assert.match(workspacePage, /ProjectWorkspaceShell/);
-  assert.match(workspacePage, /onSelectProject=\{setSelectedProjectId\}/);
+  assert.match(workspacePage, /selectedProjectSurfaceKey/);
+  assert.match(workspacePage, /onSelectProject=\{handleSelectProject\}/);
   assert.match(workspacePage, /showOrganizer=\{!selectedProject\}/);
   assert.match(workspacePage, /handleTogglePin/);
   assert.match(workspacePage, /projectSettingsProject/);
@@ -1008,6 +1011,9 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(projectSettingsModal, /Apply crop/);
   assert.match(workspaceShell, /CoreNav/);
   assert.match(workspaceShell, /ParentDashboardWorkspace/);
+  assert.match(workspaceShell, /RollupDetailPanel/);
+  assert.match(workspaceShell, /\/api\/projects\/\$\{project\.id\}\/rollups/);
+  assert.match(workspaceShell, /onSelectProject\?\.\(item\.projectId, item\.moduleKey/);
   assert.match(workspaceShell, /parent_dashboard/);
   assert.match(workspaceShell, /Project Workspace/);
   assert.match(workspaceShell, /Back to Projects/);

@@ -124,6 +124,7 @@ export default function ProjectsWorkspacePage() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [projectSettingsProject, setProjectSettingsProject] = useState(null);
+  const [selectedProjectSurfaceKey, setSelectedProjectSurfaceKey] = useState(null);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
   const visibleProjects = useMemo(
@@ -207,6 +208,11 @@ export default function ProjectsWorkspacePage() {
       console.error('Failed to update pin:', pinError);
       setToolbarStatus('Failed to update project pin state.');
     }
+  }
+
+  function handleSelectProject(projectId, preferredSurfaceKey = null) {
+    setSelectedProjectSurfaceKey(preferredSurfaceKey || null);
+    setSelectedProjectId(projectId);
   }
 
   async function handleSaveProjectSettings(projectId, nextState) {
@@ -303,14 +309,18 @@ export default function ProjectsWorkspacePage() {
               roots={roots}
               onRefresh={refresh}
               onProjectUpdated={updateProject}
-              onSelectProject={setSelectedProjectId}
-              onBack={() => setSelectedProjectId(null)}
+              preferredCoreView={selectedProjectSurfaceKey}
+              onSelectProject={handleSelectProject}
+              onBack={() => {
+                setSelectedProjectSurfaceKey(null);
+                setSelectedProjectId(null);
+              }}
             />
           ) : (
             <ProjectList
               projectGroups={projectGroups}
               selectedProjectId={selectedProjectId}
-              onSelect={setSelectedProjectId}
+              onSelect={handleSelectProject}
               onTogglePin={handleTogglePin}
               onOpenSettings={setProjectSettingsProject}
               searchQuery={searchQuery}

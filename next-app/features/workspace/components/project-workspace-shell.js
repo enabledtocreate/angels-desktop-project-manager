@@ -48,17 +48,82 @@ function getDefaultSurfaceKey(project, preferredCoreView) {
   return project?.isParentProject ? PARENT_DASHBOARD_SURFACE_KEY : DEFAULT_SURFACE_KEY;
 }
 
-function MetricTile({ label, value, tone = 'neutral' }) {
+function MetricTile({ label, value, tone = 'neutral', active = false, onClick }) {
   const toneClass = tone === 'alert'
     ? 'border-amber-400/45 bg-amber-400/12 text-amber-100'
     : tone === 'good'
       ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-100'
       : 'border-white/10 bg-white/5 text-ink';
+  const className = [
+    'parent-dashboard-metric rounded-2xl border p-4 text-left transition',
+    toneClass,
+    active ? 'ring-1 ring-accent/60' : '',
+    onClick ? 'hover:border-accent/50 hover:bg-accent/10' : '',
+  ].join(' ');
+  if (onClick) {
+    return (
+      <button type="button" className={className} onClick={onClick}>
+        <p className="text-2xl font-semibold">{Number(value || 0)}</p>
+        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] opacity-75">{label}</p>
+      </button>
+    );
+  }
   return (
-    <div className={`parent-dashboard-metric rounded-2xl border p-4 ${toneClass}`}>
+    <div className={className}>
       <p className="text-2xl font-semibold">{Number(value || 0)}</p>
       <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] opacity-75">{label}</p>
     </div>
+  );
+}
+
+const PARENT_ROLLUP_SECTIONS = {
+  pendingFragments: { label: 'Pending Fragments', empty: 'No pending child fragments.', tone: 'alert' },
+  activeBugs: { label: 'Active Bugs', empty: 'No active child bugs.', tone: 'alert' },
+  activeFeatures: { label: 'Active Features', empty: 'No active child features.', tone: 'neutral' },
+  activeRoadmapPhases: { label: 'Active Phases', empty: 'No active child roadmap phases.', tone: 'neutral' },
+  blockedWork: { label: 'Blocked Work', empty: 'No blocked child work.', tone: 'alert' },
+  recentChanges: { label: 'Recent Changes', empty: 'No recent child changes.', tone: 'neutral' },
+};
+
+function RollupDetailPanel({ title, items, emptyMessage, onOpenItem }) {
+  const visibleItems = Array.isArray(items) ? items.slice(0, 12) : [];
+  return (
+    <SurfaceCard id={`parent-dashboard-rollup-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} className="parent-dashboard-rollup-detail">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Rollup Detail</p>
+          <h2 className="mt-1 text-xl font-semibold text-ink">{title}</h2>
+        </div>
+        <StatusBadge tone="foundation">{Array.isArray(items) ? items.length : 0} items</StatusBadge>
+      </div>
+      {visibleItems.length ? (
+        <div className="space-y-2">
+          {visibleItems.map((item) => (
+            <button
+              key={`${item.projectId}-${item.moduleKey}-${item.id}`}
+              type="button"
+              className="parent-dashboard-rollup-row w-full rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition hover:border-accent/45 hover:bg-accent/10"
+              onClick={() => onOpenItem?.(item)}
+            >
+              <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink">
+                <span className="truncate">{item.title || item.code || item.fileName || 'Untitled item'}</span>
+                {item.code ? <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-ink/65">{item.code}</span> : null}
+                {item.status ? <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-ink/65">{item.status}</span> : null}
+              </span>
+              <span className="mt-1 block text-xs text-ink/60">
+                {item.projectName || 'Child project'}{item.moduleKey ? ` | ${item.moduleKey}` : ''}
+              </span>
+              {item.summary ? <span className="mt-2 block line-clamp-2 text-xs leading-5 text-ink/65">{item.summary}</span> : null}
+            </button>
+          ))}
+          {items.length > visibleItems.length ? (
+            <p className="text-xs text-ink/55">Showing first {visibleItems.length} of {items.length} items.</p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-ink/70">{emptyMessage}</div>
+      )}
+    </SurfaceCard>
   );
 }
 
@@ -66,6 +131,43 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
   const childProjects = Array.isArray(project.childProjects) ? project.childProjects : [];
   const rollup = project.familyRollup || project.projectFamilyRollup || {};
   const childTotal = Number(project.descendantCount || childProjects.length || 0);
+  const [selectedRollupKey, setSelectedRollupKey] = useState('pendingFragments');
+  const [rollupDetails, setRollupDetails] = useState(null);
+  const [rollupStatus, setRollupStatus] = useState('idle');
+  const [rollupError, setRollupError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRollups() {
+      if (!project?.id || !project.isParentProject) return;
+      setRollupStatus('loading');
+      setRollupError(null);
+      try {
+        const payload = await fetchJson(`/api/projects/${project.id}/rollups`);
+        if (cancelled) return;
+        setRollupDetails(payload || null);
+        setRollupStatus('ready');
+      } catch (error) {
+        if (cancelled) return;
+        setRollupError(error);
+        setRollupStatus('error');
+      }
+    }
+    loadRollups();
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id, project.isParentProject]);
+
+  const selectedRollup = PARENT_ROLLUP_SECTIONS[selectedRollupKey] || PARENT_ROLLUP_SECTIONS.pendingFragments;
+  const getRollupCount = (key, fallback) => {
+    const items = rollupDetails && Array.isArray(rollupDetails[key]) ? rollupDetails[key] : null;
+    return items ? items.length : Number(fallback || 0);
+  };
+  const openRollupItem = (item) => {
+    if (!item?.projectId) return;
+    onSelectProject?.(item.projectId, item.moduleKey || null);
+  };
 
   return (
     <div id={`parent-dashboard-workspace-${project.id}`} className="parent-dashboard-workspace space-y-5">
@@ -87,14 +189,27 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
 
       <div id="parent-dashboard-metrics" className="parent-dashboard-metrics grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile label="Child Projects" value={childProjects.length} />
-        <MetricTile label="Pending Fragments" value={rollup.pendingFragmentCount} tone={Number(rollup.pendingFragmentCount || 0) > 0 ? 'alert' : 'good'} />
-        <MetricTile label="Active Bugs" value={rollup.activeBugCount} tone={Number(rollup.activeBugCount || 0) > 0 ? 'alert' : 'good'} />
-        <MetricTile label="Active Features" value={rollup.activeFeatureCount} />
-        <MetricTile label="Active Phases" value={rollup.activeRoadmapPhaseCount} />
-        <MetricTile label="Blocked Work" value={rollup.blockedWorkCount} tone={Number(rollup.blockedWorkCount || 0) > 0 ? 'alert' : 'good'} />
-        <MetricTile label="Recent Changes" value={rollup.recentChangeCount} />
+        <MetricTile label="Pending Fragments" value={getRollupCount('pendingFragments', rollup.pendingFragmentCount)} tone={getRollupCount('pendingFragments', rollup.pendingFragmentCount) > 0 ? 'alert' : 'good'} active={selectedRollupKey === 'pendingFragments'} onClick={() => setSelectedRollupKey('pendingFragments')} />
+        <MetricTile label="Active Bugs" value={getRollupCount('activeBugs', rollup.activeBugCount)} tone={getRollupCount('activeBugs', rollup.activeBugCount) > 0 ? 'alert' : 'good'} active={selectedRollupKey === 'activeBugs'} onClick={() => setSelectedRollupKey('activeBugs')} />
+        <MetricTile label="Active Features" value={getRollupCount('activeFeatures', rollup.activeFeatureCount)} active={selectedRollupKey === 'activeFeatures'} onClick={() => setSelectedRollupKey('activeFeatures')} />
+        <MetricTile label="Active Phases" value={getRollupCount('activeRoadmapPhases', rollup.activeRoadmapPhaseCount)} active={selectedRollupKey === 'activeRoadmapPhases'} onClick={() => setSelectedRollupKey('activeRoadmapPhases')} />
+        <MetricTile label="Blocked Work" value={getRollupCount('blockedWork', rollup.blockedWorkCount)} tone={getRollupCount('blockedWork', rollup.blockedWorkCount) > 0 ? 'alert' : 'good'} active={selectedRollupKey === 'blockedWork'} onClick={() => setSelectedRollupKey('blockedWork')} />
+        <MetricTile label="Recent Changes" value={getRollupCount('recentChanges', rollup.recentChangeCount)} active={selectedRollupKey === 'recentChanges'} onClick={() => setSelectedRollupKey('recentChanges')} />
         <MetricTile label="Enabled Modules" value={rollup.enabledModuleCount} />
       </div>
+
+      {rollupStatus === 'error' ? (
+        <SurfaceCard id="parent-dashboard-rollup-error" className="parent-dashboard-rollup-error">
+          <p className="text-sm leading-6 text-rose-200">Failed to load child rollup details: {rollupError?.message || 'Unknown error'}</p>
+        </SurfaceCard>
+      ) : (
+        <RollupDetailPanel
+          title={selectedRollup.label}
+          items={rollupDetails?.[selectedRollupKey] || []}
+          emptyMessage={rollupStatus === 'loading' ? 'Loading child rollup details...' : selectedRollup.empty}
+          onOpenItem={openRollupItem}
+        />
+      )}
 
       <SurfaceCard id="parent-dashboard-children" className="parent-dashboard-children">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

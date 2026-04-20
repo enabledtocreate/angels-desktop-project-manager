@@ -35,8 +35,10 @@ module.exports = function registerProjectRoutes(app, ctx) {
     syncAiEnvironmentDocument,
     syncDatabaseSchemaDocument,
     ensureWorkspaceProject,
+    listProjectFragmentFiles,
     countPendingProjectFragments,
     countPendingProjectFragmentsForModule,
+    readManagedFileSnapshot,
     sanitizeProject,
     normalizeRequestedProjectType,
     removeWorkspacePluginArtifacts,
@@ -94,6 +96,27 @@ module.exports = function registerProjectRoutes(app, ctx) {
   const CLOSED_BUG_STATUSES = new Set(['closed', 'resolved', 'archived']);
   const INACTIVE_FEATURE_STATUSES = new Set(['implemented', 'completed', 'done', 'cancelled', 'canceled', 'archived']);
   const INACTIVE_PHASE_STATUSES = new Set(['completed', 'done', 'archived']);
+  const TERMINAL_WORK_STATUSES = new Set(['closed', 'resolved', 'completed', 'complete', 'done', 'archived', 'implemented', 'cancelled', 'canceled']);
+  const TERMINAL_FRAGMENT_STATUSES = new Set(['archived', 'consumed', 'integrated', 'merged', 'resolved']);
+  const FRAGMENT_DOC_TYPE_TO_MODULE_KEY = {
+    ai_environment: 'ai_environment',
+    architecture: 'architecture',
+    bugs: 'bugs',
+    changelog: 'changelog',
+    database_schema: 'database_schema',
+    domain_models: 'domain_models',
+    experience_design: 'experience_design',
+    features: 'features',
+    functional_spec: 'functional_spec',
+    prd: 'prd',
+    roadmap: 'roadmap_core',
+    technical_design: 'technical_design',
+    test_strategy: 'test_strategy',
+  };
+
+  function normalizeStatus(value) {
+    return String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
+  }
 
   function isRecentlyChanged(item, now = Date.now(), days = 14) {
     const timestamp = Date.parse(item?.updatedAt || item?.createdAt || item?.updated_at || item?.created_at || '');
@@ -131,20 +154,20 @@ module.exports = function registerProjectRoutes(app, ctx) {
       ]);
       const now = Date.now();
       const activeBugs = (Array.isArray(bugs) ? bugs : []).filter((bug) => {
-        const status = String(bug?.status || '').trim().toLowerCase();
+        const status = normalizeStatus(bug?.status);
         return !bug?.archived && !CLOSED_BUG_STATUSES.has(status);
       });
       const activeFeatures = (Array.isArray(features) ? features : []).filter((feature) => {
-        const status = String(feature?.status || '').trim().toLowerCase();
+        const status = normalizeStatus(feature?.status);
         return !feature?.archived && !INACTIVE_FEATURE_STATUSES.has(status);
       });
       const activePhases = (Array.isArray(phases) ? phases : []).filter((phase) => {
-        const status = String(phase?.status || '').trim().toLowerCase();
+        const status = normalizeStatus(phase?.status);
         return !phase?.archived && !INACTIVE_PHASE_STATUSES.has(status);
       });
       const activeWorkItems = (Array.isArray(workItems) ? workItems : []).filter((item) => {
-        const status = String(item?.status || '').trim().toLowerCase();
-        return !['closed', 'resolved', 'completed', 'done', 'archived'].includes(status);
+        const status = normalizeStatus(item?.status);
+        return !TERMINAL_WORK_STATUSES.has(status);
       });
       const recentItems = [
         ...activeBugs,
@@ -155,7 +178,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
       metrics.activeBugCount = activeBugs.length;
       metrics.activeFeatureCount = activeFeatures.length;
       metrics.activeRoadmapPhaseCount = activePhases.length;
-      metrics.blockedWorkCount = activeWorkItems.filter((item) => String(item?.status || '').trim().toLowerCase() === 'blocked').length;
+      metrics.blockedWorkCount = activeWorkItems.filter((item) => normalizeStatus(item?.status) === 'blocked').length;
       metrics.recentChangeCount = recentItems.filter((item) => isRecentlyChanged(item, now)).length;
       metrics.moduleCount = Array.isArray(modules) ? modules.length : 0;
       metrics.enabledModuleCount = (Array.isArray(modules) ? modules : []).filter((module) => module?.enabled).length;
@@ -313,6 +336,183 @@ module.exports = function registerProjectRoutes(app, ctx) {
     });
   }
 
+  function collectProjectDescendants(projects, parentId) {
+    const byParent = new Map();
+    for (const project of Array.isArray(projects) ? projects : []) {
+      const key = project?.parentId || '';
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key).push(project);
+    }
+    const descendants = [];
+    const visited = new Set();
+    function visit(projectId) {
+      if (!projectId || visited.has(projectId)) return;
+      visited.add(projectId);
+      for (const child of byParent.get(projectId) || []) {
+        descendants.push(child);
+        visit(child.id);
+      }
+    }
+    visit(parentId);
+    return descendants;
+  }
+
+  function inferFragmentModuleKey(fileName, managed = {}) {
+    const docType = normalizeStatus(managed?.docType || managed?.fragment?.docType || managed?.moduleKey || '');
+    if (FRAGMENT_DOC_TYPE_TO_MODULE_KEY[docType]) return FRAGMENT_DOC_TYPE_TO_MODULE_KEY[docType];
+    const normalizedName = String(fileName || '').toUpperCase();
+    if (normalizedName.startsWith('AI_ENVIRONMENT_FRAGMENT_')) return 'ai_environment';
+    if (normalizedName.startsWith('ARCHITECTURE_FRAGMENT_')) return 'architecture';
+    if (normalizedName.startsWith('BUGS_FRAGMENT_')) return 'bugs';
+    if (normalizedName.startsWith('CHANGELOG_FRAGMENT_')) return 'changelog';
+    if (normalizedName.startsWith('DATABASE_SCHEMA_FRAGMENT_')) return 'database_schema';
+    if (normalizedName.startsWith('DOMAIN_MODELS_FRAGMENT_')) return 'domain_models';
+    if (normalizedName.startsWith('EXPERIENCE_DESIGN_FRAGMENT_') || normalizedName.startsWith('UX_UI_FRAGMENT_')) return 'experience_design';
+    if (normalizedName.startsWith('FEATURES_FRAGMENT_')) return 'features';
+    if (normalizedName.startsWith('FUNCTIONAL_SPEC_FRAGMENT_')) return 'functional_spec';
+    if (normalizedName.startsWith('PRD_FRAGMENT_')) return 'prd';
+    if (normalizedName.startsWith('ROADMAP_FRAGMENT_')) return 'roadmap_core';
+    if (normalizedName.startsWith('TECHNICAL_DESIGN_FRAGMENT_')) return 'technical_design';
+    if (normalizedName.startsWith('TEST_STRATEGY_FRAGMENT_')) return 'test_strategy';
+    return 'documents_core';
+  }
+
+  function fragmentIsPending(snapshot = {}) {
+    const managed = snapshot?.managed || {};
+    const status = normalizeStatus(
+      managed?.fragment?.status
+      || managed?.status
+      || managed?.editorState?.status
+      || ''
+    );
+    return !TERMINAL_FRAGMENT_STATUSES.has(status);
+  }
+
+  function summarizeFragmentFile(project, filePath) {
+    const snapshot = typeof readManagedFileSnapshot === 'function' ? readManagedFileSnapshot(filePath) : null;
+    if (!snapshot || !fragmentIsPending(snapshot)) return null;
+    const managed = snapshot.managed || {};
+    const fragment = managed.fragment || managed.editorState || {};
+    const fileName = path.basename(filePath);
+    const moduleKey = inferFragmentModuleKey(fileName, managed);
+    return {
+      id: `${project.id}:${fileName}`,
+      projectId: project.id,
+      projectName: project.name,
+      moduleKey,
+      fileName,
+      code: fragment.code || managed.code || fileName.replace(/\.md$/i, ''),
+      title: fragment.title || managed.title || fragment.summary || fileName.replace(/\.md$/i, ''),
+      summary: fragment.summary || managed.summary || '',
+      status: fragment.status || managed.status || 'pending',
+      updatedAt: snapshot.updatedAt || null,
+    };
+  }
+
+  function summarizeRollupItem(project, item, fallbackModuleKey) {
+    return {
+      id: item?.id || `${project.id}:${fallbackModuleKey}:${item?.title || item?.name || item?.code || Math.random().toString(36).slice(2)}`,
+      projectId: project.id,
+      projectName: project.name,
+      moduleKey: fallbackModuleKey,
+      code: item?.code || item?.featureCode || item?.bugCode || item?.key || '',
+      title: item?.title || item?.name || item?.summary || 'Untitled item',
+      summary: item?.summary || item?.description || item?.currentBehavior || '',
+      status: item?.status || item?.planningBucket || '',
+      phase: item?.phase || item?.phaseName || item?.roadmapPhase || '',
+      category: item?.category || item?.type || item?.workItemType || '',
+      updatedAt: item?.updatedAt || item?.createdAt || item?.updated_at || item?.created_at || null,
+    };
+  }
+
+  async function buildProjectFamilyRollupDetails(parentProject) {
+    const projects = await readProjects();
+    const descendants = collectProjectDescendants(projects, parentProject.id);
+    const pendingFragments = [];
+    const activeBugs = [];
+    const activeFeatures = [];
+    const activeRoadmapPhases = [];
+    const blockedWork = [];
+    const recentChanges = [];
+    const now = Date.now();
+
+    for (const child of descendants) {
+      try {
+        const files = typeof listProjectFragmentFiles === 'function' ? listProjectFragmentFiles(child) : [];
+        pendingFragments.push(...files.map((filePath) => summarizeFragmentFile(child, filePath)).filter(Boolean));
+      } catch (error) {
+        config.log(`project-routes: failed to list pending child fragments for ${child.id}: ${error.message || 'unknown error'}`);
+      }
+
+      const [bugs, features, phases, workItems] = await Promise.all([
+        typeof readBugItems === 'function' ? readBugItems(child.id, { includeArchived: true }) : [],
+        typeof readFeatureItems === 'function' ? readFeatureItems(child.id, { includeArchived: true }) : [],
+        typeof readRoadmapPhases === 'function' ? readRoadmapPhases(child.id, { includeArchived: true }) : [],
+        typeof readProjectWorkItems === 'function' ? readProjectWorkItems(child.id) : [],
+      ]);
+
+      for (const bug of Array.isArray(bugs) ? bugs : []) {
+        const status = normalizeStatus(bug?.status);
+        if (bug?.archived || CLOSED_BUG_STATUSES.has(status)) continue;
+        const item = summarizeRollupItem(child, bug, 'bugs');
+        activeBugs.push(item);
+        if (isRecentlyChanged(bug, now)) recentChanges.push({ ...item, rollupType: 'bug' });
+      }
+
+      for (const feature of Array.isArray(features) ? features : []) {
+        const status = normalizeStatus(feature?.status);
+        if (feature?.archived || INACTIVE_FEATURE_STATUSES.has(status)) continue;
+        const item = summarizeRollupItem(child, feature, 'features');
+        activeFeatures.push(item);
+        if (isRecentlyChanged(feature, now)) recentChanges.push({ ...item, rollupType: 'feature' });
+      }
+
+      for (const phase of Array.isArray(phases) ? phases : []) {
+        const status = normalizeStatus(phase?.status);
+        if (phase?.archived || INACTIVE_PHASE_STATUSES.has(status)) continue;
+        const item = summarizeRollupItem(child, phase, 'roadmap_core');
+        activeRoadmapPhases.push(item);
+        if (isRecentlyChanged(phase, now)) recentChanges.push({ ...item, rollupType: 'phase' });
+      }
+
+      for (const workItem of Array.isArray(workItems) ? workItems : []) {
+        const status = normalizeStatus(workItem?.status);
+        if (TERMINAL_WORK_STATUSES.has(status)) continue;
+        const moduleKey = workItem?.workItemType === 'feature'
+          ? 'features'
+          : workItem?.workItemType === 'bug'
+            ? 'bugs'
+            : 'work_items_core';
+        const item = summarizeRollupItem(child, workItem, moduleKey);
+        if (status === 'blocked') blockedWork.push(item);
+        if (isRecentlyChanged(workItem, now)) recentChanges.push({ ...item, rollupType: 'work' });
+      }
+    }
+
+    const sortByProjectThenUpdated = (left, right) => (
+      String(left.projectName || '').localeCompare(String(right.projectName || ''))
+      || ((Date.parse(right.updatedAt || '') || 0) - (Date.parse(left.updatedAt || '') || 0))
+      || String(left.title || '').localeCompare(String(right.title || ''))
+    );
+    pendingFragments.sort(sortByProjectThenUpdated);
+    activeBugs.sort(sortByProjectThenUpdated);
+    activeFeatures.sort(sortByProjectThenUpdated);
+    activeRoadmapPhases.sort(sortByProjectThenUpdated);
+    blockedWork.sort(sortByProjectThenUpdated);
+    recentChanges.sort((left, right) => (Date.parse(right.updatedAt || '') || 0) - (Date.parse(left.updatedAt || '') || 0));
+
+    return {
+      projectId: parentProject.id,
+      childProjectCount: descendants.length,
+      pendingFragments,
+      activeBugs,
+      activeFeatures,
+      activeRoadmapPhases,
+      blockedWork,
+      recentChanges: recentChanges.slice(0, 50),
+    };
+  }
+
   function createsParentCycle(projects, projectId, parentId) {
     if (!projectId || !parentId) return false;
     if (projectId === parentId) return true;
@@ -360,6 +560,17 @@ module.exports = function registerProjectRoutes(app, ctx) {
     } catch (error) {
       console.error('Error fetching projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+  });
+
+  app.get('/api/projects/:id/rollups', async (req, res) => {
+    try {
+      const project = await getProjectById(req.params.id);
+      if (!project) return res.status(404).json({ error: 'Project not found' });
+      res.json(await buildProjectFamilyRollupDetails(project));
+    } catch (error) {
+      config.log(`project-routes: failed to load project rollups for ${req.params.id}: ${error.message || 'unknown error'}`);
+      res.status(500).json({ error: error.message || 'Failed to load project rollups' });
     }
   });
 
