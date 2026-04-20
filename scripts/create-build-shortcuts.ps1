@@ -26,12 +26,24 @@ if (-not $PortableExePath -or -not (Test-Path $PortableExePath)) {
 
 $ShortcutName = "Angel's Project Manager.lnk"
 $DesktopDir = [Environment]::GetFolderPath("DesktopDirectory")
+$DesktopFallbackDir = Join-Path ([Environment]::GetFolderPath("UserProfile")) "Desktop"
+if (-not $DesktopDir -and (Test-Path $DesktopFallbackDir)) {
+  $DesktopDir = $DesktopFallbackDir
+}
 $GrandparentDir = Split-Path (Split-Path $DistDir -Parent) -Parent
 $LauncherScript = Join-Path $ScriptDir "launch-portable.ps1"
-$Targets = @(
-  (Join-Path $DesktopDir $ShortcutName),
-  (Join-Path $GrandparentDir $ShortcutName)
-)
+$Targets = @()
+if ($DesktopDir) {
+  $Targets += (Join-Path $DesktopDir $ShortcutName)
+}
+if ($GrandparentDir) {
+  $Targets += (Join-Path $GrandparentDir $ShortcutName)
+}
+
+if (-not $Targets.Count) {
+  Write-Host "No shortcut target directories found; skipping shortcut creation."
+  exit 0
+}
 
 $Shell = New-Object -ComObject WScript.Shell
 try {

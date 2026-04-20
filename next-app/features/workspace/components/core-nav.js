@@ -1,21 +1,25 @@
 import { ActionButton } from '@/components/ui/action-button';
 
-const coreSections = [
-  {
-    label: 'Foundation',
-    views: ['Project Brief'],
-  },
-  {
-    label: 'Planning',
-    views: ['Roadmap', 'Work Items', 'Kanban', 'Gantt'],
-  },
-  {
-    label: 'Records',
-    views: ['Documents', 'Integrations'],
-  },
-];
+function buildCoreSections(showParentDashboard) {
+  return [
+    {
+      label: 'Foundation',
+      views: showParentDashboard ? ['Parent Dashboard', 'Project Brief'] : ['Project Brief'],
+    },
+    {
+      label: 'Planning',
+      views: ['Roadmap', 'Work Items', 'Kanban', 'Gantt'],
+    },
+    {
+      label: 'Records',
+      views: ['Documents', 'Integrations'],
+    },
+  ];
+}
 
-export function CoreNav({ activeView, onSelect }) {
+export function CoreNav({ activeView, onSelect, showParentDashboard = false }) {
+  const coreSections = buildCoreSections(showParentDashboard);
+
   return (
     <div id="project-workspace-core-nav" className="project-workspace-core-nav space-y-4">
       {coreSections.map((section) => (

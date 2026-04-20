@@ -37,11 +37,11 @@ export function useProjects() {
       body: JSON.stringify(updates || {}),
     });
 
-    setProjects((currentProjects) =>
-      currentProjects.map((project) => (project.id === saved.id ? saved : project))
-    );
+    const nextProjects = await fetchJson('/api/projects');
+    const normalizedProjects = Array.isArray(nextProjects) ? nextProjects : [];
+    setProjects(normalizedProjects);
 
-    return saved;
+    return normalizedProjects.find((project) => project.id === saved.id) || saved;
   }
 
   useEffect(() => {

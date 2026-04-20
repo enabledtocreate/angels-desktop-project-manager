@@ -31,9 +31,122 @@ import { WorkItemsWorkspace } from '@/features/workspace/components/work-items-w
 import { fetchJson } from '@/lib/api-client';
 
 const DEFAULT_SURFACE_KEY = 'project_brief_root';
+const PARENT_DASHBOARD_SURFACE_KEY = 'parent_dashboard';
+const CORE_SURFACE_KEYS = [
+  PARENT_DASHBOARD_SURFACE_KEY,
+  DEFAULT_SURFACE_KEY,
+  'roadmap_core',
+  'kanban_core',
+  'gantt_core',
+  'work_items_core',
+  'documents_core',
+  'integrations_core',
+];
 
-export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, preferredCoreView = DEFAULT_SURFACE_KEY, onBack }) {
-  const [activeSurfaceKey, setActiveSurfaceKey] = useState(DEFAULT_SURFACE_KEY);
+function getDefaultSurfaceKey(project, preferredCoreView) {
+  if (preferredCoreView) return preferredCoreView;
+  return project?.isParentProject ? PARENT_DASHBOARD_SURFACE_KEY : DEFAULT_SURFACE_KEY;
+}
+
+function MetricTile({ label, value, tone = 'neutral' }) {
+  const toneClass = tone === 'alert'
+    ? 'border-amber-400/45 bg-amber-400/12 text-amber-100'
+    : tone === 'good'
+      ? 'border-emerald-400/35 bg-emerald-400/10 text-emerald-100'
+      : 'border-white/10 bg-white/5 text-ink';
+  return (
+    <div className={`parent-dashboard-metric rounded-2xl border p-4 ${toneClass}`}>
+      <p className="text-2xl font-semibold">{Number(value || 0)}</p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] opacity-75">{label}</p>
+    </div>
+  );
+}
+
+function ParentDashboardWorkspace({ project, onSelectProject }) {
+  const childProjects = Array.isArray(project.childProjects) ? project.childProjects : [];
+  const rollup = project.familyRollup || project.projectFamilyRollup || {};
+  const childTotal = Number(project.descendantCount || childProjects.length || 0);
+
+  return (
+    <div id={`parent-dashboard-workspace-${project.id}`} className="parent-dashboard-workspace space-y-5">
+      <SurfaceCard id="parent-dashboard-summary" className="parent-dashboard-summary">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-ink/60">Parent Dashboard</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{project.name}</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/75">
+              This dashboard keeps the parent project focused on orchestration: child workspaces stay autonomous, while active fragments, bugs, features, phases, and blocked work roll up here for quick visibility.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge tone="foundation">{childProjects.length} direct children</StatusBadge>
+            <StatusBadge tone="migration">{childTotal} total descendants</StatusBadge>
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <div id="parent-dashboard-metrics" className="parent-dashboard-metrics grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricTile label="Child Projects" value={childProjects.length} />
+        <MetricTile label="Pending Fragments" value={rollup.pendingFragmentCount} tone={Number(rollup.pendingFragmentCount || 0) > 0 ? 'alert' : 'good'} />
+        <MetricTile label="Active Bugs" value={rollup.activeBugCount} tone={Number(rollup.activeBugCount || 0) > 0 ? 'alert' : 'good'} />
+        <MetricTile label="Active Features" value={rollup.activeFeatureCount} />
+        <MetricTile label="Active Phases" value={rollup.activeRoadmapPhaseCount} />
+        <MetricTile label="Blocked Work" value={rollup.blockedWorkCount} tone={Number(rollup.blockedWorkCount || 0) > 0 ? 'alert' : 'good'} />
+        <MetricTile label="Recent Changes" value={rollup.recentChangeCount} />
+        <MetricTile label="Enabled Modules" value={rollup.enabledModuleCount} />
+      </div>
+
+      <SurfaceCard id="parent-dashboard-children" className="parent-dashboard-children">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Child Workspaces</p>
+            <h2 className="mt-1 text-xl font-semibold text-ink">Autonomous project surfaces</h2>
+          </div>
+          <StatusBadge tone="foundation">Live rollup</StatusBadge>
+        </div>
+
+        {childProjects.length ? (
+          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+            {childProjects.map((child) => {
+              const childMetrics = child.projectMetrics || {};
+              const childFragments = Number(childMetrics.pendingFragmentCount || child.pendingFragmentCount || 0);
+              return (
+                <button
+                  key={child.id}
+                  type="button"
+                  id={`parent-dashboard-child-${child.id}`}
+                  className="parent-dashboard-child-tile rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-accent/45 hover:bg-accent/10"
+                  onClick={() => onSelectProject?.(child.id)}
+                >
+                  <span className="block truncate text-base font-semibold text-ink">{child.name}</span>
+                  <span className="mt-1 block truncate text-xs text-ink/60">{child.category || child.projectType || 'Project'}</span>
+                  <span className="mt-3 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+                    <span className={`rounded-full border px-2 py-0.5 ${childFragments > 0 ? 'border-amber-400/45 bg-amber-400/12 text-amber-100' : 'border-white/10 bg-white/5 text-ink/60'}`}>
+                      {childFragments} fragments
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-ink/60">
+                      {Number(childMetrics.activeBugCount || 0)} bugs
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-ink/60">
+                      {Number(childMetrics.activeFeatureCount || 0)} features
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-ink/70">
+            No child projects are attached to this parent yet.
+          </div>
+        )}
+      </SurfaceCard>
+    </div>
+  );
+}
+
+export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, preferredCoreView = null, onSelectProject, onBack }) {
+  const [activeSurfaceKey, setActiveSurfaceKey] = useState(() => getDefaultSurfaceKey(project, preferredCoreView));
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const { modules, dependencies, refresh: refreshModules } = useProjectModules(project.id);
 
@@ -57,16 +170,20 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
   );
 
   useEffect(() => {
-    setActiveSurfaceKey(preferredCoreView || DEFAULT_SURFACE_KEY);
-  }, [preferredCoreView, project.id]);
+    setActiveSurfaceKey(getDefaultSurfaceKey(project, preferredCoreView));
+  }, [preferredCoreView, project.id, project.isParentProject]);
 
   useEffect(() => {
     const activeModuleStillExists = [...enabledSoftwareModules, ...aiModules].some((module) => module.moduleKey === activeSurfaceKey);
-    const activeCoreView = ['project_brief_root', 'roadmap_core', 'kanban_core', 'gantt_core', 'work_items_core', 'documents_core', 'integrations_core'].includes(activeSurfaceKey);
-    if (!activeCoreView && !activeModuleStillExists) {
+    const activeCoreView = CORE_SURFACE_KEYS.includes(activeSurfaceKey);
+    if (activeSurfaceKey === PARENT_DASHBOARD_SURFACE_KEY && !project.isParentProject) {
       setActiveSurfaceKey(DEFAULT_SURFACE_KEY);
+      return;
     }
-  }, [activeSurfaceKey, enabledSoftwareModules, aiModules]);
+    if (!activeCoreView && !activeModuleStillExists) {
+      setActiveSurfaceKey(getDefaultSurfaceKey(project, preferredCoreView));
+    }
+  }, [activeSurfaceKey, aiModules, enabledSoftwareModules, preferredCoreView, project.id, project.isParentProject]);
 
   const activeSoftwareModule = useMemo(
     () => [...enabledSoftwareModules, ...aiModules].find((module) => module.moduleKey === activeSurfaceKey) || null,
@@ -94,6 +211,10 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
 
   const surfaceContent = (() => {
     switch (activeSurfaceKey) {
+      case PARENT_DASHBOARD_SURFACE_KEY:
+        return project.isParentProject
+          ? <ParentDashboardWorkspace project={project} onSelectProject={onSelectProject} />
+          : <ProjectBriefWorkspace project={project} modules={moduleRegistry} onProjectUpdated={onProjectUpdated} />;
       case 'project_brief_root':
         return <ProjectBriefWorkspace project={project} modules={moduleRegistry} onProjectUpdated={onProjectUpdated} />;
       case 'roadmap_core':
@@ -225,7 +346,9 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
 
               <CoreNav
                 activeView={
-                  activeSurfaceKey === 'project_brief_root'
+                  activeSurfaceKey === PARENT_DASHBOARD_SURFACE_KEY
+                    ? 'Parent Dashboard'
+                    : activeSurfaceKey === 'project_brief_root'
                     ? 'Project Brief'
                     : activeSurfaceKey === 'roadmap_core'
                       ? 'Roadmap'
@@ -243,6 +366,7 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
                 }
                 onSelect={(view) => {
                   const mapping = {
+                    'Parent Dashboard': PARENT_DASHBOARD_SURFACE_KEY,
                     'Project Brief': 'project_brief_root',
                     Roadmap: 'roadmap_core',
                     Kanban: 'kanban_core',
@@ -253,6 +377,7 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
                   };
                   setActiveSurfaceKey(mapping[view] || DEFAULT_SURFACE_KEY);
                 }}
+                showParentDashboard={Boolean(project.isParentProject)}
               />
 
               {aiModules.length ? (

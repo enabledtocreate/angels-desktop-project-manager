@@ -252,6 +252,7 @@ test('project APIs enforce current PRD expectations for validation, browsing, pe
     body: JSON.stringify({
       pinned: true,
       serverId: 'cred-legacy-1',
+      parentId: 'legacy-project-1',
       primaryAction: 'chrome',
       mappingGroups: [{
         id: 'release',
@@ -268,6 +269,7 @@ test('project APIs enforce current PRD expectations for validation, browsing, pe
   assert.equal(result.response.status, 200);
   assert.equal(result.body.pinned, true);
   assert.equal(result.body.serverId, 'cred-legacy-1');
+  assert.equal(result.body.parentId, 'legacy-project-1');
   assert.equal(result.body.primaryAction, 'chrome');
   assert.equal(result.body.links[1].action, 'vscode');
   assert.equal(result.body.mappingGroups[0].downloadMappings[0].localPath, 'Beta/.env');
@@ -279,6 +281,20 @@ test('project APIs enforce current PRD expectations for validation, browsing, pe
   assert.equal(saved.links[1].action, 'vscode');
   assert.equal(saved.mappingGroups[0].name, 'Release');
   assert.equal(saved.uploadMappings[0].remotePath, '/srv/beta');
+  assert.equal(saved.parentId, 'legacy-project-1');
+  const parentProject = result.body.find((project) => project.id === 'legacy-project-1');
+  assert.equal(parentProject.isParentProject, true);
+  assert.equal(parentProject.childCount, 1);
+  assert.equal(parentProject.descendantCount, 1);
+  assert(parentProject.childProjects.some((child) => child.id === created.id));
+  assert.equal(parentProject.familyRollup.childProjectCount, 1);
+  assert.equal(parentProject.familyRollup.descendantProjectCount, 1);
+
+  result = await request('/api/projects/legacy-project-1', {
+    method: 'PUT',
+    body: JSON.stringify({ parentId: created.id }),
+  });
+  assert.equal(result.response.status, 400);
 
   result = await request('/api/git-info?path=Beta');
   assert.equal(result.response.status, 200);
@@ -942,7 +958,9 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(workspacePage, /selectedProject \?/);
   assert.match(workspacePage, /toolbarStatus/);
   assert.match(workspacePage, /matchesProject/);
+  assert.match(workspacePage, /buildVisibleProjectHierarchy/);
   assert.match(workspacePage, /ProjectWorkspaceShell/);
+  assert.match(workspacePage, /onSelectProject=\{setSelectedProjectId\}/);
   assert.match(workspacePage, /showOrganizer=\{!selectedProject\}/);
   assert.match(workspacePage, /handleTogglePin/);
   assert.match(workspacePage, /projectSettingsProject/);
@@ -958,6 +976,7 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(useProjects, /fetchJson\('\/api\/roots'\)/);
   assert.match(useProjects, /async function updateProject/);
   assert.match(useProjects, /fetchJson\(`\/api\/projects\/\$\{projectId\}`/);
+  assert.match(useProjects, /const nextProjects = await fetchJson\('\/api\/projects'\)/);
   assert.match(useProjects, /return null;/);
   assert.match(projectList, /Project workspace list/);
   assert.match(projectList, /splitPinnedGroups/);
@@ -970,6 +989,8 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(projectCard, /General Project/);
   assert.match(projectCard, /ProjectLinkIcons/);
   assert.match(projectCard, /Project settings/);
+  assert.match(projectCard, /project-card-children/);
+  assert.match(projectCard, /Child Projects/);
   assert.match(projectCard, /Pin project/);
   assert.match(projectCard, /onTogglePin/);
   assert.match(projectCard, /tagNames/);
@@ -986,6 +1007,8 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(projectSettingsModal, /Choose image/);
   assert.match(projectSettingsModal, /Apply crop/);
   assert.match(workspaceShell, /CoreNav/);
+  assert.match(workspaceShell, /ParentDashboardWorkspace/);
+  assert.match(workspaceShell, /parent_dashboard/);
   assert.match(workspaceShell, /Project Workspace/);
   assert.match(workspaceShell, /Back to Projects/);
   assert.match(workspaceShell, /ProjectSettingsModal/);
@@ -994,9 +1017,12 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(workspaceShell, /Open project settings/);
   assert.match(workspaceShell, /<ProjectLinkIcons links=\{project\.links\} \/>/);
   assert.match(workspaceShell, /ProjectBriefWorkspace/);
-  assert.match(workspaceShell, /preferredCoreView = DEFAULT_SURFACE_KEY/);
+  assert.match(workspaceShell, /preferredCoreView = null/);
+  assert.match(workspaceShell, /showParentDashboard/);
   assert.match(workspaceShell, /project_brief_root/);
   assert.match(coreNav, /Foundation/);
+  assert.match(coreNav, /Parent Dashboard/);
+  assert.match(coreNav, /showParentDashboard/);
   assert.match(coreNav, /Project Brief/);
   assert.match(coreNav, /Roadmap/);
   assert.match(coreNav, /Records/);
@@ -1019,6 +1045,8 @@ test('nextjs migration pass 6 software workspace groups enabled modules and rend
   assert.match(moduleHook, /fetchJson\(`\/api\/projects\/\$\{projectId\}\/modules`\)/);
   assert.match(moduleNav, /Software Workspace groups the product, requirements, system design, and decision branches/);
   assert.match(moduleNav, /purposeSummary/);
+  assert.match(moduleNav, /pendingFragmentCount/);
+  assert.match(moduleNav, /software-module-button-fragment-count/);
   assert.match(moduleNav, /hierarchyGroup/);
   assert.match(moduleNav, /hierarchyOrder/);
   assert.match(moduleNav, /hierarchyDepth/);

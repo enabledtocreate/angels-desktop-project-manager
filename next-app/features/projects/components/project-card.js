@@ -62,6 +62,35 @@ function SettingsIcon() {
   );
 }
 
+function ChildProjectTypeIcon({ type }) {
+  if (type === 'url') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+        <path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1" />
+        <path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+      <path d="M3.5 6.5h6l2 2h9v9a2 2 0 0 1-2 2h-15z" />
+      <path d="M3.5 6.5v11a2 2 0 0 0 2 2" />
+    </svg>
+  );
+}
+
+function MetricPill({ label, value, tone = 'neutral' }) {
+  const toneClass = tone === 'alert'
+    ? 'border-amber-400/40 bg-amber-400/12 text-amber-100'
+    : 'border-white/10 bg-white/6 text-ink/65';
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${toneClass}`}>
+      <span>{value}</span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
 export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpenSettings, viewMode = 'list' }) {
   const tagNames = Array.isArray(project.tags) ? project.tags.filter(Boolean) : [];
   const handleSelect = () => onSelect(project.id);
@@ -69,6 +98,8 @@ export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpen
   const imageSource = project.imageUrl || (project.imagePath ? `/api/project-image/${project.id}` : null);
   const visibleLinks = Array.isArray(project.links) ? project.links.filter((link) => link && (link.description || link.url)).slice(0, 6) : [];
   const pendingFragmentCount = Number.isFinite(Number(project.pendingFragmentCount)) ? Number(project.pendingFragmentCount) : 0;
+  const childProjects = Array.isArray(project.childProjects) ? project.childProjects : [];
+  const familyRollup = project.familyRollup || project.projectFamilyRollup || {};
 
   return (
     <SurfaceCard
@@ -173,6 +204,53 @@ export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpen
             <span className="text-xs text-ink/55">No tags</span>
           )}
         </div>
+
+        {childProjects.length ? (
+          <div className="project-card-children mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+            <div className="project-card-children-header mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Child Projects</p>
+                <p className="text-xs text-ink/55">
+                  {childProjects.length} direct, {Number(project.descendantCount || childProjects.length)} total
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-end gap-1.5">
+                <MetricPill label="fragments" value={Number(familyRollup.pendingFragmentCount || 0)} tone={Number(familyRollup.pendingFragmentCount || 0) > 0 ? 'alert' : 'neutral'} />
+                <MetricPill label="bugs" value={Number(familyRollup.activeBugCount || 0)} />
+                <MetricPill label="features" value={Number(familyRollup.activeFeatureCount || 0)} />
+              </div>
+            </div>
+            <div className={`project-card-child-grid grid gap-2 ${isGrid ? '' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
+              {childProjects.map((child) => {
+                const childFragments = Number(child.pendingFragmentCount || child.projectMetrics?.pendingFragmentCount || 0);
+                return (
+                  <button
+                    key={child.id}
+                    type="button"
+                    id={`project-card-child-${child.id}`}
+                    className="project-card-child-tile min-w-0 rounded-xl border border-white/10 bg-white/5 p-2 text-left transition hover:border-accent/45 hover:bg-accent/10"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelect(child.id);
+                    }}
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-ink">
+                      <span className="shrink-0 text-ink/65"><ChildProjectTypeIcon type={child.type} /></span>
+                      <span className="truncate">{child.name}</span>
+                      <span className={`ml-auto shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] ${childFragments > 0 ? 'border-amber-400/50 bg-amber-400/15 text-amber-100' : 'border-white/10 bg-white/5 text-ink/50'}`}>
+                        ({childFragments})
+                      </span>
+                    </span>
+                    <span className="mt-1 block truncate text-xs text-ink/55">{child.category || child.projectType || 'Project'}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <div className="project-card-meta mt-4 flex items-center justify-between gap-3">
           <div className="project-card-category break-words text-xs text-ink/60">

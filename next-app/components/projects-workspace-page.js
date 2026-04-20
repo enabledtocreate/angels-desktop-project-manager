@@ -77,6 +77,33 @@ function buildProjectGroups(projects, groupMode) {
     }));
 }
 
+function buildVisibleProjectHierarchy(projects, searchQuery, sortMode) {
+  const sortedProjects = [...projects].sort((left, right) => compareProjects(left, right, sortMode));
+  const byId = new Map(sortedProjects.map((project) => [project.id, project]));
+  const hasSearch = Boolean(String(searchQuery || '').trim());
+  const matchedIds = new Set(
+    sortedProjects
+      .filter((project) => matchesProject(project, searchQuery))
+      .map((project) => project.id)
+  );
+
+  return sortedProjects
+    .filter((project) => {
+      const hasKnownParent = project.parentId && byId.has(project.parentId);
+      if (!hasSearch) return !hasKnownParent;
+      if (!matchedIds.has(project.id)) return false;
+      return !(hasKnownParent && matchedIds.has(project.parentId));
+    })
+    .map((project) => {
+      const projectMatches = !hasSearch || matchedIds.has(project.id);
+      const childProjects = sortedProjects.filter((child) => child.parentId === project.id && (!hasSearch || projectMatches || matchedIds.has(child.id)));
+      return {
+        ...project,
+        childProjects,
+      };
+    });
+}
+
 export default function ProjectsWorkspacePage() {
   const {
     projects,
@@ -99,15 +126,14 @@ export default function ProjectsWorkspacePage() {
   const [projectSettingsProject, setProjectSettingsProject] = useState(null);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
-  const filteredProjects = useMemo(() => {
-    return projects
-      .filter((project) => matchesProject(project, searchQuery))
-      .sort((left, right) => compareProjects(left, right, sortMode));
-  }, [projects, searchQuery, sortMode]);
+  const visibleProjects = useMemo(
+    () => buildVisibleProjectHierarchy(projects, searchQuery, sortMode),
+    [projects, searchQuery, sortMode]
+  );
 
   const projectGroups = useMemo(
-    () => buildProjectGroups(filteredProjects, groupMode),
-    [filteredProjects, groupMode]
+    () => buildProjectGroups(visibleProjects, groupMode),
+    [visibleProjects, groupMode]
   );
 
   useEffect(() => {
@@ -277,6 +303,7 @@ export default function ProjectsWorkspacePage() {
               roots={roots}
               onRefresh={refresh}
               onProjectUpdated={updateProject}
+              onSelectProject={setSelectedProjectId}
               onBack={() => setSelectedProjectId(null)}
             />
           ) : (

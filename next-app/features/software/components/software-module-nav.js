@@ -33,6 +33,43 @@ function groupModules(modules) {
   });
 }
 
+function SoftwareModuleButton({ module, activeModuleKey, onSelect }) {
+  const pendingFragmentCount = Number(module.pendingFragmentCount || 0);
+
+  return (
+    <ActionButton
+      key={module.moduleKey}
+      id={`software-module-button-${module.moduleKey}`}
+      className="software-module-button w-full min-w-0 justify-start text-left"
+      variant={module.moduleKey === activeModuleKey ? 'accent' : 'ghost'}
+      onClick={() => onSelect(module.moduleKey)}
+    >
+      <div
+        className="software-module-button-content min-w-0 space-y-1"
+        style={{ marginLeft: `${Math.max(0, Number(module.hierarchyDepth || 0)) * 14}px` }}
+      >
+        <p className="software-module-button-label break-words text-sm font-medium leading-5">
+          {module.label || module.name || module.moduleKey}
+          <span
+            className={[
+              'software-module-button-fragment-count ml-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold',
+              pendingFragmentCount > 0
+                ? 'border-amber-400/50 bg-amber-400/15 text-amber-100'
+                : 'border-white/10 bg-white/5 text-ink/55',
+            ].join(' ')}
+            title={`${pendingFragmentCount} fragment${pendingFragmentCount === 1 ? '' : 's'} need merging`}
+          >
+            ({pendingFragmentCount})
+          </span>
+        </p>
+        <p className="software-module-button-purpose whitespace-normal break-words text-xs leading-5 opacity-70">
+          {module.purposeSummary || module.description || 'Module purpose summary is not defined yet.'}
+        </p>
+      </div>
+    </ActionButton>
+  );
+}
+
 export function SoftwareModuleNav({ modules, activeModuleKey, onSelect, introText = 'Software Workspace groups the product, requirements, system design, and decision branches that sit on top of the core project model.' }) {
   const sections = groupModules(modules);
 
@@ -44,25 +81,12 @@ export function SoftwareModuleNav({ modules, activeModuleKey, onSelect, introTex
           <p className="software-module-section-label text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">{section.label}</p>
           <div className="software-module-section-items space-y-2">
             {section.modules.map((module) => (
-              <ActionButton
+              <SoftwareModuleButton
                 key={module.moduleKey}
-                id={`software-module-button-${module.moduleKey}`}
-                className="software-module-button w-full min-w-0 justify-start text-left"
-                variant={module.moduleKey === activeModuleKey ? 'accent' : 'ghost'}
-                onClick={() => onSelect(module.moduleKey)}
-              >
-                <div
-                  className="software-module-button-content min-w-0 space-y-1"
-                  style={{ marginLeft: `${Math.max(0, Number(module.hierarchyDepth || 0)) * 14}px` }}
-                >
-                  <p className="software-module-button-label break-words text-sm font-medium leading-5">
-                    {module.label || module.name || module.moduleKey}
-                  </p>
-                  <p className="software-module-button-purpose whitespace-normal break-words text-xs leading-5 opacity-70">
-                    {module.purposeSummary || module.description || 'Module purpose summary is not defined yet.'}
-                  </p>
-                </div>
-              </ActionButton>
+                module={module}
+                activeModuleKey={activeModuleKey}
+                onSelect={onSelect}
+              />
             ))}
           </div>
         </div>

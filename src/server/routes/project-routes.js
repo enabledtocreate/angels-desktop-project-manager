@@ -18,6 +18,10 @@ module.exports = function registerProjectRoutes(app, ctx) {
     saveProject,
     deleteProject,
     readProjectModules,
+    readProjectWorkItems,
+    readRoadmapPhases,
+    readFeatureItems,
+    readBugItems,
     syncProjectModules,
     saveProjectDocument,
     readEntityRelationships,
@@ -32,6 +36,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
     syncDatabaseSchemaDocument,
     ensureWorkspaceProject,
     countPendingProjectFragments,
+    countPendingProjectFragmentsForModule,
     sanitizeProject,
     normalizeRequestedProjectType,
     removeWorkspacePluginArtifacts,
@@ -86,25 +91,257 @@ module.exports = function registerProjectRoutes(app, ctx) {
     fs.writeFileSync(path.join(projectsDataDir, PROJECT_MANIFEST_FILE), lines.join('\n'), 'utf8');
   }
 
-  function decorateProject(project) {
-    const sanitized = sanitizeProject(project);
-    if (!sanitized) return sanitized;
-    let pendingFragmentCount = 0;
+  const CLOSED_BUG_STATUSES = new Set(['closed', 'resolved', 'archived']);
+  const INACTIVE_FEATURE_STATUSES = new Set(['implemented', 'completed', 'done', 'cancelled', 'canceled', 'archived']);
+  const INACTIVE_PHASE_STATUSES = new Set(['completed', 'done', 'archived']);
+
+  function isRecentlyChanged(item, now = Date.now(), days = 14) {
+    const timestamp = Date.parse(item?.updatedAt || item?.createdAt || item?.updated_at || item?.created_at || '');
+    if (!timestamp) return false;
+    return now - timestamp <= days * 24 * 60 * 60 * 1000;
+  }
+
+  async function buildProjectMetrics(project) {
+    const metrics = {
+      pendingFragmentCount: 0,
+      activeBugCount: 0,
+      activeFeatureCount: 0,
+      activeRoadmapPhaseCount: 0,
+      blockedWorkCount: 0,
+      recentChangeCount: 0,
+      enabledModuleCount: 0,
+      moduleCount: 0,
+    };
+
     try {
-      pendingFragmentCount = typeof countPendingProjectFragments === 'function'
-        ? countPendingProjectFragments(sanitized)
+      metrics.pendingFragmentCount = typeof countPendingProjectFragments === 'function'
+        ? countPendingProjectFragments(project)
         : 0;
     } catch (error) {
-      config.log(`project-routes: failed to count pending fragments for project ${sanitized.id || 'unknown'}: ${error.message || 'unknown error'}`);
+      config.log(`project-routes: failed to count pending fragments for project ${project.id || 'unknown'}: ${error.message || 'unknown error'}`);
     }
+
+    try {
+      const [bugs, features, phases, workItems, modules] = await Promise.all([
+        typeof readBugItems === 'function' ? readBugItems(project.id, { includeArchived: true }) : [],
+        typeof readFeatureItems === 'function' ? readFeatureItems(project.id, { includeArchived: true }) : [],
+        typeof readRoadmapPhases === 'function' ? readRoadmapPhases(project.id, { includeArchived: true }) : [],
+        typeof readProjectWorkItems === 'function' ? readProjectWorkItems(project.id) : [],
+        typeof readProjectModules === 'function' ? readProjectModules(project.id) : [],
+      ]);
+      const now = Date.now();
+      const activeBugs = (Array.isArray(bugs) ? bugs : []).filter((bug) => {
+        const status = String(bug?.status || '').trim().toLowerCase();
+        return !bug?.archived && !CLOSED_BUG_STATUSES.has(status);
+      });
+      const activeFeatures = (Array.isArray(features) ? features : []).filter((feature) => {
+        const status = String(feature?.status || '').trim().toLowerCase();
+        return !feature?.archived && !INACTIVE_FEATURE_STATUSES.has(status);
+      });
+      const activePhases = (Array.isArray(phases) ? phases : []).filter((phase) => {
+        const status = String(phase?.status || '').trim().toLowerCase();
+        return !phase?.archived && !INACTIVE_PHASE_STATUSES.has(status);
+      });
+      const activeWorkItems = (Array.isArray(workItems) ? workItems : []).filter((item) => {
+        const status = String(item?.status || '').trim().toLowerCase();
+        return !['closed', 'resolved', 'completed', 'done', 'archived'].includes(status);
+      });
+      const recentItems = [
+        ...activeBugs,
+        ...activeFeatures,
+        ...activePhases,
+        ...activeWorkItems,
+      ];
+      metrics.activeBugCount = activeBugs.length;
+      metrics.activeFeatureCount = activeFeatures.length;
+      metrics.activeRoadmapPhaseCount = activePhases.length;
+      metrics.blockedWorkCount = activeWorkItems.filter((item) => String(item?.status || '').trim().toLowerCase() === 'blocked').length;
+      metrics.recentChangeCount = recentItems.filter((item) => isRecentlyChanged(item, now)).length;
+      metrics.moduleCount = Array.isArray(modules) ? modules.length : 0;
+      metrics.enabledModuleCount = (Array.isArray(modules) ? modules : []).filter((module) => module?.enabled).length;
+    } catch (error) {
+      config.log(`project-routes: failed to build project metrics for project ${project.id || 'unknown'}: ${error.message || 'unknown error'}`);
+    }
+
+    return metrics;
+  }
+
+  function emptyProjectRollup() {
     return {
-      ...sanitized,
-      pendingFragmentCount,
+      childProjectCount: 0,
+      descendantProjectCount: 0,
+      pendingFragmentCount: 0,
+      activeBugCount: 0,
+      activeFeatureCount: 0,
+      activeRoadmapPhaseCount: 0,
+      blockedWorkCount: 0,
+      recentChangeCount: 0,
+      enabledModuleCount: 0,
+      moduleCount: 0,
     };
   }
 
-  function decorateProjects(projects) {
-    return (Array.isArray(projects) ? projects : []).map((project) => decorateProject(project));
+  function addMetricsToRollup(rollup, metrics = {}) {
+    rollup.pendingFragmentCount += Number(metrics.pendingFragmentCount || 0);
+    rollup.activeBugCount += Number(metrics.activeBugCount || 0);
+    rollup.activeFeatureCount += Number(metrics.activeFeatureCount || 0);
+    rollup.activeRoadmapPhaseCount += Number(metrics.activeRoadmapPhaseCount || 0);
+    rollup.blockedWorkCount += Number(metrics.blockedWorkCount || 0);
+    rollup.recentChangeCount += Number(metrics.recentChangeCount || 0);
+    rollup.enabledModuleCount += Number(metrics.enabledModuleCount || 0);
+    rollup.moduleCount += Number(metrics.moduleCount || 0);
+    return rollup;
+  }
+
+  function summarizeChildProject(project) {
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description || '',
+      parentId: project.parentId || null,
+      type: project.type,
+      projectType: project.projectType || 'general',
+      category: project.category || null,
+      pinned: Boolean(project.pinned),
+      imagePath: project.imagePath || null,
+      imageUrl: project.imageUrl || null,
+      pendingFragmentCount: Number(project.pendingFragmentCount || 0),
+      projectMetrics: project.projectMetrics || emptyProjectRollup(),
+      projectFamilyRollup: project.projectFamilyRollup || emptyProjectRollup(),
+      familyRollup: project.familyRollup || project.projectFamilyRollup || emptyProjectRollup(),
+      childCount: Number(project.childCount || 0),
+      descendantCount: Number(project.descendantCount || 0),
+    };
+  }
+
+  function applyProjectHierarchy(projects) {
+    const byId = new Map(projects.map((project) => [project.id, project]));
+    const childrenByParent = new Map();
+    for (const project of projects) {
+      const parentId = project.parentId && byId.has(project.parentId) ? project.parentId : '';
+      if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
+      childrenByParent.get(parentId).push(project);
+    }
+
+    const memo = new Map();
+    const visiting = new Set();
+
+    function enrichProject(project) {
+      if (!project?.id) return project;
+      if (memo.has(project.id)) return memo.get(project.id);
+      if (visiting.has(project.id)) {
+        return {
+          ...project,
+          isParentProject: false,
+          childCount: 0,
+          descendantCount: 0,
+          childProjectIds: [],
+          childProjects: [],
+          projectFamilyRollup: emptyProjectRollup(),
+          familyRollup: emptyProjectRollup(),
+          __descendants: [],
+        };
+      }
+
+      visiting.add(project.id);
+      const enrichedChildren = (childrenByParent.get(project.id) || []).map(enrichProject).filter(Boolean);
+      const descendants = [];
+      for (const child of enrichedChildren) {
+        descendants.push(child, ...(Array.isArray(child.__descendants) ? child.__descendants : []));
+      }
+      const rollup = emptyProjectRollup();
+      rollup.childProjectCount = enrichedChildren.length;
+      rollup.descendantProjectCount = descendants.length;
+      descendants.forEach((child) => addMetricsToRollup(rollup, child.projectMetrics));
+      const enriched = {
+        ...project,
+        isParentProject: enrichedChildren.length > 0,
+        childCount: enrichedChildren.length,
+        descendantCount: descendants.length,
+        childProjectIds: enrichedChildren.map((child) => child.id),
+        childProjects: enrichedChildren.map(summarizeChildProject),
+        projectFamilyRollup: rollup,
+        familyRollup: rollup,
+        __descendants: descendants,
+      };
+      memo.set(project.id, enriched);
+      visiting.delete(project.id);
+      return enriched;
+    }
+
+    return projects.map((project) => {
+      const { __descendants, ...cleanProject } = enrichProject(project);
+      return cleanProject;
+    });
+  }
+
+  async function decorateProject(project) {
+    const sanitized = sanitizeProject(project);
+    if (!sanitized) return sanitized;
+    const projectMetrics = await buildProjectMetrics(sanitized);
+    return {
+      ...sanitized,
+      pendingFragmentCount: projectMetrics.pendingFragmentCount,
+      projectMetrics,
+    };
+  }
+
+  async function decorateProjects(projects) {
+    const decorated = await Promise.all((Array.isArray(projects) ? projects : []).map((project) => decorateProject(project)));
+    return applyProjectHierarchy(decorated);
+  }
+
+  async function decorateProjectFromCurrentCollection(projectId, fallbackProject = null) {
+    const decoratedProjects = await decorateProjects(await readProjects());
+    return decoratedProjects.find((project) => project.id === projectId) || (fallbackProject ? await decorateProject(fallbackProject) : null);
+  }
+
+  function decorateModulesWithFragmentCounts(project, modules = []) {
+    return (Array.isArray(modules) ? modules : []).map((module) => {
+      let pendingFragmentCount = 0;
+      try {
+        pendingFragmentCount = typeof countPendingProjectFragmentsForModule === 'function'
+          ? countPendingProjectFragmentsForModule(project, module.moduleKey)
+          : 0;
+      } catch (error) {
+        config.log(`project-routes: failed to count pending fragments for module ${module?.moduleKey || 'unknown'} in project ${project?.id || 'unknown'}: ${error.message || 'unknown error'}`);
+      }
+      return {
+        ...module,
+        pendingFragmentCount,
+      };
+    });
+  }
+
+  function createsParentCycle(projects, projectId, parentId) {
+    if (!projectId || !parentId) return false;
+    if (projectId === parentId) return true;
+    const byId = new Map((Array.isArray(projects) ? projects : []).map((project) => [project.id, project]));
+    let currentId = parentId;
+    const visited = new Set();
+    while (currentId && !visited.has(currentId)) {
+      if (currentId === projectId) return true;
+      visited.add(currentId);
+      currentId = byId.get(currentId)?.parentId || null;
+    }
+    return false;
+  }
+
+  async function normalizeProjectParentId(parentId, projectId = null) {
+    const value = parentId ? String(parentId).trim() : '';
+    if (!value) return null;
+    const projects = await readProjects();
+    if (!projects.some((project) => project.id === value)) {
+      const error = new Error('Parent project not found');
+      error.statusCode = 400;
+      throw error;
+    }
+    if (createsParentCycle(projects, projectId, value)) {
+      const error = new Error('A project cannot be its own parent or descendant');
+      error.statusCode = 400;
+      throw error;
+    }
+    return value;
   }
 
   app.get('/api/projects', async (req, res) => {
@@ -119,7 +356,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
         }
       }
       await writeProjectDataManifest(projects);
-      res.json(decorateProjects(projects));
+      res.json(await decorateProjects(projects));
     } catch (error) {
       console.error('Error fetching projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });
@@ -145,6 +382,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
       } = req.body || {};
       const projectType = normalizeRequestedProjectType(req.body || {}, 'general');
       if (!name || !String(name).trim()) return res.status(400).json({ error: 'Name is required' });
+      const normalizedParentId = await normalizeProjectParentId(parentId);
 
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       let project;
@@ -160,7 +398,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
           url,
           name: String(name).trim(),
           description: description || '',
-          parentId: parentId || null,
+          parentId: normalizedParentId,
           serverId: null,
           openInCursor: false,
           openInCursorAdmin: false,
@@ -194,7 +432,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
           url: null,
           name: String(name).trim(),
           description: description || '',
-          parentId: parentId || null,
+          parentId: normalizedParentId,
           serverId: null,
           openInCursor: false,
           openInCursorAdmin: false,
@@ -216,10 +454,10 @@ module.exports = function registerProjectRoutes(app, ctx) {
 
       const savedProject = await saveProject(project);
       await writeProjectDataManifest();
-      res.json(decorateProject(savedProject));
+      res.json(await decorateProjectFromCurrentCollection(savedProject.id, savedProject));
     } catch (error) {
       console.error('Error creating project:', error);
-      res.status(500).json({ error: 'Failed to create project' });
+      res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Failed to create project' });
     }
   });
 
@@ -256,7 +494,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
 
       if (name !== undefined) project.name = String(name || '').trim() || project.name;
       if (description !== undefined) project.description = String(description || '');
-      if (parentId !== undefined) project.parentId = parentId || null;
+      if (parentId !== undefined) project.parentId = await normalizeProjectParentId(parentId, project.id);
       if (serverId !== undefined) project.serverId = serverId || null;
       if (category !== undefined) project.category = category && String(category).trim() ? String(category).trim() : null;
       if (tags !== undefined) project.tags = Array.isArray(tags) ? tags.filter((tag) => tag != null && String(tag).trim()) : [];
@@ -308,10 +546,10 @@ module.exports = function registerProjectRoutes(app, ctx) {
 
       const savedProject = await saveProject(project);
       await writeProjectDataManifest();
-      res.json(decorateProject(savedProject));
+      res.json(await decorateProjectFromCurrentCollection(savedProject.id, savedProject));
     } catch (error) {
       console.error('Error updating project:', error);
-      res.status(500).json({ error: 'Failed to update project' });
+      res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : 'Failed to update project' });
     }
   });
 
@@ -345,7 +583,8 @@ module.exports = function registerProjectRoutes(app, ctx) {
       fs.writeFileSync(imagePath, Buffer.from(match[2], 'base64'));
       project.imagePath = path.relative(config.getDataDir(), imagePath).replace(/\\/g, '/');
       project.imageUrl = null;
-      res.json(decorateProject(await saveProject(project)));
+      const savedProject = await saveProject(project);
+      res.json(await decorateProjectFromCurrentCollection(savedProject.id, savedProject));
     } catch (error) {
       console.error('Error saving project image:', error);
       res.status(500).json({ error: 'Failed to save project image' });
@@ -404,12 +643,13 @@ module.exports = function registerProjectRoutes(app, ctx) {
     try {
       const project = await getProjectById(req.params.id);
       if (!project) return res.status(404).json({ error: 'Project not found' });
+      const modules = typeof syncProjectModules === 'function'
+        ? await syncProjectModules(project)
+        : await readProjectModules(project.id);
       res.json({
         projectId: project.id,
         projectType: project.projectType || 'general',
-        modules: typeof syncProjectModules === 'function'
-          ? await syncProjectModules(project)
-          : await readProjectModules(project.id),
+        modules: decorateModulesWithFragmentCounts(project, modules),
         dependencies: await readEntityRelationships(project.id, {
           sourceEntityType: 'module',
           relationshipType: 'depends_on',
@@ -495,7 +735,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
         projectType: savedProject.projectType,
         enabledModules: savedProject.enabledModules || [],
         workspacePlugins: savedProject.workspacePlugins || [],
-        modules: savedProject.modules || [],
+        modules: decorateModulesWithFragmentCounts(savedProject, savedProject.modules || []),
       });
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to update project modules' });

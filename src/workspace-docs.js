@@ -6202,6 +6202,10 @@ function countPendingProjectFragments(project) {
   return listProjectFragmentFiles(project).filter(isPendingFragmentFile).length;
 }
 
+function countPendingProjectFragmentsForModule(project, moduleKey) {
+  return listProjectFragmentFilesForModule(project, moduleKey).filter(isPendingFragmentFile).length;
+}
+
 module.exports = {
   DOC_TYPES,
   PRD_FRAGMENT_TEMPLATE_NAME,
@@ -6309,4 +6313,5 @@ module.exports = {
   listProjectFragmentFilesForModule,
   listSharedFragmentFilesForModule,
   countPendingProjectFragments,
+  countPendingProjectFragmentsForModule,
 };
