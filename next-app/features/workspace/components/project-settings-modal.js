@@ -10,14 +10,29 @@ import { TagEditor } from '@/components/ui/tag-editor';
 import { fetchJson } from '@/lib/api-client';
 
 const CROP_VIEWPORT = 240;
+const INHERITANCE_OPTIONS = [
+  { key: 'aiDirectives', label: 'AI directives', description: 'Parent AI guidance can be reused by child projects.' },
+  { key: 'standards', label: 'Standards references', description: 'Parent standards registry references can guide child modules.' },
+  { key: 'templatePolicy', label: 'Template policy', description: 'Template version and replacement expectations can be shared.' },
+  { key: 'moduleDefaults', label: 'Module defaults', description: 'Default module choices can be offered to new children.' },
+  { key: 'uiPreferences', label: 'UI preferences', description: 'Visual preferences can be inherited where safe.' },
+  { key: 'integrationDefaults', label: 'Integration defaults', description: 'Safe integration defaults can be offered without secrets.' },
+];
+
+function normalizeInheritanceFlags(flags) {
+  const source = flags && typeof flags === 'object' ? flags : {};
+  return Object.fromEntries(INHERITANCE_OPTIONS.map((option) => [option.key, !!source[option.key]]));
+}
 
 function buildState(project, modules = []) {
   const linkedServerIds = Array.isArray(project?.integrations?.sftp?.serverIds) && project.integrations.sftp.serverIds.length
     ? project.integrations.sftp.serverIds
     : (project?.serverId ? [project.serverId] : []);
+  const projectFamily = project?.integrations?.projectFamily || {};
   return {
     name: project?.name || '',
     description: project?.description || '',
+    parentId: project?.parentId || '',
     category: project?.category || '',
     projectType: project?.projectType || 'general',
     primaryAction: project?.primaryAction || 'auto',
@@ -42,12 +57,17 @@ function buildState(project, modules = []) {
         action: link.action || 'auto',
       }))
       : [{ type: 'url', description: '', url: '', action: 'auto' }],
+    projectFamily: {
+      offeredInheritance: normalizeInheritanceFlags(projectFamily.offeredInheritance),
+      inheritedFromParent: normalizeInheritanceFlags(projectFamily.inheritedFromParent),
+    },
   };
 }
 
 const CATEGORY_DEFINITIONS = [
   { key: 'foundation', label: 'Foundation' },
   { key: 'planning', label: 'Planning' },
+  { key: 'family', label: 'Project Family' },
   { key: 'records', label: 'Records' },
   { key: 'modules', label: 'Modules' },
 ];
@@ -262,8 +282,30 @@ export function ProjectSettingsModal({ project, modules = [], isOpen, onClose, o
     () => [...new Set((Array.isArray(allProjects) ? allProjects : []).flatMap((entry) => Array.isArray(entry?.tags) ? entry.tags : []).map((tag) => String(tag || '').trim()).filter(Boolean))],
     [allProjects]
   );
+  const parentCandidates = useMemo(
+    () => (Array.isArray(allProjects) ? allProjects : []).filter((entry) => entry && entry.id !== project?.id),
+    [allProjects, project?.id]
+  );
+  const parentProject = useMemo(
+    () => parentCandidates.find((entry) => entry.id === state.parentId) || null,
+    [parentCandidates, state.parentId]
+  );
+  const parentOfferedInheritance = normalizeInheritanceFlags(parentProject?.integrations?.projectFamily?.offeredInheritance);
 
   if (!isOpen) return null;
+
+  function setInheritanceFlag(groupKey, optionKey, value) {
+    setState((current) => ({
+      ...current,
+      projectFamily: {
+        ...current.projectFamily,
+        [groupKey]: {
+          ...normalizeInheritanceFlags(current.projectFamily?.[groupKey]),
+          [optionKey]: !!value,
+        },
+      },
+    }));
+  }
 
   async function handleSave() {
     setSaveStatus('saving');
@@ -271,6 +313,7 @@ export function ProjectSettingsModal({ project, modules = [], isOpen, onClose, o
       const projectPayload = {
         name: state.name,
         description: state.description,
+        parentId: state.parentId || null,
         category: state.category,
         projectType: state.projectType,
         primaryAction: state.primaryAction,
@@ -281,6 +324,10 @@ export function ProjectSettingsModal({ project, modules = [], isOpen, onClose, o
             ...((project?.integrations && project.integrations.sftp) || {}),
             serverIds: state.linkedServerIds,
             defaultServerId: state.serverId || '',
+          },
+          projectFamily: {
+            offeredInheritance: normalizeInheritanceFlags(state.projectFamily?.offeredInheritance),
+            inheritedFromParent: normalizeInheritanceFlags(state.projectFamily?.inheritedFromParent),
           },
         },
         imageUrl: state.imageSourceMode === 'url' ? state.imageUrl.trim() || null : null,
@@ -560,6 +607,94 @@ export function ProjectSettingsModal({ project, modules = [], isOpen, onClose, o
                     <p className="text-sm leading-6 text-sky-100/75">
                       Primary open action controls how links and files open from the app. Linked SFTP servers are project-scoped and can be switched inside the SFTP workspace.
                     </p>
+                  </div>
+                ) : null}
+
+                {activeCategory === 'family' ? (
+                  <div className="space-y-5">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/60">Project Family</p>
+                      <h3 className="mt-2 text-xl font-semibold text-white">Parent, child, and inheritance controls</h3>
+                      <p className="mt-2 text-sm leading-6 text-sky-100/75">
+                        Parent projects can offer inheritable settings. Child projects opt into only the inheritance categories they need.
+                      </p>
+                    </div>
+
+                    <label className="space-y-2 text-sm text-ink/75">
+                      <span className="font-medium text-ink">Parent Project</span>
+                      <select
+                        className="w-full rounded-2xl border border-white/10 bg-slate px-4 py-3 text-ink outline-none focus:border-accent/60"
+                        value={state.parentId}
+                        onChange={(event) => setState((current) => ({
+                          ...current,
+                          parentId: event.target.value,
+                          projectFamily: {
+                            ...current.projectFamily,
+                            inheritedFromParent: event.target.value
+                              ? current.projectFamily.inheritedFromParent
+                              : normalizeInheritanceFlags({}),
+                          },
+                        }))}
+                      >
+                        <option value="">No parent project</option>
+                        {parentCandidates.map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
+                        ))}
+                      </select>
+                      <span className="block text-xs leading-5 text-ink/60">
+                        A child can have only one parent. The backend prevents circular parent/child relationships.
+                      </span>
+                    </label>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-slate/70 p-4">
+                        <p className="text-sm font-semibold text-ink">Offer to child projects</p>
+                        <p className="mt-1 text-xs leading-5 text-ink/60">
+                          These options make this project a source that child projects may inherit from later.
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {INHERITANCE_OPTIONS.map((option) => (
+                            <label key={option.key} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-ink/75">
+                              <input
+                                type="checkbox"
+                                checked={!!state.projectFamily.offeredInheritance[option.key]}
+                                onChange={(event) => setInheritanceFlag('offeredInheritance', option.key, event.target.checked)}
+                              />
+                              <span>
+                                <span className="block font-medium text-ink">{option.label}</span>
+                                <span className="mt-1 block text-xs leading-5 text-ink/60">{option.description}</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-slate/70 p-4">
+                        <p className="text-sm font-semibold text-ink">Inherit from parent</p>
+                        <p className="mt-1 text-xs leading-5 text-ink/60">
+                          {parentProject ? `Available from ${parentProject.name}. Disabled options are not offered by the parent.` : 'Choose a parent project before enabling inherited settings.'}
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {INHERITANCE_OPTIONS.map((option) => {
+                            const offered = !!parentOfferedInheritance[option.key];
+                            return (
+                              <label key={option.key} className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${offered ? 'border-white/10 bg-white/5 text-ink/75' : 'border-white/6 bg-black/10 text-ink/35'}`}>
+                                <input
+                                  type="checkbox"
+                                  disabled={!parentProject || !offered}
+                                  checked={!!state.projectFamily.inheritedFromParent[option.key] && offered}
+                                  onChange={(event) => setInheritanceFlag('inheritedFromParent', option.key, event.target.checked)}
+                                />
+                                <span>
+                                  <span className="block font-medium">{option.label}</span>
+                                  <span className="mt-1 block text-xs leading-5">{offered ? option.description : 'Not offered by the selected parent.'}</span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : null}
 

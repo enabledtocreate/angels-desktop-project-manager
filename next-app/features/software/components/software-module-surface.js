@@ -13,6 +13,35 @@ function dependentCount(moduleKey, dependencies) {
   return dependencies.filter((edge) => edge.targetEntityId === moduleKey).length;
 }
 
+function ModuleExtensionCard({ project, module }) {
+  const showParentExtension = Boolean(project?.isParentProject && module?.parentExtensionSummary);
+  const showChildExtension = Boolean(project?.parentSummary && module?.childExtensionSummary);
+  if (!showParentExtension && !showChildExtension) return null;
+
+  return (
+    <DialogFrame
+      eyebrow="Project Family Extension"
+      title={`${module.label || module.moduleKey} is parent/child aware`}
+      description="The normal module remains autonomous, but project-family context adds orchestration responsibilities and reference points."
+    >
+      <div className="grid gap-3 md:grid-cols-2">
+        {showParentExtension ? (
+          <SurfaceCard id={`module-parent-extension-${module.moduleKey}`} className="module-parent-extension-card p-4" tone="muted">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100/55">Parent Extension</p>
+            <p className="mt-2 text-sm leading-7 text-sky-100/75">{module.parentExtensionSummary}</p>
+          </SurfaceCard>
+        ) : null}
+        {showChildExtension ? (
+          <SurfaceCard id={`module-child-extension-${module.moduleKey}`} className="module-child-extension-card p-4" tone="muted">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100/55">Child Extension</p>
+            <p className="mt-2 text-sm leading-7 text-sky-100/75">{module.childExtensionSummary}</p>
+          </SurfaceCard>
+        ) : null}
+      </div>
+    </DialogFrame>
+  );
+}
+
 export function SoftwareModuleSurface({ project, module, dependencies }) {
   if (!module) {
     return (
@@ -57,6 +86,8 @@ export function SoftwareModuleSurface({ project, module, dependencies }) {
           />
         </div>
       </StatisticsDisclosure>
+
+      <ModuleExtensionCard project={project} module={module} />
 
       <DialogFrame
         eyebrow="Hierarchy Context"

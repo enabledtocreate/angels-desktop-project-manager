@@ -177,6 +177,19 @@ function normalizeIntegrationPlugin(plugin, index = 0) {
 function normalizeProjectIntegrations(value) {
   const source = value && typeof value === 'object' ? value : {};
   const sftpSource = source.sftp && typeof source.sftp === 'object' ? source.sftp : {};
+  const projectFamilySource = source.projectFamily && typeof source.projectFamily === 'object' ? source.projectFamily : {};
+  const inheritanceKeys = [
+    'aiDirectives',
+    'standards',
+    'templatePolicy',
+    'moduleDefaults',
+    'uiPreferences',
+    'integrationDefaults',
+  ];
+  const normalizeInheritanceFlags = (flags) => {
+    const sourceFlags = flags && typeof flags === 'object' ? flags : {};
+    return Object.fromEntries(inheritanceKeys.map((key) => [key, !!sourceFlags[key]]));
+  };
   return {
     github: normalizeGitHubIntegration(source.github),
     webhooks: normalizeWebhookIntegration(source.webhooks),
@@ -189,6 +202,10 @@ function normalizeProjectIntegrations(value) {
     plugins: Array.isArray(source.plugins)
       ? source.plugins.map(normalizeIntegrationPlugin).filter((plugin) => plugin.targetUrl)
       : [],
+    projectFamily: {
+      offeredInheritance: normalizeInheritanceFlags(projectFamilySource.offeredInheritance),
+      inheritedFromParent: normalizeInheritanceFlags(projectFamilySource.inheritedFromParent),
+    },
   };
 }
 

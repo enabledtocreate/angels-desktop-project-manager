@@ -206,20 +206,27 @@ export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpen
         </div>
 
         {childProjects.length ? (
-          <div className="project-card-children mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-            <div className="project-card-children-header mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Child Projects</p>
-                <p className="text-xs text-ink/55">
-                  {childProjects.length} direct, {Number(project.descendantCount || childProjects.length)} total
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-end gap-1.5">
-                <MetricPill label="fragments" value={Number(familyRollup.pendingFragmentCount || 0)} tone={Number(familyRollup.pendingFragmentCount || 0) > 0 ? 'alert' : 'neutral'} />
-                <MetricPill label="bugs" value={Number(familyRollup.activeBugCount || 0)} />
-                <MetricPill label="features" value={Number(familyRollup.activeFeatureCount || 0)} />
-              </div>
-            </div>
+          <details
+            className="project-card-children mt-4 rounded-2xl border border-white/10 bg-black/20 p-3"
+            open
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <summary className="project-card-children-summary cursor-pointer list-none rounded-xl px-1 py-1 transition hover:bg-white/5">
+              <span className="project-card-children-header flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Child Projects</span>
+                  <span className="block text-xs text-ink/55">
+                    {childProjects.length} direct, {Number(project.descendantCount || childProjects.length)} total. Expand or collapse this project family.
+                  </span>
+                </span>
+                <span className="flex flex-wrap justify-end gap-1.5">
+                  <MetricPill label="fragments" value={Number(familyRollup.pendingFragmentCount || 0)} tone={Number(familyRollup.pendingFragmentCount || 0) > 0 ? 'alert' : 'neutral'} />
+                  <MetricPill label="bugs" value={Number(familyRollup.activeBugCount || 0)} />
+                  <MetricPill label="features" value={Number(familyRollup.activeFeatureCount || 0)} />
+                </span>
+              </span>
+            </summary>
             <div className={`project-card-child-grid grid gap-2 ${isGrid ? '' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>
               {childProjects.map((child) => {
                 const childFragments = Number(child.pendingFragmentCount || child.projectMetrics?.pendingFragmentCount || 0);
@@ -249,7 +256,7 @@ export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpen
                 );
               })}
             </div>
-          </div>
+          </details>
         ) : null}
 
         <div className="project-card-meta mt-4 flex items-center justify-between gap-3">

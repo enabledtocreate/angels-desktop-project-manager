@@ -4717,6 +4717,36 @@ function defaultAiEnvironmentEditorState(project) {
         versionDate: now,
       },
       {
+        title: 'Parent Project',
+        description: 'A project that contains or orchestrates one or more child projects while keeping its own modules, documents, fragments, and AI Environment autonomous.',
+        versionDate: now,
+      },
+      {
+        title: 'Child Project',
+        description: 'A normal project that belongs to one parent project and owns its own source-of-truth state unless optional inheritance is explicitly enabled.',
+        versionDate: now,
+      },
+      {
+        title: 'Project Family',
+        description: 'A parent project plus its direct and indirect child projects, viewed together for navigation, rollups, inheritance, and cross-project orchestration.',
+        versionDate: now,
+      },
+      {
+        title: 'Rollup',
+        description: 'A read-only parent-level summary of active child project state such as pending fragments, bugs, features, phases, blocked work, and recent changes.',
+        versionDate: now,
+      },
+      {
+        title: 'Inheritance',
+        description: 'An optional child project setting that uses parent-offered directives, standards, template policy, module defaults, UI preferences, or safe integration defaults.',
+        versionDate: now,
+      },
+      {
+        title: 'Cross-Project Relationship',
+        description: 'An explicit relationship between projects or project-owned items, stored with stable ids so parent orchestration can describe dependencies, APIs, events, models, or deployment links.',
+        versionDate: now,
+      },
+      {
         title: 'Module',
         description: 'A functional area inside APM, such as PRD, Functional Spec, Domain Models, Database Schema, Architecture, Features, Bugs, or AI Environment.',
         versionDate: now,
@@ -4902,6 +4932,15 @@ function buildCodeOwnedAiDirectiveDefinitions(project, options = {}) {
     id: 'apm.shared.generated-docs.source-of-truth',
     title: 'Do not bypass source-of-truth state',
     description: 'Do not overwrite generated markdown, generated DBML, or generated Mermaid directly when the module uses database-first state. Update the module data, consume a valid fragment, or use the module action that regenerates the artifact.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  directives.push({
+    id: 'apm.shared.project-family.autonomy',
+    title: 'Preserve project-family autonomy and explicit references',
+    description: 'Directive ID: apm.shared.project-family.autonomy. For parent and child projects, keep each project as its own source of truth. Parent rollups summarize active child state but do not silently edit child records. Cross-project updates must reference the owning project id plus module or item id, and inheritance is used only when the child explicitly enables a parent-offered category.',
     locked: true,
     required: true,
     scope: 'shared',

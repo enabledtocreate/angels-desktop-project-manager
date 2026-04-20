@@ -78,6 +78,28 @@ function ModuleTextArea({ label, value, onChange, rows = 6, help, stableId = '',
   );
 }
 
+function ModuleDocumentExtensionNote({ project, module }) {
+  const showParentExtension = Boolean(project?.isParentProject && module?.parentExtensionSummary);
+  const showChildExtension = Boolean(project?.parentSummary && module?.childExtensionSummary);
+  if (!showParentExtension && !showChildExtension) return null;
+
+  return (
+    <SurfaceCard id={`module-document-extension-${module.moduleKey}`} className="module-document-extension-note p-4" tone="muted">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100/55">Project Family Extension</p>
+      {showParentExtension ? (
+        <p className="mt-2 text-sm leading-7 text-sky-100/75">
+          Parent document role: <span className="text-white">{module.parentExtensionSummary}</span>
+        </p>
+      ) : null}
+      {showChildExtension ? (
+        <p className="mt-2 text-sm leading-7 text-sky-100/75">
+          Child document role: <span className="text-white">{module.childExtensionSummary}</span>
+        </p>
+      ) : null}
+    </SurfaceCard>
+  );
+}
+
 export function ModuleDocumentWorkspace({ project, module }) {
   const moduleKey = module?.moduleKey;
   const moduleTitle = module?.label || toTitle(moduleKey);
@@ -134,6 +156,8 @@ export function ModuleDocumentWorkspace({ project, module }) {
           </div>
         </StatisticsDisclosure>
       </SectionShell>
+
+      <ModuleDocumentExtensionNote project={project} module={module} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.85fr)]">
         <SectionShell eyebrow="Structured Editor" title={moduleTitle} description="This starter editor is deliberately simple: it gives the module somewhere real to accumulate fragment-backed content while the richer UI evolves.">

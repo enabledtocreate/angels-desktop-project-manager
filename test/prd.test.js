@@ -254,6 +254,12 @@ test('project APIs enforce current PRD expectations for validation, browsing, pe
       serverId: 'cred-legacy-1',
       parentId: 'legacy-project-1',
       primaryAction: 'chrome',
+      integrations: {
+        projectFamily: {
+          offeredInheritance: { aiDirectives: true, standards: true },
+          inheritedFromParent: { aiDirectives: true },
+        },
+      },
       mappingGroups: [{
         id: 'release',
         name: 'Release',
@@ -271,6 +277,9 @@ test('project APIs enforce current PRD expectations for validation, browsing, pe
   assert.equal(result.body.serverId, 'cred-legacy-1');
   assert.equal(result.body.parentId, 'legacy-project-1');
   assert.equal(result.body.primaryAction, 'chrome');
+  assert.equal(result.body.integrations.projectFamily.offeredInheritance.aiDirectives, true);
+  assert.equal(result.body.integrations.projectFamily.offeredInheritance.standards, true);
+  assert.equal(result.body.integrations.projectFamily.inheritedFromParent.aiDirectives, true);
   assert.equal(result.body.links[1].action, 'vscode');
   assert.equal(result.body.mappingGroups[0].downloadMappings[0].localPath, 'Beta/.env');
 
@@ -284,6 +293,27 @@ test('project APIs enforce current PRD expectations for validation, browsing, pe
   assert.equal(saved.parentId, 'legacy-project-1');
   const parentProject = result.body.find((project) => project.id === 'legacy-project-1');
   assert.equal(parentProject.isParentProject, true);
+  const childSummary = parentProject.childProjects.find((project) => project.id === created.id);
+  assert.equal(childSummary.integrations.projectFamily.inheritedFromParent.aiDirectives, true);
+
+  result = await request('/api/projects/legacy-project-1/relationships', {
+    method: 'POST',
+    body: JSON.stringify({
+      sourceEntityType: 'project',
+      sourceEntityId: 'legacy-project-1',
+      relationshipType: 'depends_on_project',
+      targetEntityType: 'project',
+      targetEntityId: created.id,
+      metadata: { note: 'Parent dashboard relationship editor smoke test.' },
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.relationshipType, 'depends_on_project');
+  assert.equal(result.body.metadata.note, 'Parent dashboard relationship editor smoke test.');
+
+  result = await request('/api/projects/legacy-project-1/relationships?sourceEntityType=project');
+  assert.equal(result.response.status, 200);
+  assert(result.body.some((entry) => entry.relationshipType === 'depends_on_project' && entry.targetEntityId === created.id));
   assert.equal(parentProject.childCount, 1);
   assert.equal(parentProject.descendantCount, 1);
   assert(parentProject.childProjects.some((child) => child.id === created.id));
@@ -899,6 +929,7 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   const projectList = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'projects', 'components', 'project-list.js'), 'utf8');
   const projectCard = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'projects', 'components', 'project-card.js'), 'utf8');
   const workspaceShell = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'workspace', 'components', 'project-workspace-shell.js'), 'utf8');
+  const softwareModuleSurface = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'software', 'components', 'software-module-surface.js'), 'utf8');
   const projectSettingsModal = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'workspace', 'components', 'project-settings-modal.js'), 'utf8');
   const coreNav = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'workspace', 'components', 'core-nav.js'), 'utf8');
   const projectBriefWorkspace = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'workspace', 'components', 'project-brief-workspace.js'), 'utf8');
@@ -993,6 +1024,8 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(projectCard, /ProjectLinkIcons/);
   assert.match(projectCard, /Project settings/);
   assert.match(projectCard, /project-card-children/);
+  assert.match(projectCard, /project-card-children-summary/);
+  assert.match(projectCard, /Expand or collapse this project family/);
   assert.match(projectCard, /Child Projects/);
   assert.match(projectCard, /Pin project/);
   assert.match(projectCard, /onTogglePin/);
@@ -1002,6 +1035,10 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(projectCard, /role="button"/);
   assert.match(projectSettingsModal, /Project settings are grouped to match the workspace hierarchy/);
   assert.match(projectSettingsModal, /Core project identity/);
+  assert.match(projectSettingsModal, /Project Family/);
+  assert.match(projectSettingsModal, /offeredInheritance/);
+  assert.match(projectSettingsModal, /inheritedFromParent/);
+  assert.match(projectSettingsModal, /Parent Project/);
   assert.match(projectSettingsModal, /Module selection/);
   assert.match(projectSettingsModal, /Default Program \/ Browser/);
   assert.match(projectSettingsModal, /VS Code/);
@@ -1012,7 +1049,25 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(workspaceShell, /CoreNav/);
   assert.match(workspaceShell, /ParentDashboardWorkspace/);
   assert.match(workspaceShell, /RollupDetailPanel/);
+  assert.match(workspaceShell, /project-workspace-breadcrumb/);
+  assert.match(workspaceShell, /project\.parentSummary/);
+  assert.match(workspaceShell, /ProjectFamilyInheritanceSummary/);
+  assert.match(workspaceShell, /parent-dashboard-inheritance/);
+  assert.match(workspaceShell, /Parent offers and child opt-ins/);
+  assert.match(workspaceShell, /No inherited settings enabled/);
+  assert.match(workspaceShell, /PROJECT_RELATIONSHIP_TYPES/);
+  assert.match(workspaceShell, /parent-dashboard-relationships/);
+  assert.match(workspaceShell, /Cross-Project Relationships/);
+  assert.match(workspaceShell, /Add Relationship/);
+  assert.match(workspaceShell, /\/api\/projects\/\$\{project\.id\}\/relationships/);
   assert.match(workspaceShell, /\/api\/projects\/\$\{project\.id\}\/rollups/);
+  assert.match(workspaceShell, /useFileWatcher/);
+  assert.match(workspaceShell, /project-fragments:\$\{projectId\}/);
+  assert.match(workspaceShell, /refreshRollups/);
+  assert.match(softwareModuleSurface, /ModuleExtensionCard/);
+  assert.match(softwareModuleSurface, /Parent Extension/);
+  assert.match(softwareModuleSurface, /Child Extension/);
+  assert.match(softwareModuleSurface, /Project Family Extension/);
   assert.match(workspaceShell, /onSelectProject\?\.\(item\.projectId, item\.moduleKey/);
   assert.match(workspaceShell, /parent_dashboard/);
   assert.match(workspaceShell, /Project Workspace/);
@@ -1220,6 +1275,8 @@ test('nextjs migration sweep wires remaining software and core workspaces into t
   assert.match(projectProfiles, /hierarchyGroup/);
   assert.match(projectProfiles, /hierarchyOrder/);
   assert.match(projectProfiles, /purposeSummary/);
+  assert.match(projectProfiles, /parentExtensionSummary/);
+  assert.match(projectProfiles, /childExtensionSummary/);
   assert.match(projectProfiles, /hierarchyDepth/);
   assert.doesNotMatch(coreNav, /Settings/);
   assert.match(architectureHook, /\/api\/projects\/\$\{project\.id\}\/architecture/);
@@ -1248,6 +1305,9 @@ test('nextjs migration sweep wires remaining software and core workspaces into t
   assert.match(moduleDocumentHook, /\/api\/projects\/\$\{project\.id\}\/module-documents\/\$\{moduleKey\}/);
   assert.match(moduleDocumentWorkspace, /Load Fragments/);
   assert.match(moduleDocumentWorkspace, /starter editor is deliberately simple/);
+  assert.match(moduleDocumentWorkspace, /ModuleDocumentExtensionNote/);
+  assert.match(moduleDocumentWorkspace, /Parent document role/);
+  assert.match(moduleDocumentWorkspace, /Child document role/);
   assert.match(workItemsHook, /\/api\/projects\/\$\{project\.id\}\/work-items/);
   assert.match(workItemsWorkspace, /Work items workspace/);
   assert.match(kanbanWorkspace, /Kanban workspace/);
@@ -4038,6 +4098,11 @@ test('AI environment markdown always includes locked system directives for fragm
   assert.match(markdown, /Create stable human-readable ids for persisted items/);
   assert.match(markdown, /apm\.shared\.stable-id\.naming/);
   assert.match(markdown, /short lowercase kebab-case identifier scoped by module or item type/);
+  assert.match(markdown, /Parent Project/);
+  assert.match(markdown, /Project Family/);
+  assert.match(markdown, /Cross-Project Relationship/);
+  assert.match(markdown, /Preserve project-family autonomy and explicit references/);
+  assert.match(markdown, /apm\.shared\.project-family\.autonomy/);
   assert.match(markdown, /Generate regression tests for bug fixes/);
   assert.match(markdown, /apm\.module\.bugs\.regression-test-followup/);
   assert.match(markdown, /Paths:/);

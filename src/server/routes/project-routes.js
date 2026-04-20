@@ -226,6 +226,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
       projectType: project.projectType || 'general',
       category: project.category || null,
       pinned: Boolean(project.pinned),
+      integrations: project.integrations || {},
       imagePath: project.imagePath || null,
       imageUrl: project.imageUrl || null,
       pendingFragmentCount: Number(project.pendingFragmentCount || 0),
@@ -278,6 +279,9 @@ module.exports = function registerProjectRoutes(app, ctx) {
       descendants.forEach((child) => addMetricsToRollup(rollup, child.projectMetrics));
       const enriched = {
         ...project,
+        parentSummary: project.parentId && byId.has(project.parentId)
+          ? summarizeChildProject(byId.get(project.parentId))
+          : null,
         isParentProject: enrichedChildren.length > 0,
         childCount: enrichedChildren.length,
         descendantCount: descendants.length,

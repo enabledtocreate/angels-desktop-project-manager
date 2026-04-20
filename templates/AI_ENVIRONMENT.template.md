@@ -2,8 +2,8 @@
 
 > Managed document. Must comply with template AI_ENVIRONMENT.template.md.
 
-- Template Version: `1.1`
-- Last Updated: `2026-04-14`
+- Template Version: `1.2`
+- Last Updated: `2026-04-19`
 
 ## Purpose
 
@@ -41,3 +41,4 @@ This document governs how AI agents should operate within the project.
 - Include references to module template files that own emitted AI directives.
 - Keep instructions deterministic, explicit, and safe for structured updates.
 - Prefer short titles with clear descriptions for repeatable rules.
+- For parent/child projects, preserve project autonomy, use rollups as read-only summaries, and reference cross-project work by project id plus module/item id.

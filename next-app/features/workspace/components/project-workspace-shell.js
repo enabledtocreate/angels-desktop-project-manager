@@ -29,6 +29,7 @@ import { ProjectBriefWorkspace } from '@/features/workspace/components/project-b
 import { ProjectSettingsModal } from '@/features/workspace/components/project-settings-modal';
 import { WorkItemsWorkspace } from '@/features/workspace/components/work-items-workspace';
 import { fetchJson } from '@/lib/api-client';
+import { useFileWatcher } from '@/hooks/use-file-watcher';
 
 const DEFAULT_SURFACE_KEY = 'project_brief_root';
 const PARENT_DASHBOARD_SURFACE_KEY = 'parent_dashboard';
@@ -85,6 +86,33 @@ const PARENT_ROLLUP_SECTIONS = {
   recentChanges: { label: 'Recent Changes', empty: 'No recent child changes.', tone: 'neutral' },
 };
 
+const INHERITANCE_LABELS = {
+  aiDirectives: 'AI directives',
+  standards: 'Standards',
+  templatePolicy: 'Template policy',
+  moduleDefaults: 'Module defaults',
+  uiPreferences: 'UI preferences',
+  integrationDefaults: 'Integration defaults',
+};
+
+const PROJECT_RELATIONSHIP_TYPES = [
+  { value: 'depends_on_project', label: 'Depends on project' },
+  { value: 'exposes_api_to', label: 'Exposes API to' },
+  { value: 'consumes_api_from', label: 'Consumes API from' },
+  { value: 'shares_domain_model_with', label: 'Shares domain model with' },
+  { value: 'emits_event_to', label: 'Emits event to' },
+  { value: 'consumes_event_from', label: 'Consumes event from' },
+  { value: 'owns_subsystem', label: 'Owns subsystem' },
+  { value: 'deploys_with', label: 'Deploys with' },
+];
+
+function getEnabledInheritanceLabels(flags) {
+  if (!flags || typeof flags !== 'object') return [];
+  return Object.entries(INHERITANCE_LABELS)
+    .filter(([key]) => Boolean(flags[key]))
+    .map(([, label]) => label);
+}
+
 function RollupDetailPanel({ title, items, emptyMessage, onOpenItem }) {
   const visibleItems = Array.isArray(items) ? items.slice(0, 12) : [];
   return (
@@ -127,6 +155,50 @@ function RollupDetailPanel({ title, items, emptyMessage, onOpenItem }) {
   );
 }
 
+function ProjectFamilyInheritanceSummary({ project }) {
+  const projectFamily = project?.integrations?.projectFamily || {};
+  const offeredLabels = getEnabledInheritanceLabels(projectFamily.offeredInheritance);
+  const inheritedLabels = getEnabledInheritanceLabels(projectFamily.inheritedFromParent);
+
+  if (!project?.parentSummary && !project?.isParentProject && offeredLabels.length === 0 && inheritedLabels.length === 0) {
+    return null;
+  }
+
+  return (
+    <div id="project-family-inheritance-summary" className="project-family-inheritance-summary space-y-3 border-t border-white/10 pt-4 text-sm">
+      <p className="project-workspace-section-label text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Project Family</p>
+      {project.parentSummary ? (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/50">Parent</p>
+          <p className="mt-1 truncate font-semibold text-ink">{project.parentSummary.name}</p>
+        </div>
+      ) : null}
+      {project.isParentProject ? (
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/50">Children</p>
+          <p className="mt-1 font-semibold text-ink">{Number(project.childCount || 0)} direct, {Number(project.descendantCount || 0)} total</p>
+        </div>
+      ) : null}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/50">Inherited by this project</p>
+        <div className="flex flex-wrap gap-1.5">
+          {inheritedLabels.length ? inheritedLabels.map((label) => (
+            <span key={label} className="rounded-full border border-sky-300/35 bg-sky-400/10 px-2 py-0.5 text-[11px] font-semibold text-sky-100">{label}</span>
+          )) : <span className="text-xs text-ink/50">No inherited settings enabled.</span>}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/50">Offered to children</p>
+        <div className="flex flex-wrap gap-1.5">
+          {offeredLabels.length ? offeredLabels.map((label) => (
+            <span key={label} className="rounded-full border border-emerald-300/35 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">{label}</span>
+          )) : <span className="text-xs text-ink/50">No inheritance offers configured.</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ParentDashboardWorkspace({ project, onSelectProject }) {
   const childProjects = Array.isArray(project.childProjects) ? project.childProjects : [];
   const rollup = project.familyRollup || project.projectFamilyRollup || {};
@@ -135,6 +207,40 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
   const [rollupDetails, setRollupDetails] = useState(null);
   const [rollupStatus, setRollupStatus] = useState('idle');
   const [rollupError, setRollupError] = useState(null);
+  const [relationships, setRelationships] = useState([]);
+  const [relationshipStatus, setRelationshipStatus] = useState('idle');
+  const [relationshipDraft, setRelationshipDraft] = useState({
+    sourceEntityId: project.id,
+    relationshipType: PROJECT_RELATIONSHIP_TYPES[0].value,
+    targetEntityId: '',
+    note: '',
+  });
+  const familyWatchIds = useMemo(
+    () => new Set([project.id, ...childProjects.map((child) => child.id)].filter(Boolean).map((projectId) => `project-fragments:${projectId}`)),
+    [childProjects, project.id]
+  );
+
+  async function refreshRollups() {
+    if (!project?.id || !project.isParentProject) return;
+    setRollupStatus('loading');
+    setRollupError(null);
+    try {
+      const payload = await fetchJson(`/api/projects/${project.id}/rollups`);
+      setRollupDetails(payload || null);
+      setRollupStatus('ready');
+    } catch (error) {
+      setRollupError(error);
+      setRollupStatus('error');
+    }
+  }
+
+  useFileWatcher({
+    enabled: Boolean(project?.isParentProject),
+    maxEvents: 20,
+    onEvent: (event) => {
+      if (familyWatchIds.has(event?.watchId)) refreshRollups();
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -159,6 +265,37 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
     };
   }, [project.id, project.isParentProject]);
 
+  useEffect(() => {
+    setRelationshipDraft({
+      sourceEntityId: project.id,
+      relationshipType: PROJECT_RELATIONSHIP_TYPES[0].value,
+      targetEntityId: '',
+      note: '',
+    });
+  }, [project.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRelationships() {
+      if (!project?.id || !project.isParentProject) return;
+      setRelationshipStatus('loading');
+      try {
+        const payload = await fetchJson(`/api/projects/${project.id}/relationships?sourceEntityType=project`);
+        if (cancelled) return;
+        setRelationships(Array.isArray(payload) ? payload : []);
+        setRelationshipStatus('ready');
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Failed to load project family relationships:', error);
+        setRelationshipStatus('error');
+      }
+    }
+    loadRelationships();
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id, project.isParentProject]);
+
   const selectedRollup = PARENT_ROLLUP_SECTIONS[selectedRollupKey] || PARENT_ROLLUP_SECTIONS.pendingFragments;
   const getRollupCount = (key, fallback) => {
     const items = rollupDetails && Array.isArray(rollupDetails[key]) ? rollupDetails[key] : null;
@@ -168,6 +305,40 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
     if (!item?.projectId) return;
     onSelectProject?.(item.projectId, item.moduleKey || null);
   };
+  const projectOptions = useMemo(() => [project, ...childProjects], [childProjects, project]);
+  const projectNameById = useMemo(() => new Map(projectOptions.map((entry) => [entry.id, entry.name])), [projectOptions]);
+  const relationshipTypeByValue = useMemo(() => new Map(PROJECT_RELATIONSHIP_TYPES.map((entry) => [entry.value, entry.label])), []);
+
+  async function refreshRelationships() {
+    const payload = await fetchJson(`/api/projects/${project.id}/relationships?sourceEntityType=project`);
+    setRelationships(Array.isArray(payload) ? payload : []);
+    setRelationshipStatus('ready');
+  }
+
+  async function handleSaveRelationship() {
+    if (!relationshipDraft.sourceEntityId || !relationshipDraft.targetEntityId || !relationshipDraft.relationshipType) return;
+    setRelationshipStatus('saving');
+    await fetchJson(`/api/projects/${project.id}/relationships`, {
+      method: 'POST',
+      body: JSON.stringify({
+        sourceEntityType: 'project',
+        sourceEntityId: relationshipDraft.sourceEntityId,
+        relationshipType: relationshipDraft.relationshipType,
+        targetEntityType: 'project',
+        targetEntityId: relationshipDraft.targetEntityId,
+        metadata: { note: relationshipDraft.note },
+      }),
+    });
+    setRelationshipDraft((current) => ({ ...current, targetEntityId: '', note: '' }));
+    await refreshRelationships();
+  }
+
+  async function handleDeleteRelationship(relationshipId) {
+    if (!relationshipId) return;
+    setRelationshipStatus('saving');
+    await fetchJson(`/api/projects/${project.id}/relationships/${relationshipId}`, { method: 'DELETE' });
+    await refreshRelationships();
+  }
 
   return (
     <div id={`parent-dashboard-workspace-${project.id}`} className="parent-dashboard-workspace space-y-5">
@@ -210,6 +381,136 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
           onOpenItem={openRollupItem}
         />
       )}
+
+      <SurfaceCard id="parent-dashboard-inheritance" className="parent-dashboard-inheritance">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Inheritance</p>
+            <h2 className="mt-1 text-xl font-semibold text-ink">Parent offers and child opt-ins</h2>
+          </div>
+          <StatusBadge tone="foundation">Optional only</StatusBadge>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-sm font-semibold text-ink">This parent offers</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {getEnabledInheritanceLabels(project.integrations?.projectFamily?.offeredInheritance).length ? (
+                getEnabledInheritanceLabels(project.integrations?.projectFamily?.offeredInheritance).map((label) => (
+                  <span key={label} className="rounded-full border border-emerald-300/35 bg-emerald-400/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">{label}</span>
+                ))
+              ) : (
+                <span className="text-sm text-ink/60">No inheritable settings are offered yet.</span>
+              )}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-sm font-semibold text-ink">Child opt-ins</p>
+            <div className="mt-3 space-y-2">
+              {childProjects.length ? childProjects.map((child) => {
+                const inheritedLabels = getEnabledInheritanceLabels(child.integrations?.projectFamily?.inheritedFromParent);
+                return (
+                  <div key={child.id} className="rounded-xl border border-white/10 bg-black/10 p-3">
+                    <p className="truncate text-sm font-semibold text-ink">{child.name}</p>
+                    <p className="mt-1 text-xs leading-5 text-ink/60">
+                      {inheritedLabels.length ? inheritedLabels.join(', ') : 'No inherited settings enabled.'}
+                    </p>
+                  </div>
+                );
+              }) : <p className="text-sm text-ink/60">No child projects are attached.</p>}
+            </div>
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <SurfaceCard id="parent-dashboard-relationships" className="parent-dashboard-relationships">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Cross-Project Relationships</p>
+            <h2 className="mt-1 text-xl font-semibold text-ink">Project family relationship map</h2>
+          </div>
+          <StatusBadge tone={relationshipStatus === 'error' ? 'caution' : 'foundation'}>
+            {relationshipStatus === 'saving' ? 'Saving' : `${relationships.length} links`}
+          </StatusBadge>
+        </div>
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-2">
+            {relationships.length ? relationships.map((relationship) => (
+              <div key={relationship.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-ink">
+                    {projectNameById.get(relationship.sourceEntityId) || relationship.sourceEntityId}
+                    <span className="mx-2 text-ink/40">{'->'}</span>
+                    {projectNameById.get(relationship.targetEntityId) || relationship.targetEntityId}
+                  </p>
+                  <button
+                    type="button"
+                    className="rounded-full border border-rose-300/30 bg-rose-400/10 px-2 py-0.5 text-xs font-semibold text-rose-100 transition hover:border-rose-200/60"
+                    onClick={() => handleDeleteRelationship(relationship.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink/50">
+                  {relationshipTypeByValue.get(relationship.relationshipType) || relationship.relationshipType}
+                </p>
+                {relationship.metadata?.note ? <p className="mt-2 text-xs leading-5 text-ink/65">{relationship.metadata.note}</p> : null}
+              </div>
+            )) : (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-ink/70">
+                No cross-project relationships have been recorded yet.
+              </div>
+            )}
+          </div>
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-black/10 p-4">
+            <p className="text-sm font-semibold text-ink">Add relationship</p>
+            <label className="block space-y-1 text-xs text-ink/60">
+              <span>From</span>
+              <select
+                className="w-full rounded-xl border border-white/10 bg-slate px-3 py-2 text-sm text-ink outline-none focus:border-accent/60"
+                value={relationshipDraft.sourceEntityId}
+                onChange={(event) => setRelationshipDraft((current) => ({ ...current, sourceEntityId: event.target.value }))}
+              >
+                {projectOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1 text-xs text-ink/60">
+              <span>Relationship</span>
+              <select
+                className="w-full rounded-xl border border-white/10 bg-slate px-3 py-2 text-sm text-ink outline-none focus:border-accent/60"
+                value={relationshipDraft.relationshipType}
+                onChange={(event) => setRelationshipDraft((current) => ({ ...current, relationshipType: event.target.value }))}
+              >
+                {PROJECT_RELATIONSHIP_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1 text-xs text-ink/60">
+              <span>To</span>
+              <select
+                className="w-full rounded-xl border border-white/10 bg-slate px-3 py-2 text-sm text-ink outline-none focus:border-accent/60"
+                value={relationshipDraft.targetEntityId}
+                onChange={(event) => setRelationshipDraft((current) => ({ ...current, targetEntityId: event.target.value }))}
+              >
+                <option value="">Choose target project</option>
+                {projectOptions
+                  .filter((option) => option.id !== relationshipDraft.sourceEntityId)
+                  .map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1 text-xs text-ink/60">
+              <span>Note</span>
+              <textarea
+                rows={3}
+                className="w-full rounded-xl border border-white/10 bg-slate px-3 py-2 text-sm text-ink outline-none focus:border-accent/60"
+                value={relationshipDraft.note}
+                onChange={(event) => setRelationshipDraft((current) => ({ ...current, note: event.target.value }))}
+              />
+            </label>
+            <ActionButton variant="accent" onClick={handleSaveRelationship} disabled={!relationshipDraft.targetEntityId || relationshipStatus === 'saving'}>
+              Add Relationship
+            </ActionButton>
+          </div>
+        </div>
+      </SurfaceCard>
 
       <SurfaceCard id="parent-dashboard-children" className="parent-dashboard-children">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -409,6 +710,20 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
           </button>
         ) : null}
 
+        {project.parentSummary ? (
+          <nav id="project-workspace-breadcrumb" className="project-workspace-breadcrumb flex flex-wrap items-center gap-2 text-sm text-ink/65" aria-label="Project hierarchy">
+            <button
+              type="button"
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-ink/75 transition hover:border-accent/45 hover:bg-accent/10 hover:text-ink"
+              onClick={() => onSelectProject?.(project.parentSummary.id, PARENT_DASHBOARD_SURFACE_KEY)}
+            >
+              {project.parentSummary.name}
+            </button>
+            <span className="text-ink/40">/</span>
+            <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-ink">{project.name}</span>
+          </nav>
+        ) : null}
+
         <div className="project-workspace-layout grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside id="project-workspace-sidebar" className="project-workspace-sidebar space-y-4 xl:sticky xl:top-4 xl:self-start">
 
@@ -452,6 +767,8 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
             </div>
 
             <div id="project-workspace-navigation" className="project-workspace-navigation mt-4 min-h-0 space-y-4 overflow-y-auto pr-1">
+              <ProjectFamilyInheritanceSummary project={project} />
+
               {Array.isArray(project.links) && project.links.length ? (
                 <div id="project-workspace-links-section" className="project-workspace-links-section space-y-2 border-t border-white/10 pt-4">
                   <p className="project-workspace-section-label text-xs font-semibold uppercase tracking-[0.18em] text-ink/60">Links</p>
