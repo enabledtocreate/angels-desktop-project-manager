@@ -60,6 +60,7 @@ export function AppToolbar({
   onOpenSettings,
   onViewLogs,
   onRestartApp,
+  onCreateProject,
   statusMessage,
   showOrganizer = true,
 }) {
@@ -166,6 +167,17 @@ export function AppToolbar({
                 <option value="category">Category</option>
               </select>
             </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-4">
+            <button
+              type="button"
+              id="project-list-organizer-create-project"
+              className="rounded-2xl border border-accent/35 bg-accent/90 px-4 py-3 text-sm font-medium text-slate transition hover:border-accent hover:bg-sky-300"
+              onClick={onCreateProject}
+            >
+              Create Project
+            </button>
           </div>
 
           <p id="project-list-organizer-status" className="project-list-organizer-status mt-3 min-h-[1.25rem] text-sm text-ink/70">

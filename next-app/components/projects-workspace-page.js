@@ -5,6 +5,7 @@ import { AppSettingsModal } from '@/components/app-settings-modal';
 import { LogsModal } from '@/components/logs-modal';
 import { AppToolbar } from '@/components/app-toolbar';
 import { SurfaceCard } from '@/components/ui/surface-card';
+import { CreateProjectModal } from '@/features/projects/components/create-project-modal';
 import { ProjectList } from '@/features/projects/components/project-list';
 import { useProjects } from '@/features/projects/hooks/use-projects';
 import { ProjectSettingsModal } from '@/features/workspace/components/project-settings-modal';
@@ -111,6 +112,7 @@ export default function ProjectsWorkspacePage() {
     selectedProject,
     selectedProjectId,
     setSelectedProjectId,
+    createProject,
     updateProject,
     status,
     error,
@@ -124,6 +126,7 @@ export default function ProjectsWorkspacePage() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [projectSettingsProject, setProjectSettingsProject] = useState(null);
+  const [createProjectParent, setCreateProjectParent] = useState(null);
   const [selectedProjectSurfaceKey, setSelectedProjectSurfaceKey] = useState(null);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
 
@@ -229,6 +232,14 @@ export default function ProjectsWorkspacePage() {
     await refresh();
   }
 
+  async function handleCreateProject(payload) {
+    const created = await createProject(payload);
+    setCreateProjectParent(null);
+    setSelectedProjectSurfaceKey(null);
+    setToolbarStatus(payload?.parentId ? 'Created child project.' : 'Created project.');
+    return created;
+  }
+
   if (status === 'loading' || status === 'idle') {
     return (
       <main className="h-full overflow-hidden px-6 py-5 md:px-8">
@@ -279,6 +290,7 @@ export default function ProjectsWorkspacePage() {
           onRestartApp={handleRestartApp}
           statusMessage={toolbarStatus}
           showOrganizer={!selectedProject}
+          onCreateProject={() => setCreateProjectParent({ id: '' })}
         />
 
         <AppSettingsModal
@@ -302,6 +314,15 @@ export default function ProjectsWorkspacePage() {
           onSave={(nextState) => handleSaveProjectSettings(projectSettingsProject?.id, nextState)}
         />
 
+        <CreateProjectModal
+          isOpen={Boolean(createProjectParent)}
+          onClose={() => setCreateProjectParent(null)}
+          onCreate={handleCreateProject}
+          projects={projects}
+          roots={roots}
+          initialParentId={createProjectParent?.id || ''}
+        />
+
         <div id="projects-workspace-scroll-region" className="projects-workspace-scroll-region min-h-0 flex-1 overflow-y-auto pt-4">
           {selectedProject ? (
             <ProjectWorkspaceShell
@@ -311,6 +332,7 @@ export default function ProjectsWorkspacePage() {
               onProjectUpdated={updateProject}
               preferredCoreView={selectedProjectSurfaceKey}
               onSelectProject={handleSelectProject}
+              onCreateChildProject={setCreateProjectParent}
               onBack={() => {
                 setSelectedProjectSurfaceKey(null);
                 setSelectedProjectId(null);
@@ -323,6 +345,7 @@ export default function ProjectsWorkspacePage() {
               onSelect={handleSelectProject}
               onTogglePin={handleTogglePin}
               onOpenSettings={setProjectSettingsProject}
+              onCreateChildProject={setCreateProjectParent}
               searchQuery={searchQuery}
               viewMode={viewMode}
             />

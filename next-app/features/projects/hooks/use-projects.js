@@ -44,6 +44,20 @@ export function useProjects() {
     return normalizedProjects.find((project) => project.id === saved.id) || saved;
   }
 
+  async function createProject(payload) {
+    const saved = await fetchJson('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    });
+
+    const nextProjects = await fetchJson('/api/projects');
+    const normalizedProjects = Array.isArray(nextProjects) ? nextProjects : [];
+    setProjects(normalizedProjects);
+    setSelectedProjectId(saved?.id || null);
+
+    return normalizedProjects.find((project) => project.id === saved.id) || saved;
+  }
+
   useEffect(() => {
     loadProjects();
   }, []);
@@ -59,6 +73,7 @@ export function useProjects() {
     selectedProject,
     selectedProjectId,
     setSelectedProjectId,
+    createProject,
     updateProject,
     status,
     error,

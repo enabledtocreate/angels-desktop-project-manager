@@ -276,6 +276,7 @@ function editableStateFromDocument(editorState) {
     executiveSummaryMeta: { stableId: state.overview?.stableId || '', sourceRefs: Array.isArray(state.overview?.sourceRefs) ? state.overview.sourceRefs : [] },
     functionalAreas: normalizeAreaEntries(state.functionalAreas),
     logicalFlows,
+    crossProjectFlows: Array.isArray(state.crossProjectFlows) ? state.crossProjectFlows : [],
     flowVisuals: normalizeVisuals(state.flowVisuals, logicalFlows),
     flowEndpoints: Array.isArray(state.flowEndpoints) ? state.flowEndpoints : (Array.isArray(state.endpoints) ? state.endpoints : []),
     userActionsAndSystemResponses: Array.isArray(state.userActionsAndSystemResponses) ? state.userActionsAndSystemResponses : (Array.isArray(state.userActionResponses) ? state.userActionResponses : []),
@@ -318,6 +319,7 @@ function buildEditorState(editableState, currentState) {
     overview: { ...(currentState?.overview || {}), summary: editableState.executiveSummary, stableId: editableState.executiveSummaryMeta?.stableId, sourceRefs: editableState.executiveSummaryMeta?.sourceRefs, versionDate: new Date().toISOString() },
     functionalAreas,
     logicalFlows,
+    crossProjectFlows: editableState.crossProjectFlows,
     flowVisuals: editableState.flowVisuals,
     flowEndpoints,
     userActionsAndSystemResponses: editableState.userActionsAndSystemResponses,
@@ -717,6 +719,7 @@ export function FunctionalSpecWorkspace({ project, module }) {
           {activeTab === 'overview' ? (
             <div className="space-y-4">
               <FunctionalSpecTextArea label="Executive Summary" rows={6} help="Describe the behavioral scope this functional spec is defining, without dropping into implementation details." stableId={editableState.executiveSummaryMeta?.stableId} sourceRefs={editableState.executiveSummaryMeta?.sourceRefs} workItemLookup={workItemLookup} value={editableState.executiveSummary} onChange={(event) => setEditableState((current) => ({ ...current, executiveSummary: event.target.value }))} />
+              <StructuredEntryListEditor label="Cross-Project Flow Attachments" help="Use this when a workflow in this project starts in, ends in, or coordinates with a parent project or sibling child project." entries={editableState.crossProjectFlows} onChange={(crossProjectFlows) => setEditableState((current) => ({ ...current, crossProjectFlows }))} workItemLookup={workItemLookup} primaryLabel="Attachment Title" primaryPlaceholder="Settings flow hands off to platform authentication" secondaryLabel="Attachment Description" secondaryPlaceholder="The parent platform invokes this child flow, then control returns through a shared endpoint after authentication succeeds." emptyLabel="No cross-project flow attachments defined yet." />
               <SurfaceCard className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/60">Unattached Functional Notes</p>
                 <p className="text-sm leading-6 text-sky-100/72">Use this only for functional details that cannot yet be attached to a flow node, edge, or group. Prefer modeling user actions, validation, interface expectations, and edge cases directly in the flowchart.</p>

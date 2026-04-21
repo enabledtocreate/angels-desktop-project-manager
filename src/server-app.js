@@ -286,6 +286,19 @@ function createApp() {
     });
   }
 
+  function emitProjectActivity(projectId, eventType, details = {}) {
+    const normalizedProjectId = String(projectId || '').trim();
+    if (!normalizedProjectId) return;
+    fileWatcherService.emit({
+      scope: 'project_activity',
+      eventType: String(eventType || 'project.updated'),
+      watchId: `project-events:${normalizedProjectId}`,
+      projectId: normalizedProjectId,
+      details,
+      occurredAt: new Date().toISOString(),
+    });
+  }
+
   function ensureWorkspaceProject(project) {
     if (!project) throw new Error('Project not found');
     if (project.type !== 'folder' || !project.absolutePath) {
@@ -3464,6 +3477,7 @@ function createApp() {
     saveAppSettings,
     buildSettingsResponse,
     fileWatcherService,
+    emitProjectActivity,
     updateProjectRoot,
     updateDataDir,
     updateLogsDir,

@@ -199,7 +199,7 @@ function ProjectFamilyInheritanceSummary({ project }) {
   );
 }
 
-function ParentDashboardWorkspace({ project, onSelectProject }) {
+function ParentDashboardWorkspace({ project, onSelectProject, onCreateChildProject }) {
   const childProjects = Array.isArray(project.childProjects) ? project.childProjects : [];
   const rollup = project.familyRollup || project.projectFamilyRollup || {};
   const childTotal = Number(project.descendantCount || childProjects.length || 0);
@@ -216,7 +216,11 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
     note: '',
   });
   const familyWatchIds = useMemo(
-    () => new Set([project.id, ...childProjects.map((child) => child.id)].filter(Boolean).map((projectId) => `project-fragments:${projectId}`)),
+    () => new Set(
+      [project.id, ...childProjects.map((child) => child.id)]
+        .filter(Boolean)
+        .flatMap((projectId) => [`project-fragments:${projectId}`, `project-events:${projectId}`])
+    ),
     [childProjects, project.id]
   );
 
@@ -354,6 +358,7 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
           <div className="flex flex-wrap gap-2">
             <StatusBadge tone="foundation">{childProjects.length} direct children</StatusBadge>
             <StatusBadge tone="migration">{childTotal} total descendants</StatusBadge>
+            <ActionButton variant="subtle" size="sm" onClick={() => onCreateChildProject?.(project)}>Create Child Project</ActionButton>
           </div>
         </div>
       </SurfaceCard>
@@ -561,7 +566,7 @@ function ParentDashboardWorkspace({ project, onSelectProject }) {
   );
 }
 
-export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, preferredCoreView = null, onSelectProject, onBack }) {
+export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, preferredCoreView = null, onSelectProject, onCreateChildProject, onBack }) {
   const [activeSurfaceKey, setActiveSurfaceKey] = useState(() => getDefaultSurfaceKey(project, preferredCoreView));
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const { modules, dependencies, refresh: refreshModules } = useProjectModules(project.id);
@@ -629,7 +634,7 @@ export function ProjectWorkspaceShell({ project, onRefresh, onProjectUpdated, pr
     switch (activeSurfaceKey) {
       case PARENT_DASHBOARD_SURFACE_KEY:
         return project.isParentProject
-          ? <ParentDashboardWorkspace project={project} onSelectProject={onSelectProject} />
+          ? <ParentDashboardWorkspace project={project} onSelectProject={onSelectProject} onCreateChildProject={onCreateChildProject} />
           : <ProjectBriefWorkspace project={project} modules={moduleRegistry} onProjectUpdated={onProjectUpdated} />;
       case 'project_brief_root':
         return <ProjectBriefWorkspace project={project} modules={moduleRegistry} onProjectUpdated={onProjectUpdated} />;

@@ -928,6 +928,7 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   const useProjects = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'projects', 'hooks', 'use-projects.js'), 'utf8');
   const projectList = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'projects', 'components', 'project-list.js'), 'utf8');
   const projectCard = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'projects', 'components', 'project-card.js'), 'utf8');
+  const createProjectModal = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'projects', 'components', 'create-project-modal.js'), 'utf8');
   const workspaceShell = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'workspace', 'components', 'project-workspace-shell.js'), 'utf8');
   const softwareModuleSurface = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'software', 'components', 'software-module-surface.js'), 'utf8');
   const projectSettingsModal = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'workspace', 'components', 'project-settings-modal.js'), 'utf8');
@@ -999,6 +1000,8 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(workspacePage, /handleTogglePin/);
   assert.match(workspacePage, /projectSettingsProject/);
   assert.match(workspacePage, /handleSaveProjectSettings/);
+  assert.match(workspacePage, /CreateProjectModal/);
+  assert.match(workspacePage, /createProjectParent/);
   assert.match(workspacePage, /fetchJson\('\/api\/settings'\)/);
   assert.match(workspacePage, /projectListSortMode/);
   assert.match(workspacePage, /projectListViewMode/);
@@ -1027,6 +1030,7 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(projectCard, /project-card-children-summary/);
   assert.match(projectCard, /Expand or collapse this project family/);
   assert.match(projectCard, /Child Projects/);
+  assert.match(projectCard, /Create child project/);
   assert.match(projectCard, /Pin project/);
   assert.match(projectCard, /onTogglePin/);
   assert.match(projectCard, /tagNames/);
@@ -1063,7 +1067,12 @@ test('nextjs migration pass 5 core project workspace loads projects and renders 
   assert.match(workspaceShell, /\/api\/projects\/\$\{project\.id\}\/rollups/);
   assert.match(workspaceShell, /useFileWatcher/);
   assert.match(workspaceShell, /project-fragments:\$\{projectId\}/);
+  assert.match(workspaceShell, /project-events:\$\{projectId\}/);
   assert.match(workspaceShell, /refreshRollups/);
+  assert.match(workspaceShell, /Create Child Project/);
+  assert.match(createProjectModal, /Create child project/);
+  assert.match(createProjectModal, /Parent-offered inheritance/);
+  assert.match(createProjectModal, /Create Child Project/);
   assert.match(softwareModuleSurface, /ModuleExtensionCard/);
   assert.match(softwareModuleSurface, /Parent Extension/);
   assert.match(softwareModuleSurface, /Child Extension/);
@@ -1289,7 +1298,9 @@ test('nextjs migration sweep wires remaining software and core workspaces into t
   assert.match(architectureWorkspace, /Add component/);
   assert.match(architectureWorkspace, /Load Fragments/);
   assert.match(architectureWorkspace, /ProjectFamilyDocumentContext/);
+  assert.match(architectureWorkspace, /Project Family Orchestration/);
   assert.match(domainModelsWorkspace, /ProjectFamilyDocumentContext/);
+  assert.match(domainModelsWorkspace, /Project Family Model Sharing/);
   assert.match(projectFamilyDocumentContext, /Project Family Context/);
   assert.match(projectFamilyDocumentContext, /Parent orchestration/);
   assert.match(projectFamilyDocumentContext, /Child autonomous/);
@@ -1443,7 +1454,8 @@ test('architecture and database schema modules are editable through the shared d
   assert.match(result.body.markdown, /Designer Workspace/);
   assert.match(result.body.markdown, /## 3\. Technology Stack/);
   assert.match(result.body.markdown, /## 5\. Workflows/);
-  assert.match(result.body.markdown, /## 8\. Cross-Cutting Concerns/);
+  assert.match(result.body.markdown, /## 7\. Project Family Orchestration/);
+  assert.match(result.body.markdown, /## 9\. Cross-Cutting Concerns/);
   assert.match(result.body.markdown, /Designer Workspace -> Local API \(invokes\)/);
   assert.match(result.body.mermaid, /Designer Workspace/);
   assert.match(result.body.mermaid, /Local API/);
@@ -1540,7 +1552,8 @@ test('architecture and database schema modules are editable through the shared d
   assert.match(architectureFile, /Designer Workspace/);
   assert.match(architectureFile, /## 2\. Architecture Registry/);
   assert.match(architectureFile, /## 5\. Workflows/);
-  assert.match(architectureFile, /## 7\. Persistence and State/);
+  assert.match(architectureFile, /## 7\. Project Family Orchestration/);
+  assert.match(architectureFile, /## 8\. Persistence and State/);
   assert.match(schemaFile, /project_md_documents/);
   assert.match(schemaDbmlFile, /Project "Software Designer Docs"/);
   const schemaFragmentTemplateFile = fs.readFileSync(schemaFragmentTemplatePath, 'utf8');
@@ -2842,7 +2855,7 @@ test('bug lifecycle states persist through refresh and regenerate BUGS markdown'
   assert.match(result.body.markdown, /Planning Bucket: Planned \(`planned`\)/);
 });
 
-test('resolved bugs are archived out of BUGS markdown and create workspace follow-up notes', async () => {
+test('resolved bugs are archived out of BUGS markdown and stale workspace follow-up notes are removed', async () => {
   const { body: roots } = await request('/api/roots');
   const projectFolder = `Delta-${Date.now()}`;
   fs.mkdirSync(path.join(roots.projectsRoot, projectFolder), { recursive: true });
@@ -2895,6 +2908,8 @@ test('resolved bugs are archived out of BUGS markdown and create workspace follo
   assert.doesNotMatch(result.body.markdown, /## Archived Bugs/);
   assert.match(result.body.markdown, /## 1\. Bug Workflow/);
   assert.match(result.body.markdown, /## 2\. Active Bugs/);
+  assert.match(result.body.markdown, /### 1\.3 Archived Bug Handling/);
+  assert.match(result.body.markdown, /Archived bugs remain visible in the archived bug history/i);
 
   const workspaceNotePath = path.join(
     roots.projectsRoot,
@@ -2903,10 +2918,11 @@ test('resolved bugs are archived out of BUGS markdown and create workspace follo
     '_WORKSPACE',
     `${archivedBugCode}_ARCHIVED.md`
   );
-  assert.equal(fs.existsSync(workspaceNotePath), true);
-  const workspaceNote = fs.readFileSync(workspaceNotePath, 'utf8');
-  assert.match(workspaceNote, /Generate the appropriate fragments/);
-  assert.match(workspaceNote, /@prd-bug-archive/);
+  fs.writeFileSync(workspaceNotePath, 'stale archived bug note', 'utf8');
+
+  result = await request(`/api/projects/${project.id}/bugs`);
+  assert.equal(result.response.status, 200);
+  assert.equal(fs.existsSync(workspaceNotePath), false);
 
   result = await request(`/api/projects/${project.id}/bugs/${archivedBugId}`, {
     method: 'PUT',
@@ -4119,6 +4135,8 @@ test('AI environment markdown always includes locked system directives for fragm
   assert.match(markdown, /ai-environment-term-dictionary-apm/);
   assert.match(markdown, /apm\.module\.changelog\.traceability/);
   assert.match(markdown, /Module and template directives are authoritative/);
+  assert.match(markdown, /## 12\. Project Family Read Order/);
+  assert.match(markdown, /## 13\. Project Family Inheritance Rules/);
   assert.match(markdown, /app\.db/);
   assert.match(markdown, /C:\\APM\\Fragments/);
   assert.doesNotMatch(markdown, /No locked system directives defined\./);
@@ -4674,6 +4692,8 @@ test('AI environment workspace exposes save path, fragments path, and custom ins
   assert.match(aiWorkspace, /Fragment-first directive updates/);
   assert.match(aiWorkspace, /AI directive changes should be loaded through AI Environment fragments/);
   assert.match(aiWorkspace, /ProjectFamilyDocumentContext/);
+  assert.match(aiWorkspace, /Project Family Read Order/);
+  assert.match(aiWorkspace, /Project Family Inheritance Rules/);
   assert.doesNotMatch(aiWorkspace, /Upload Directives/);
   assert.doesNotMatch(aiWorkspace, /Imported directives from/);
 });
@@ -4692,6 +4712,8 @@ test('file watcher hook exposes an EventSource-backed reusable client helper', (
   assert.match(moduleDocumentHookSource, /useFragmentFileWatcher/);
   assert.match(serverSource, /ensureProjectFragmentWatcher/);
   assert.match(serverSource, /project-fragments:\$\{project\.id\}/);
+  assert.match(serverSource, /function emitProjectActivity/);
+  assert.match(serverSource, /project-events:\$\{normalizedProjectId\}/);
 });
 
 test('structured list editors surface stable ids underneath saved items', () => {
@@ -4719,6 +4741,7 @@ test('functional spec workspace exposes a visual flow canvas with node controls'
   assert.match(functionalSpecWorkspace, /function WorkflowActionPalette/);
   assert.match(functionalSpecWorkspace, /function FlowCanvasGroup/);
   assert.match(functionalSpecWorkspace, /Unattached Functional Notes/);
+  assert.match(functionalSpecWorkspace, /Cross-Project Flow Attachments/);
   assert.match(functionalSpecWorkspace, /Prefer modeling user actions, validation, interface expectations, and edge cases directly in the flowchart/);
   assert.match(functionalSpecWorkspace, /Unattached User Actions and System Responses/);
   assert.match(functionalSpecWorkspace, /Unattached Validation Rules/);
@@ -4810,14 +4833,16 @@ test('functional spec workspace exposes a visual flow canvas with node controls'
   assert.match(workspaceDocs, /sourceHandle/);
   assert.match(workspaceDocs, /targetHandle/);
   assert.match(workspaceDocs, /Connection Status: Unconnected draft/);
-  assert.match(workspaceDocs, /## 6\. User Actions and System Responses/);
+  assert.match(workspaceDocs, /## 5\. Cross-Project Flow Attachments/);
+  assert.match(workspaceDocs, /## 6\. Flow Endpoints and Return Points/);
+  assert.match(workspaceDocs, /## 7\. User Actions and System Responses/);
   assert.match(workspaceDocs, /Functional Flowchart Action Vocabulary/);
   assert.match(workspaceDocs, /Create Draft Edge: Create an unattached connection/);
-  assert.match(workspaceDocs, /## 7\. Validation Rules/);
-  assert.match(workspaceDocs, /## 8\. Interface Expectations/);
-  assert.match(workspaceDocs, /## 9\. Edge Cases/);
-  assert.match(workspaceDocs, /## 10\. Open Questions/);
-  assert.match(workspaceDocs, /## 11\. Applied Fragments/);
+  assert.match(workspaceDocs, /## 8\. Validation Rules/);
+  assert.match(workspaceDocs, /## 9\. Interface Expectations/);
+  assert.match(workspaceDocs, /## 10\. Edge Cases/);
+  assert.match(workspaceDocs, /## 11\. Open Questions/);
+  assert.match(workspaceDocs, /## 12\. Applied Fragments/);
   assert.match(workspaceDocs, /Boolean\(source \|\| target\)/);
   assert.equal(Boolean(nextPackage.dependencies.tldraw), false);
   assert.match(functionalFlowNode, /NodeResizer/);
@@ -5292,7 +5317,8 @@ test('functional spec module saves structured logical behavior with stable ids',
   assert.match(String(result.body.markdown || ''), /### 1\.1 Functional Flowchart Action Vocabulary/);
   assert.match(String(result.body.markdown || ''), /Decision: Conditional branch/);
   assert.match(String(result.body.markdown || ''), /Connect Nodes: Create a typed connection/);
-  assert.match(String(result.body.markdown || ''), /## 5\. Flow Endpoints and Return Points/);
+  assert.match(String(result.body.markdown || ''), /## 5\. Cross-Project Flow Attachments/);
+  assert.match(String(result.body.markdown || ''), /## 6\. Flow Endpoints and Return Points/);
   assert.equal(Boolean(result.body.editorState?.overview?.stableId), true);
   assert.equal(Boolean(result.body.editorState?.logicalFlows?.[0]?.stableId), true);
   assert.equal(Boolean(result.body.editorState?.flowEndpoints?.[0]?.stableId), true);

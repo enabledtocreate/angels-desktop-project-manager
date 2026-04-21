@@ -19,6 +19,7 @@ const TABS = [
   { id: 'overview', label: 'Overview', title: 'Domain Model Summary', description: 'Explain the shared model vocabulary this project will use.' },
   { id: 'models', label: 'Models', title: 'Base Domain Models', description: 'Define central conceptual models before schema, UI, API, or technical projections diverge.' },
   { id: 'projections', label: 'Projections', title: 'Model Projections', description: 'Connect a base model to a module-specific shape.' },
+  { id: 'family', label: 'Family', title: 'Project Family Model Sharing', description: 'Describe how parent and child projects share or specialize model concepts.' },
   { id: 'questions', label: 'Questions', title: 'Open Questions', description: 'Track unresolved model questions before downstream modules harden the shape.' },
   { id: 'preview', label: 'Preview', title: 'Generated Domain Models Document', description: 'Review the markdown generated from the model registry.' },
 ];
@@ -62,6 +63,7 @@ function editableStateFromDocument(editorState) {
     },
     models: normalizeList(state.models),
     projections: normalizeList(state.projections),
+    sharedModelProjections: normalizeList(state.sharedModelProjections),
     openQuestions: normalizeList(state.openQuestions),
     fragmentHistory: normalizeList(state.fragmentHistory),
   };
@@ -79,6 +81,7 @@ function buildEditorState(editableState, currentState) {
     },
     models: editableState.models,
     projections: editableState.projections,
+    sharedModelProjections: editableState.sharedModelProjections,
     openQuestions: editableState.openQuestions,
     fragmentHistory: normalizeList(currentState?.fragmentHistory),
   };
@@ -505,6 +508,21 @@ export function DomainModelsWorkspace({ project, module }) {
 
           {activeTab === 'projections' ? (
             <ProjectionsTab editableState={editableState} projectionDraft={projectionDraft} setProjectionDraft={setProjectionDraft} addProjection={addProjection} workItemLookup={workItemLookup} />
+          ) : null}
+
+          {activeTab === 'family' ? (
+            <StructuredEntryListEditor
+              label="Project Family Model Sharing"
+              help="Describe how a parent project references, extends, or constrains models owned by child projects, or how child projects specialize shared base concepts."
+              entries={editableState.sharedModelProjections}
+              onChange={(sharedModelProjections) => setEditableState((current) => ({ ...current, sharedModelProjections }))}
+              workItemLookup={workItemLookup}
+              primaryLabel="Sharing Rule"
+              primaryPlaceholder="Shared Person concept splits into parent Identity and child Profile projections"
+              secondaryLabel="Description"
+              secondaryPlaceholder="The parent platform owns the shared identity concept while each child project adds only project-local fields."
+              emptyLabel="No project-family model sharing notes yet."
+            />
           ) : null}
 
           {activeTab === 'questions' ? (

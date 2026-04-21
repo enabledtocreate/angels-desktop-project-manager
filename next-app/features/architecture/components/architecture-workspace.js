@@ -113,6 +113,9 @@ function buildEditableState(editorState) {
     applicationWorkflows: Array.isArray(state.applicationWorkflows || state.runtimeScenarios) ? (state.applicationWorkflows || state.runtimeScenarios) : [],
     architectureWorkflows: Array.isArray(state.architectureWorkflows) ? state.architectureWorkflows : [],
     moduleInteractions: Array.isArray(state.moduleInteractions) ? state.moduleInteractions : [],
+    projectFamilyOrchestration: Array.isArray(state.projectFamilyOrchestration) ? state.projectFamilyOrchestration : [],
+    childProjectBoundaries: Array.isArray(state.childProjectBoundaries) ? state.childProjectBoundaries : [],
+    crossProjectInterfaces: Array.isArray(state.crossProjectInterfaces) ? state.crossProjectInterfaces : [],
     boundaries: Array.isArray(state.boundaries) ? state.boundaries : [],
     persistenceSummary: state.persistenceStrategy?.summary || '',
     persistenceSourceOfTruth: state.persistenceStrategy?.sourceOfTruth || '',
@@ -194,6 +197,9 @@ function buildEditorState(editableState, currentState = null) {
     applicationWorkflows: editableState.applicationWorkflows,
     architectureWorkflows: editableState.architectureWorkflows,
     moduleInteractions: editableState.moduleInteractions,
+    projectFamilyOrchestration: editableState.projectFamilyOrchestration,
+    childProjectBoundaries: editableState.childProjectBoundaries,
+    crossProjectInterfaces: editableState.crossProjectInterfaces,
     boundaries: editableState.boundaries,
     persistenceStrategy: {
       ...(currentState?.persistenceStrategy || {}),
@@ -616,6 +622,15 @@ export function ArchitectureWorkspace({ project }) {
           </div>
           <div className="md:col-span-2">
             <StructuredEntryListEditor label="Module Interdependence" entries={editableState.moduleInteractions} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, moduleInteractions: value }))} emptyLabel="No module interdependence rules yet." />
+          </div>
+          <div className="md:col-span-2">
+            <StructuredEntryListEditor label="Project Family Orchestration" help="Describe the parent-level orchestration responsibilities this architecture owns across child projects." entries={editableState.projectFamilyOrchestration} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, projectFamilyOrchestration: value }))} emptyLabel="No project-family orchestration rules yet." />
+          </div>
+          <div className="md:col-span-2">
+            <StructuredEntryListEditor label="Child Project Boundaries" help="Capture what must remain owned by child projects even when a parent architecture orchestrates them." entries={editableState.childProjectBoundaries} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, childProjectBoundaries: value }))} emptyLabel="No child project boundaries yet." />
+          </div>
+          <div className="md:col-span-2">
+            <StructuredEntryListEditor label="Cross-Project Interfaces" help="Document APIs, events, shared contracts, or handoff points between projects in the same family." entries={editableState.crossProjectInterfaces} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, crossProjectInterfaces: value }))} emptyLabel="No cross-project interfaces yet." />
           </div>
           <div className="md:col-span-2">
             <StructuredEntryListEditor label="Boundaries" entries={editableState.boundaries} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, boundaries: value }))} emptyLabel="No boundaries yet." />

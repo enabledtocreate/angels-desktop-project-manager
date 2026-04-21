@@ -27,6 +27,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
     readEntityRelationships,
     saveEntityRelationship,
     deleteEntityRelationship,
+    emitProjectActivity,
     syncBugsDocument,
     syncFeaturesDocument,
     syncPrdDocument,
@@ -66,6 +67,12 @@ module.exports = function registerProjectRoutes(app, ctx) {
       }
     }
     return projectsDataDir;
+  }
+
+  function emitProjectFamilyActivity(project, eventType, details = {}) {
+    if (!project) return;
+    emitProjectActivity?.(project.id, eventType, details);
+    if (project.parentId) emitProjectActivity?.(project.parentId, eventType, { ...details, childProjectId: project.id });
   }
 
   function escapeManifestCell(value) {
@@ -669,6 +676,10 @@ module.exports = function registerProjectRoutes(app, ctx) {
 
       const savedProject = await saveProject(project);
       await writeProjectDataManifest();
+      emitProjectFamilyActivity(savedProject, 'project.created', {
+        projectId: savedProject.id,
+        parentId: savedProject.parentId || null,
+      });
       res.json(await decorateProjectFromCurrentCollection(savedProject.id, savedProject));
     } catch (error) {
       console.error('Error creating project:', error);
@@ -680,6 +691,7 @@ module.exports = function registerProjectRoutes(app, ctx) {
     try {
       const project = await getProjectById(req.params.id);
       if (!project) return res.status(404).json({ error: 'Project not found' });
+      const previousParentId = project.parentId || null;
 
       const {
         name,
@@ -761,6 +773,17 @@ module.exports = function registerProjectRoutes(app, ctx) {
 
       const savedProject = await saveProject(project);
       await writeProjectDataManifest();
+      emitProjectFamilyActivity(savedProject, 'project.updated', {
+        projectId: savedProject.id,
+        parentId: savedProject.parentId || null,
+        previousParentId,
+      });
+      if (previousParentId && previousParentId !== savedProject.parentId) {
+        emitProjectActivity?.(previousParentId, 'project.child_reassigned', {
+          projectId: savedProject.id,
+          nextParentId: savedProject.parentId || null,
+        });
+      }
       res.json(await decorateProjectFromCurrentCollection(savedProject.id, savedProject));
     } catch (error) {
       console.error('Error updating project:', error);
@@ -770,8 +793,13 @@ module.exports = function registerProjectRoutes(app, ctx) {
 
   app.delete('/api/projects/:id', async (req, res) => {
     try {
+      const project = await getProjectById(req.params.id);
       await deleteProject(req.params.id);
       await writeProjectDataManifest();
+      emitProjectFamilyActivity(project, 'project.deleted', {
+        projectId: project?.id || req.params.id,
+        parentId: project?.parentId || null,
+      });
       res.json({ ok: true });
     } catch (error) {
       console.error('Error deleting project:', error);
@@ -906,6 +934,9 @@ module.exports = function registerProjectRoutes(app, ctx) {
           : 'flowchart TD\n  ai["AI Environment"] --> brief["Project Brief"]\n  ai --> modules["Affected Modules"]\n  ai --> fragments["Managed Fragments"]',
         editorState: nextEditorState,
       });
+      emitProjectFamilyActivity(project, 'module_document.saved', {
+        moduleKey: 'ai_environment',
+      });
       res.json(await syncAiEnvironmentDocument(project, { skipImport: true }));
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to save AI Environment' });
@@ -945,6 +976,10 @@ module.exports = function registerProjectRoutes(app, ctx) {
         if (project.enabledModules.includes('architecture')) await syncArchitectureDocument(savedProject);
         if (project.enabledModules.includes('database_schema')) await syncDatabaseSchemaDocument(savedProject);
       }
+      emitProjectFamilyActivity(savedProject, 'project.modules_updated', {
+        projectId: savedProject.id,
+        enabledModules: savedProject.enabledModules || [],
+      });
       res.json({
         projectId: savedProject.id,
         projectType: savedProject.projectType,
@@ -973,6 +1008,11 @@ module.exports = function registerProjectRoutes(app, ctx) {
         ...req.body,
         projectId: req.params.id,
       });
+      const project = await getProjectById(req.params.id);
+      emitProjectFamilyActivity(project, 'project.relationship_saved', {
+        relationshipId: saved?.id || null,
+        relationshipType: saved?.relationshipType || req.body?.relationshipType || null,
+      });
       res.json(saved);
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to save relationship' });
@@ -983,6 +1023,10 @@ module.exports = function registerProjectRoutes(app, ctx) {
     try {
       if (!(await getProjectById(req.params.id))) return res.status(404).json({ error: 'Project not found' });
       await deleteEntityRelationship(req.params.id, req.params.relationshipId);
+      const project = await getProjectById(req.params.id);
+      emitProjectFamilyActivity(project, 'project.relationship_deleted', {
+        relationshipId: req.params.relationshipId,
+      });
       res.json({ ok: true });
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to delete relationship' });

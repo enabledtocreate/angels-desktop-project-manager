@@ -62,6 +62,15 @@ function SettingsIcon() {
   );
 }
 
+function AddChildIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4" aria-hidden="true">
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
 function ChildProjectTypeIcon({ type }) {
   if (type === 'url') {
     return (
@@ -91,7 +100,7 @@ function MetricPill({ label, value, tone = 'neutral' }) {
   );
 }
 
-export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpenSettings, viewMode = 'list' }) {
+export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpenSettings, onCreateChildProject, viewMode = 'list' }) {
   const tagNames = Array.isArray(project.tags) ? project.tags.filter(Boolean) : [];
   const handleSelect = () => onSelect(project.id);
   const isGrid = viewMode === 'grid';
@@ -192,6 +201,17 @@ export function ProjectCard({ project, isSelected, onSelect, onTogglePin, onOpen
             >
               <SettingsIcon />
             </IconButton>
+            {project.isParentProject ? (
+              <IconButton
+                label="Create child project"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCreateChildProject?.(project);
+                }}
+              >
+                <AddChildIcon />
+              </IconButton>
+            ) : null}
           </div>
         </div>
 

@@ -267,7 +267,7 @@ export function BugsWorkspace({ project }) {
         <StatisticsDisclosure>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <InfoTile eyebrow="Active" title={`${liveBugs.length}`} body="Open issues still in considered, planned, or roadmap phase work." />
-            <InfoTile eyebrow="Archived" title={`${archivedBugs.length}`} body="Resolved or closed bugs move to archive and get workspace follow-up notes." />
+            <InfoTile eyebrow="Archived" title={`${archivedBugs.length}`} body="Resolved or closed bugs move to archive and remain available as historical bug records." />
             <InfoTile eyebrow="Regressed" title={`${liveBugs.filter((item) => normalizeBugStatus(item.status) === 'regressed').length}`} body="Regressions remain active until the fix is verified again." />
             <InfoTile eyebrow="Fragments" title={`${activeFragmentCount}`} body="Archived fixes should produce downstream fragments and changelog updates." />
           </div>
@@ -368,7 +368,7 @@ export function BugsWorkspace({ project }) {
           eyebrow="Bug List"
           title={listTab === 'archived' ? 'Archived bugs' : 'Live software bugs'}
           description={listTab === 'archived'
-            ? 'Archived bugs are resolved or closed and should have workspace follow-up notes for documentation updates.'
+            ? 'Archived bugs are resolved or closed and remain here as history without cluttering the active bug workflow.'
             : 'Active bugs stay visible here while they are still moving through the delivery workflow.'}
           actions={(
             <div className="flex flex-wrap gap-2">

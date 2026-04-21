@@ -485,57 +485,18 @@ function getArchivedBugWorkspaceNotePath(project, bug) {
   return path.join(workspaceDir, `${baseName}.md`);
 }
 
-function renderArchivedBugWorkspaceNote(project, bug) {
-  const associationHints = parseAssociationHintTokens(bug.associationHints);
-  return [
-    `# Archived Bug Follow-Up: ${bug.code || bug.id} - ${bug.title || 'Bug'}`,
-    '',
-    'This workspace note exists so AI agents can complete the documentation follow-up for an archived bug fix.',
-    '',
-    '## Required Follow-Up',
-    '',
-    '- Generate the appropriate fragments for the affected canonical documents.',
-    '- Update the canonical documents to reflect the implemented fix.',
-    '- Attach the bug code to the affected document items so the fix is traceable.',
-    '- Update the Change Log with the affected document ids and the bug code.',
-    '- Remove this workspace note automatically if the bug moves back into an active state.',
-    '',
-    '## Bug Summary',
-    '',
-    `- Bug Code: ${bug.code || bug.id}`,
-    `- Lifecycle Status: ${getBugLifecycleMetadata(bug.status).label} (\`${normalizeBugLifecycleStatus(bug.status)}\`)`,
-    `- Planning Bucket: ${formatBugPlanningBucketLabel(bug.planningBucket)} (\`${bug.planningBucket || 'archived'}\`)`,
-    `- Linked Task: ${bug.taskId || 'None'}`,
-    `- Affected Modules: ${Array.isArray(bug.affectedModuleKeys) && bug.affectedModuleKeys.length ? bug.affectedModuleKeys.join(', ') : 'None'}`,
-    `- Association Hints: ${associationHints.length ? associationHints.join(', ') : 'None'}`,
-    `- Last Updated: ${formatDocDateTime(bug.updatedAt)}`,
-    '',
-    '## Current Behavior',
-    '',
-    renderBugLiteralTextBlock(bug.currentBehavior || bug.summary || '', 'No current behavior recorded yet.'),
-    '',
-    '## Expected Behavior',
-    '',
-    renderBugLiteralTextBlock(bug.expectedBehavior || '', 'No expected behavior recorded yet.'),
-    '',
-  ].join('\n');
-}
-
 function syncArchivedBugWorkspaceNotes(project, bugs) {
   const workspaceDir = getProjectWorkspaceDir(project);
   if (!workspaceDir) return [];
-  ensureProjectWorkspaceDir(project);
   const list = Array.isArray(bugs) ? bugs : [];
   const touchedPaths = [];
 
   for (const bug of list) {
     const notePath = getArchivedBugWorkspaceNotePath(project, bug);
     if (!notePath) continue;
-    if (isArchivedBugLifecycleItem(bug)) {
-      fs.writeFileSync(notePath, renderArchivedBugWorkspaceNote(project, bug), 'utf8');
-      touchedPaths.push(notePath);
-    } else if (fs.existsSync(notePath)) {
+    if (fs.existsSync(notePath)) {
       fs.unlinkSync(notePath);
+      touchedPaths.push(notePath);
     }
   }
 
@@ -1172,6 +1133,7 @@ function defaultModuleDocumentEditorState(project, docType) {
       },
       functionalAreas: [],
       logicalFlows: [],
+      crossProjectFlows: [],
       flowEndpoints: [],
       userActionsAndSystemResponses: [],
       validationRules: [],
@@ -1190,6 +1152,7 @@ function defaultModuleDocumentEditorState(project, docType) {
       },
       models: [],
       projections: [],
+      sharedModelProjections: [],
       openQuestions: [],
       fragmentHistory: [],
     };
@@ -1373,6 +1336,7 @@ function renderModuleDocumentEditorStateMarkdown(project, docType, editorState) 
           },
           functionalAreas: normalizeModuleDetailList(normalizedEditorState.functionalAreas, { docType: 'functional_spec', sectionKey: 'functional-areas' }),
           logicalFlows,
+          crossProjectFlows: normalizeModuleDetailList(normalizedEditorState.crossProjectFlows, { docType: 'functional_spec', sectionKey: 'cross-project-flows' }),
           flowEndpoints: normalizeFunctionalSpecFlowEndpoints(normalizedEditorState.flowEndpoints, flowVisuals),
           flowVisuals,
           userActionsAndSystemResponses: normalizeModuleDetailList(normalizedEditorState.userActionsAndSystemResponses, { docType: 'functional_spec', sectionKey: 'user-actions-and-system-responses' }),
@@ -1412,25 +1376,28 @@ function renderModuleDocumentEditorStateMarkdown(project, docType, editorState) 
       '## 4. Flow Nodes and Connections',
       '',
       ...renderFunctionalSpecFlowVisuals(state.logicalFlows, state.flowVisuals, 'No visual flow graphs defined yet.', '4'),
-      '## 5. Flow Endpoints and Return Points',
+      '## 5. Cross-Project Flow Attachments',
       '',
-      ...renderModuleDetailList(state.flowEndpoints, 'No flow endpoints or return points defined yet.', '5'),
-      '## 6. User Actions and System Responses',
+      ...renderModuleDetailList(state.crossProjectFlows, 'No cross-project flow attachments defined yet.', '5'),
+      '## 6. Flow Endpoints and Return Points',
       '',
-      ...renderModuleDetailList(state.userActionsAndSystemResponses, 'No standalone user action and system response notes yet.', '6'),
-      '## 7. Validation Rules',
+      ...renderModuleDetailList(state.flowEndpoints, 'No flow endpoints or return points defined yet.', '6'),
+      '## 7. User Actions and System Responses',
       '',
-      ...renderModuleDetailList(state.validationRules, 'No standalone validation rules yet.', '7'),
-      '## 8. Interface Expectations',
+      ...renderModuleDetailList(state.userActionsAndSystemResponses, 'No standalone user action and system response notes yet.', '7'),
+      '## 8. Validation Rules',
       '',
-      ...renderModuleDetailList(state.interfaceExpectations, 'No standalone interface expectations yet.', '8'),
-      '## 9. Edge Cases',
+      ...renderModuleDetailList(state.validationRules, 'No standalone validation rules yet.', '8'),
+      '## 9. Interface Expectations',
       '',
-      ...renderModuleDetailList(state.edgeCases, 'No standalone edge cases yet.', '9'),
-      '## 10. Open Questions',
+      ...renderModuleDetailList(state.interfaceExpectations, 'No standalone interface expectations yet.', '9'),
+      '## 10. Edge Cases',
       '',
-      ...renderModuleDetailList(state.openQuestions, 'No open questions yet.', '10'),
-      '## 11. Applied Fragments',
+      ...renderModuleDetailList(state.edgeCases, 'No standalone edge cases yet.', '10'),
+      '## 11. Open Questions',
+      '',
+      ...renderModuleDetailList(state.openQuestions, 'No open questions yet.', '11'),
+      '## 12. Applied Fragments',
       '',
       ...(fragmentHistory.length
         ? fragmentHistory.flatMap((fragment) => [
@@ -1458,6 +1425,7 @@ function renderModuleDocumentEditorStateMarkdown(project, docType, editorState) 
           },
           models: normalizeDomainModelList(normalizedEditorState.models),
           projections: normalizeDomainModelProjectionList(normalizedEditorState.projections),
+          sharedModelProjections: normalizeModuleDetailList(normalizedEditorState.sharedModelProjections, { docType: 'domain_models', sectionKey: 'shared-model-projections' }),
           openQuestions: normalizeModuleDetailList(normalizedEditorState.openQuestions, { docType: 'domain_models', sectionKey: 'open-questions' }),
           fragmentHistory: Array.isArray(normalizedEditorState.fragmentHistory) ? normalizedEditorState.fragmentHistory : [],
         }
@@ -1490,10 +1458,13 @@ function renderModuleDocumentEditorStateMarkdown(project, docType, editorState) 
       '## 4. Model Projections',
       '',
       ...renderDomainModelProjections(state.projections),
-      '## 5. Open Questions',
+      '## 5. Project Family Model Sharing',
       '',
-      ...renderModuleDetailList(state.openQuestions, 'No open questions yet.', '5'),
-      '## 6. Applied Fragments',
+      ...renderModuleDetailList(state.sharedModelProjections, 'No project-family model sharing notes yet.', '5'),
+      '## 6. Open Questions',
+      '',
+      ...renderModuleDetailList(state.openQuestions, 'No open questions yet.', '6'),
+      '## 7. Applied Fragments',
       '',
       ...(fragmentHistory.length
         ? fragmentHistory.flatMap((fragment) => [
@@ -1948,13 +1919,12 @@ function renderBugsMarkdown(project, bugs, mermaid) {
   }
 
   function renderArchivedWorkflowNotes() {
-    const workspaceDir = getProjectWorkspaceDir(project);
     return [
-      'Resolved and closed bugs are automatically archived.',
+      'Resolved and closed bugs are automatically archived and removed from the active bug list.',
       archived.length
-        ? `Archived bug follow-up notes are written to ${workspaceDir} so AI agents can generate the right fragments, update canonical documents, and attach the bug code to the resulting document items.`
-        : `When a bug becomes archived, write a follow-up note to ${workspaceDir} so AI agents can generate the right fragments, update canonical documents, and attach the bug code to the resulting document items.`,
-      'If an archived bug moves back into an active lifecycle state, remove its workspace follow-up note and return it to the active bug list.',
+        ? 'Archived bugs remain visible in the archived bug history so the team can review what was fixed without cluttering active bug workflow.'
+        : 'When a bug becomes archived, keep it in archived bug history rather than creating a separate workspace note.',
+      'If an archived bug moves back into an active lifecycle state, return it to the live bug list.',
     ].join('\n\n');
   }
 
@@ -2005,7 +1975,7 @@ function renderBugsMarkdown(project, bugs, mermaid) {
     '',
     'Resolved and closed bugs are automatically archived. Archived bugs should not remain in the active bug list of this document.',
     '',
-    '### 1.3 Archived Bug Follow-Up',
+    '### 1.3 Archived Bug Handling',
     '',
     renderArchivedWorkflowNotes(),
     '',
@@ -3330,6 +3300,9 @@ function backfillDocumentEditorStateFromChangelog(project, docType, editorState,
       applicationWorkflows: mergeSourceRefsIntoList(editorState.applicationWorkflows || editorState.runtimeScenarios, sourceRefMap),
       architectureWorkflows: mergeSourceRefsIntoList(editorState.architectureWorkflows, sourceRefMap),
       moduleInteractions: mergeSourceRefsIntoList(editorState.moduleInteractions, sourceRefMap),
+      projectFamilyOrchestration: mergeSourceRefsIntoList(editorState.projectFamilyOrchestration, sourceRefMap),
+      childProjectBoundaries: mergeSourceRefsIntoList(editorState.childProjectBoundaries, sourceRefMap),
+      crossProjectInterfaces: mergeSourceRefsIntoList(editorState.crossProjectInterfaces, sourceRefMap),
       crossCuttingConcerns: mergeSourceRefsIntoList(editorState.crossCuttingConcerns || editorState.operationalConcerns, sourceRefMap),
       decisions: mergeSourceRefsIntoList(editorState.decisions, sourceRefMap),
       constraints: mergeSourceRefsIntoList(editorState.constraints, sourceRefMap),
@@ -3378,6 +3351,7 @@ function backfillDocumentEditorStateFromChangelog(project, docType, editorState,
         sourceRefs: normalizeSourceRefs(editorState.overview?.sourceRefs),
       },
       logicalFlows: mergeSourceRefsIntoList(editorState.logicalFlows, sourceRefMap),
+      crossProjectFlows: mergeSourceRefsIntoList(editorState.crossProjectFlows, sourceRefMap),
       flowEndpoints: mergeSourceRefsIntoList(editorState.flowEndpoints, sourceRefMap),
       userActionsAndSystemResponses: mergeSourceRefsIntoList(editorState.userActionsAndSystemResponses, sourceRefMap),
       validationRules: mergeSourceRefsIntoList(editorState.validationRules, sourceRefMap),
@@ -3405,6 +3379,8 @@ function backfillDocumentEditorStateFromChangelog(project, docType, editorState,
       requiredBehaviors: mergeSourceRefsIntoList(editorState.requiredBehaviors, sourceRefMap),
       termDictionary: mergeSourceRefsIntoList(editorState.termDictionary, sourceRefMap),
       moduleUpdateRules: mergeSourceRefsIntoList(editorState.moduleUpdateRules, sourceRefMap),
+      projectFamilyReadOrder: mergeSourceRefsIntoList(editorState.projectFamilyReadOrder, sourceRefMap),
+      projectFamilyInheritanceRules: mergeSourceRefsIntoList(editorState.projectFamilyInheritanceRules, sourceRefMap),
       dataPhrasingRules: mergeSourceRefsIntoList(editorState.dataPhrasingRules, sourceRefMap),
       avoidRules: mergeSourceRefsIntoList(editorState.avoidRules, sourceRefMap),
       handoffChecklist: mergeSourceRefsIntoList(editorState.handoffChecklist, sourceRefMap),
@@ -3664,6 +3640,9 @@ function getDocumentFragmentSectionConfigs(docType) {
       detail('application-workflows', ['applicationWorkflows'], ['applicationworkflows']),
       detail('architecture-workflows', ['architectureWorkflows'], ['architectureworkflows']),
       detail('module-interactions', ['moduleInteractions'], ['moduleinteractions']),
+      detail('project-family-orchestration', ['projectFamilyOrchestration'], ['projectfamilyorchestration', 'family-orchestration']),
+      detail('child-project-boundaries', ['childProjectBoundaries'], ['childprojectboundaries', 'project-boundaries']),
+      detail('cross-project-interfaces', ['crossProjectInterfaces'], ['crossprojectinterfaces', 'family-interfaces']),
       detail('cross-cutting-concerns', ['crossCuttingConcerns'], ['crosscuttingconcerns']),
       detail('decisions', ['decisions']),
       detail('constraints', ['constraints']),
@@ -3672,6 +3651,7 @@ function getDocumentFragmentSectionConfigs(docType) {
     functional_spec: [
       detail('functional-areas', ['functionalAreas'], ['functionalareas', 'areas', 'functional-area', '2.areas']),
       detail('logical-flows', ['logicalFlows'], ['workflows', 'workflow-updates', 'logicalflowupdates', '2']),
+      detail('cross-project-flows', ['crossProjectFlows'], ['crossprojectflows', 'family-flows']),
       functionalFlowVisual('flow-visuals', ['flowVisuals'], ['flowvisuals', 'visual-flows', 'flow-graphs', 'flowgraphs', 'nodes-and-connections', '4']),
       detail('flow-endpoints', ['flowEndpoints'], ['flow-endpoints-and-return-points', 'flowendpoints', 'endpoints', '3']),
       detail('user-actions-and-system-responses', ['userActionsAndSystemResponses'], ['user-action-and-system-response-updates', 'useractionsandsystemresponses', '4']),
@@ -3683,12 +3663,15 @@ function getDocumentFragmentSectionConfigs(docType) {
     domain_models: [
       domainModel('models', ['models'], ['domain-models', 'domainmodels', 'model-catalog', '3']),
       domainProjection('projections', ['projections'], ['model-projections', 'modelprojections', 'projections', '4']),
+      detail('shared-model-projections', ['sharedModelProjections'], ['sharedmodelprojections', 'family-model-projections']),
       detail('open-questions', ['openQuestions'], ['openquestions', '5']),
     ],
     ai_environment: [
       detail('term-dictionary', ['termDictionary'], ['terms', 'dictionary', 'glossary', 'termdictionary']),
       detail('required-behaviors', ['requiredBehaviors'], ['requiredbehaviors']),
       detail('module-update-rules', ['moduleUpdateRules'], ['moduleupdaterules']),
+      detail('project-family-read-order', ['projectFamilyReadOrder'], ['projectfamilyreadorder', 'family-read-order']),
+      detail('project-family-inheritance-rules', ['projectFamilyInheritanceRules'], ['projectfamilyinheritancerules', 'family-inheritance-rules']),
       detail('data-phrasing-rules', ['dataPhrasingRules'], ['dataphrasingrules']),
       detail('avoid-rules', ['avoidRules'], ['avoidrules']),
       detail('handoff-checklist', ['handoffChecklist'], ['handoffchecklist']),
@@ -4188,6 +4171,9 @@ function defaultArchitectureEditorState(project) {
     applicationWorkflows: [],
     architectureWorkflows: [],
     moduleInteractions: [],
+    projectFamilyOrchestration: [],
+    childProjectBoundaries: [],
+    crossProjectInterfaces: [],
     persistenceStrategy: {
       summary: '',
       sourceOfTruth: '',
@@ -4264,6 +4250,9 @@ function normalizeArchitectureEditorState(project, editorState) {
     applicationWorkflows: normalizeModuleDetailList(state.applicationWorkflows || state.runtimeScenarios, { docType: 'architecture', sectionKey: 'application-workflows' }),
     architectureWorkflows: normalizeModuleDetailList(state.architectureWorkflows, { docType: 'architecture', sectionKey: 'architecture-workflows' }),
     moduleInteractions: normalizeModuleDetailList(state.moduleInteractions, { docType: 'architecture', sectionKey: 'module-interactions' }),
+    projectFamilyOrchestration: normalizeModuleDetailList(state.projectFamilyOrchestration, { docType: 'architecture', sectionKey: 'project-family-orchestration' }),
+    childProjectBoundaries: normalizeModuleDetailList(state.childProjectBoundaries, { docType: 'architecture', sectionKey: 'child-project-boundaries' }),
+    crossProjectInterfaces: normalizeModuleDetailList(state.crossProjectInterfaces, { docType: 'architecture', sectionKey: 'cross-project-interfaces' }),
     persistenceStrategy: {
       ...defaults.persistenceStrategy,
       ...(state.persistenceStrategy || {}),
@@ -4423,6 +4412,7 @@ function normalizeDocumentEditorStateForStorage(project, docType, editorState) {
       },
       functionalAreas: normalizeModuleDetailList(state.functionalAreas, { docType: 'functional_spec', sectionKey: 'functional-areas' }),
       logicalFlows,
+      crossProjectFlows: normalizeModuleDetailList(state.crossProjectFlows, { docType: 'functional_spec', sectionKey: 'cross-project-flows' }),
       flowVisuals,
       flowEndpoints: normalizeFunctionalSpecFlowEndpoints(state.flowEndpoints || state.endpoints, flowVisuals),
       userActionsAndSystemResponses: normalizeModuleDetailList(state.userActionsAndSystemResponses || state.userActionResponses, { docType: 'functional_spec', sectionKey: 'user-actions-and-system-responses' }),
@@ -4454,6 +4444,7 @@ function normalizeDocumentEditorStateForStorage(project, docType, editorState) {
       },
       models: normalizeDomainModelList(state.models),
       projections: normalizeDomainModelProjectionList(state.projections),
+      sharedModelProjections: normalizeModuleDetailList(state.sharedModelProjections, { docType: 'domain_models', sectionKey: 'shared-model-projections' }),
       openQuestions: normalizeModuleDetailList(state.openQuestions, { docType: 'domain_models', sectionKey: 'open-questions' }),
       fragmentHistory: Array.isArray(state.fragmentHistory) ? state.fragmentHistory : [],
     };
@@ -4492,6 +4483,8 @@ function normalizeDocumentEditorStateForStorage(project, docType, editorState) {
         { docType: 'ai_environment', sectionKey: 'term-dictionary' }
       ),
       moduleUpdateRules: normalizeModuleDetailList(state.moduleUpdateRules, { docType: 'ai_environment', sectionKey: 'module-update-rules' }),
+      projectFamilyReadOrder: normalizeModuleDetailList(state.projectFamilyReadOrder, { docType: 'ai_environment', sectionKey: 'project-family-read-order' }),
+      projectFamilyInheritanceRules: normalizeModuleDetailList(state.projectFamilyInheritanceRules, { docType: 'ai_environment', sectionKey: 'project-family-inheritance-rules' }),
       dataPhrasingRules: normalizeModuleDetailList(state.dataPhrasingRules, { docType: 'ai_environment', sectionKey: 'data-phrasing-rules' }),
       avoidRules: normalizeModuleDetailList(state.avoidRules, { docType: 'ai_environment', sectionKey: 'avoid-rules' }),
       handoffChecklist: normalizeModuleDetailList(state.handoffChecklist, { docType: 'ai_environment', sectionKey: 'handoff-checklist' }),
@@ -4791,6 +4784,20 @@ function defaultAiEnvironmentEditorState(project) {
       {
         title: 'Update adjacent modules when scope changes',
         description: 'If feature or bug work affects product, roadmap, schema, or architecture understanding, update the corresponding module state and fragments.',
+        versionDate: now,
+      },
+    ],
+    projectFamilyReadOrder: [
+      {
+        title: 'Read parent and child ownership before editing',
+        description: 'When a project belongs to a project family, determine whether the current task belongs to the parent orchestration layer or the child source-of-truth layer before making updates.',
+        versionDate: now,
+      },
+    ],
+    projectFamilyInheritanceRules: [
+      {
+        title: 'Inheritance is opt-in at the child project',
+        description: 'Only apply parent-offered inheritance categories when the child project explicitly enables them.',
         versionDate: now,
       },
     ],
@@ -5211,6 +5218,8 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
   const emittedModuleDirectiveGroups = groupAiDirectivesByModule(emittedModuleDirectives);
   const projectRequiredBehaviors = filterEditorStateDirectiveDetails(state.requiredBehaviors, directiveRegistry);
   const projectModuleUpdateRules = filterEditorStateDirectiveDetails(state.moduleUpdateRules, directiveRegistry);
+  const projectFamilyReadOrder = filterEditorStateDirectiveDetails(state.projectFamilyReadOrder, directiveRegistry);
+  const projectFamilyInheritanceRules = filterEditorStateDirectiveDetails(state.projectFamilyInheritanceRules, directiveRegistry);
   const projectDataPhrasingRules = filterEditorStateDirectiveDetails(state.dataPhrasingRules, directiveRegistry);
   const projectAvoidRules = filterEditorStateDirectiveDetails(state.avoidRules, directiveRegistry);
   const sharedProfiles = Array.isArray(options.sharedProfiles) ? options.sharedProfiles : [];
@@ -5316,15 +5325,21 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
     '## 11. Project-Level Module Update Rules',
     '',
     ...renderModuleDetailList(projectModuleUpdateRules, 'No project-level module update rules defined yet.', '11'),
-    '## 12. Project-Level Data Structure and Phrasing Rules',
+    '## 12. Project Family Read Order',
     '',
-    ...renderModuleDetailList(projectDataPhrasingRules, 'No project-level phrasing rules defined yet.', '12'),
-    '## 13. Project-Level Avoid / Guardrails',
+    ...renderModuleDetailList(projectFamilyReadOrder, 'No project-family read order guidance defined yet.', '12'),
+    '## 13. Project Family Inheritance Rules',
     '',
-    ...renderModuleDetailList(projectAvoidRules, 'No project-level guardrails defined yet.', '13'),
-    '## 14. Handoff Checklist',
+    ...renderModuleDetailList(projectFamilyInheritanceRules, 'No project-family inheritance guidance defined yet.', '13'),
+    '## 14. Project-Level Data Structure and Phrasing Rules',
     '',
-    ...renderModuleDetailList(state.handoffChecklist, 'No handoff checklist defined yet.', '14'),
+    ...renderModuleDetailList(projectDataPhrasingRules, 'No project-level phrasing rules defined yet.', '14'),
+    '## 15. Project-Level Avoid / Guardrails',
+    '',
+    ...renderModuleDetailList(projectAvoidRules, 'No project-level guardrails defined yet.', '15'),
+    '## 16. Handoff Checklist',
+    '',
+    ...renderModuleDetailList(state.handoffChecklist, 'No handoff checklist defined yet.', '16'),
     '',
   ].filter((line, index, lines) => !(line === '' && lines[index - 1] === '')).join('\n').trim();
 }
@@ -5459,9 +5474,20 @@ function renderArchitectureEditorStateMarkdown(project, editorState) {
     '## 6. Module Interdependence',
     '',
     ...renderModuleDetailList(state.moduleInteractions, 'No module interdependence rules defined yet.', '6'),
-    '## 7. Persistence and State',
+    '## 7. Project Family Orchestration',
     '',
-    '### 7.1 Persistence Strategy',
+    '### 7.1 Parent Orchestration Responsibilities',
+    '',
+    ...renderModuleDetailList(state.projectFamilyOrchestration, 'No project-family orchestration responsibilities defined yet.', '7.1'),
+    '### 7.2 Child Project Boundaries',
+    '',
+    ...renderModuleDetailList(state.childProjectBoundaries, 'No child project boundaries defined yet.', '7.2'),
+    '### 7.3 Cross-Project Interfaces',
+    '',
+    ...renderModuleDetailList(state.crossProjectInterfaces, 'No cross-project interfaces defined yet.', '7.3'),
+    '## 8. Persistence and State',
+    '',
+    '### 8.1 Persistence Strategy',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: persistenceStrategy.itemIds?.summary || '',
@@ -5470,7 +5496,7 @@ function renderArchitectureEditorStateMarkdown(project, editorState) {
     }),
     persistenceStrategy.summary || 'No persistence strategy captured yet.',
     '',
-    '### 7.2 Source of Truth',
+    '### 8.2 Source of Truth',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: persistenceStrategy.itemIds?.sourceOfTruth || '',
@@ -5479,7 +5505,7 @@ function renderArchitectureEditorStateMarkdown(project, editorState) {
     }),
     persistenceStrategy.sourceOfTruth || 'No source of truth guidance captured yet.',
     '',
-    '### 7.3 Synchronization Expectations',
+    '### 8.3 Synchronization Expectations',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: persistenceStrategy.itemIds?.syncExpectations || '',
@@ -5488,18 +5514,18 @@ function renderArchitectureEditorStateMarkdown(project, editorState) {
     }),
     persistenceStrategy.syncExpectations || 'No synchronization expectations captured yet.',
     '',
-    '## 8. Cross-Cutting Concerns',
+    '## 9. Cross-Cutting Concerns',
     '',
-    ...renderModuleDetailList(state.crossCuttingConcerns, 'No cross-cutting concerns defined yet.', '8'),
-    '## 9. Architectural Decisions and ADR Expectations',
+    ...renderModuleDetailList(state.crossCuttingConcerns, 'No cross-cutting concerns defined yet.', '9'),
+    '## 10. Architectural Decisions and ADR Expectations',
     '',
-    ...renderModuleDetailList(state.decisions, 'No architectural decisions captured yet.', '9'),
-    '## 10. Constraints and Tradeoffs',
+    ...renderModuleDetailList(state.decisions, 'No architectural decisions captured yet.', '10'),
+    '## 11. Constraints and Tradeoffs',
     '',
-    ...renderModuleDetailList(state.constraints, 'No constraints captured yet.', '10'),
-    '## 11. Runtime and Deployment',
+    ...renderModuleDetailList(state.constraints, 'No constraints captured yet.', '11'),
+    '## 12. Runtime and Deployment',
     '',
-    '### 11.1 Runtime Topology',
+    '### 12.1 Runtime Topology',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: deployment.itemIds?.runtimeTopology || '',
@@ -5508,7 +5534,7 @@ function renderArchitectureEditorStateMarkdown(project, editorState) {
     }),
     deployment.runtimeTopology || 'Pending runtime topology.',
     '',
-    '### 11.2 Environment Notes',
+    '### 12.2 Environment Notes',
     '',
     ...renderDocumentItemMetadataComment({
       stableId: deployment.itemIds?.environmentNotes || '',
@@ -5519,9 +5545,9 @@ function renderArchitectureEditorStateMarkdown(project, editorState) {
     deployment.versionDate ? '' : '',
     deployment.versionDate ? `_Last updated: ${formatPrdDate(deployment.versionDate)}_` : '',
     '',
-    '## 12. Open Questions',
+    '## 13. Open Questions',
     '',
-    ...renderModuleDetailList(state.openQuestions, 'No open questions captured yet.', '12'),
+    ...renderModuleDetailList(state.openQuestions, 'No open questions captured yet.', '13'),
     '',
   ].filter((line, index, lines) => !(line === '' && lines[index - 1] === '')).join('\n').trim();
 }

@@ -23,7 +23,7 @@ function splitPinnedGroups(projectGroups) {
   return { pinnedGroups, otherGroups };
 }
 
-function renderGroupedProjects(groups, selectedProjectId, onSelect, onTogglePin, onOpenSettings, viewMode) {
+function renderGroupedProjects(groups, selectedProjectId, onSelect, onTogglePin, onOpenSettings, onCreateChildProject, viewMode) {
   return groups.map((group) => (
     <section key={group.label} className="space-y-3">
       {group.label !== 'All Projects' ? (
@@ -41,6 +41,7 @@ function renderGroupedProjects(groups, selectedProjectId, onSelect, onTogglePin,
             onSelect={onSelect}
             onTogglePin={onTogglePin}
             onOpenSettings={onOpenSettings}
+            onCreateChildProject={onCreateChildProject}
             viewMode={viewMode}
           />
         ))}
@@ -49,7 +50,7 @@ function renderGroupedProjects(groups, selectedProjectId, onSelect, onTogglePin,
   ));
 }
 
-export function ProjectList({ projectGroups, selectedProjectId, onSelect, onTogglePin, onOpenSettings, searchQuery, viewMode = 'list' }) {
+export function ProjectList({ projectGroups, selectedProjectId, onSelect, onTogglePin, onOpenSettings, onCreateChildProject, searchQuery, viewMode = 'list' }) {
   const totalProjects = projectGroups.reduce((count, group) => count + group.projects.length, 0);
   const { pinnedGroups, otherGroups } = splitPinnedGroups(projectGroups);
 
@@ -76,7 +77,7 @@ export function ProjectList({ projectGroups, selectedProjectId, onSelect, onTogg
               <span className="text-xs text-ink/55">{pinnedGroups.reduce((count, group) => count + group.projects.length, 0)} projects</span>
             </div>
             <div className="project-list-section-body space-y-6">
-              {renderGroupedProjects(pinnedGroups, selectedProjectId, onSelect, onTogglePin, onOpenSettings, viewMode)}
+              {renderGroupedProjects(pinnedGroups, selectedProjectId, onSelect, onTogglePin, onOpenSettings, onCreateChildProject, viewMode)}
             </div>
           </section>
         ) : null}
@@ -90,7 +91,7 @@ export function ProjectList({ projectGroups, selectedProjectId, onSelect, onTogg
               </div>
             ) : null}
             <div className="project-list-section-body space-y-6">
-              {renderGroupedProjects(otherGroups, selectedProjectId, onSelect, onTogglePin, onOpenSettings, viewMode)}
+              {renderGroupedProjects(otherGroups, selectedProjectId, onSelect, onTogglePin, onOpenSettings, onCreateChildProject, viewMode)}
             </div>
           </section>
         ) : null}

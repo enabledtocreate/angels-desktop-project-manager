@@ -9,6 +9,7 @@ module.exports = function registerWorkItemRoutes(app, ctx) {
     nextTaskSortOrder,
     saveTask,
     deleteTask,
+    emitProjectActivity,
     syncRoadmapDependentDocuments,
   } = ctx;
 
@@ -57,6 +58,17 @@ module.exports = function registerWorkItemRoutes(app, ctx) {
       if (!task.title) return res.status(400).json({ error: 'Task title is required' });
       const savedTask = await saveTask(task);
       if (project.type === 'folder') await syncRoadmapDependentDocuments(project);
+      emitProjectActivity?.(projectId, 'work_item.created', {
+        taskId: savedTask.id,
+        status: savedTask.status || null,
+      });
+      if (project?.parentId) {
+        emitProjectActivity?.(project.parentId, 'work_item.created', {
+          childProjectId: project.id,
+          taskId: savedTask.id,
+          status: savedTask.status || null,
+        });
+      }
       res.json(savedTask);
     } catch (error) {
       console.error('Error creating task:', error);
@@ -73,6 +85,17 @@ module.exports = function registerWorkItemRoutes(app, ctx) {
       const savedTask = await saveTask(updated);
       const project = await getProjectById(req.params.projectId);
       if (project && project.type === 'folder') await syncRoadmapDependentDocuments(project);
+      emitProjectActivity?.(req.params.projectId, 'work_item.updated', {
+        taskId: savedTask.id,
+        status: savedTask.status || null,
+      });
+      if (project?.parentId) {
+        emitProjectActivity?.(project.parentId, 'work_item.updated', {
+          childProjectId: project.id,
+          taskId: savedTask.id,
+          status: savedTask.status || null,
+        });
+      }
       res.json(savedTask);
     } catch (error) {
       console.error('Error updating task:', error);
@@ -88,6 +111,15 @@ module.exports = function registerWorkItemRoutes(app, ctx) {
       await deleteTask(req.params.projectId, req.params.taskId);
       const project = await getProjectById(req.params.projectId);
       if (project && project.type === 'folder') await syncRoadmapDependentDocuments(project);
+      emitProjectActivity?.(req.params.projectId, 'work_item.deleted', {
+        taskId: req.params.taskId,
+      });
+      if (project?.parentId) {
+        emitProjectActivity?.(project.parentId, 'work_item.deleted', {
+          childProjectId: project.id,
+          taskId: req.params.taskId,
+        });
+      }
       res.json({ ok: true });
     } catch (error) {
       console.error('Error deleting task:', error);

@@ -36,6 +36,8 @@ function buildEditableState(editorState) {
     requiredBehaviors: Array.isArray(state.requiredBehaviors) ? state.requiredBehaviors : [],
     termDictionary: Array.isArray(state.termDictionary) ? state.termDictionary : [],
     moduleUpdateRules: Array.isArray(state.moduleUpdateRules) ? state.moduleUpdateRules : [],
+    projectFamilyReadOrder: Array.isArray(state.projectFamilyReadOrder) ? state.projectFamilyReadOrder : [],
+    projectFamilyInheritanceRules: Array.isArray(state.projectFamilyInheritanceRules) ? state.projectFamilyInheritanceRules : [],
     dataPhrasingRules: Array.isArray(state.dataPhrasingRules) ? state.dataPhrasingRules : [],
     avoidRules: Array.isArray(state.avoidRules) ? state.avoidRules : [],
     customInstructions: state.customInstructions || '',
@@ -63,6 +65,8 @@ function buildEditorState(editableState) {
     requiredBehaviors: editableState.requiredBehaviors,
     termDictionary: editableState.termDictionary,
     moduleUpdateRules: editableState.moduleUpdateRules,
+    projectFamilyReadOrder: editableState.projectFamilyReadOrder,
+    projectFamilyInheritanceRules: editableState.projectFamilyInheritanceRules,
     dataPhrasingRules: editableState.dataPhrasingRules,
     avoidRules: editableState.avoidRules,
     customInstructions: editableState.customInstructions,
@@ -104,6 +108,8 @@ const AI_SECTION_GUIDES = {
   requiredBehaviors: 'Project-specific rules that should always be followed unless a code-owned directive says otherwise.',
   termDictionary: 'APM vocabulary that may not mean the same thing in other tools. These terms are generated into the AI Environment document as a table.',
   moduleUpdateRules: 'Rules that tell an agent which other modules or documents may need updates when one area changes.',
+  projectFamilyReadOrder: 'The order an agent should use when a task spans parent and child projects so it can find the owning source of truth before editing.',
+  projectFamilyInheritanceRules: 'Rules that explain when parent-offered inheritance may be used and when child projects must stay autonomous.',
   dataPhrasingRules: 'Rules for structured data, stored titles, section wording, and generated document phrasing.',
   avoidRules: 'Guardrails for behaviors that can damage source-of-truth state, generated files, or project traceability.',
   customInstructions: 'A review buffer for temporary or unusual project-specific guidance. Durable rules should be moved into structured entries or code-owned directives.',
@@ -484,6 +490,14 @@ export function AiEnvironmentWorkspace({ project }) {
             <div className="md:col-span-2 space-y-3">
               <SectionGuide title="Module Update Rules">{AI_SECTION_GUIDES.moduleUpdateRules}</SectionGuide>
               <StructuredEntryListEditor label="Module Update Rules" entries={editableState.moduleUpdateRules} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, moduleUpdateRules: value }))} emptyLabel="No module update rules yet." />
+            </div>
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="Project Family Read Order">{AI_SECTION_GUIDES.projectFamilyReadOrder}</SectionGuide>
+              <StructuredEntryListEditor label="Project Family Read Order" entries={editableState.projectFamilyReadOrder} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, projectFamilyReadOrder: value }))} emptyLabel="No project-family read order guidance yet." />
+            </div>
+            <div className="md:col-span-2 space-y-3">
+              <SectionGuide title="Project Family Inheritance Rules">{AI_SECTION_GUIDES.projectFamilyInheritanceRules}</SectionGuide>
+              <StructuredEntryListEditor label="Project Family Inheritance Rules" entries={editableState.projectFamilyInheritanceRules} workItemLookup={workItemLookup} onChange={(value) => setEditableState((current) => ({ ...current, projectFamilyInheritanceRules: value }))} emptyLabel="No project-family inheritance rules yet." />
             </div>
             <div className="md:col-span-2 space-y-3">
               <SectionGuide title="Data Structure / Phrasing Rules">{AI_SECTION_GUIDES.dataPhrasingRules}</SectionGuide>

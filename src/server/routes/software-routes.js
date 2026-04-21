@@ -80,7 +80,20 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
     defaultDatabaseSchemaMermaid,
     renderDatabaseSchemaEditorStateMarkdown,
     sanitizeAiEnvironmentCustomInstructions,
+    emitProjectActivity,
   } = ctx;
+
+  async function emitProjectFamilyActivity(projectId, eventType, details = {}) {
+    if (!projectId) return;
+    emitProjectActivity?.(projectId, eventType, details);
+    const project = await getProjectById(projectId);
+    if (project?.parentId) {
+      emitProjectActivity?.(project.parentId, eventType, {
+        ...details,
+        childProjectId: projectId,
+      });
+    }
+  }
 
   function listDatabaseSchemaFragmentsInDir(dirPath) {
     if (!dirPath || !fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) return [];
@@ -1079,6 +1092,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         sortOrder: req.body && req.body.sortOrder !== undefined ? req.body.sortOrder : await nextRoadmapPhaseSortOrder(project.id),
       });
       await syncRoadmapDependentDocuments(project);
+      await emitProjectFamilyActivity(project.id, 'roadmap.phase_created', {
+        phaseId: phase.id,
+        status: phase.status || null,
+      });
       res.json(phase);
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to create roadmap phase' });
@@ -1098,6 +1115,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         projectId: project.id,
       });
       await syncRoadmapDependentDocuments(project);
+      await emitProjectFamilyActivity(project.id, 'roadmap.phase_updated', {
+        phaseId: saved.id,
+        status: saved.status || null,
+      });
       res.json(saved);
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to update roadmap phase' });
@@ -1110,6 +1131,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       ensureWorkspaceProject(project);
       await deleteRoadmapPhase(project.id, req.params.phaseId);
       await syncRoadmapDependentDocuments(project);
+      await emitProjectFamilyActivity(project.id, 'roadmap.phase_deleted', {
+        phaseId: req.params.phaseId,
+      });
       res.json({ ok: true });
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to delete roadmap phase' });
@@ -1146,6 +1170,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       if (fragment.filePath) {
         tryDeleteFile(fragment.filePath, `phase5: merge roadmap fragment ${fragment.id}`);
       }
+      await emitProjectFamilyActivity(project.id, 'roadmap.fragment_merged', {
+        fragmentId: fragment.id,
+      });
 
       res.json({
         roadmap: await syncRoadmapDependentDocuments(project),
@@ -1177,6 +1204,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       if (fragment.filePath) {
         tryDeleteFile(fragment.filePath, `phase5: integrate roadmap fragment ${fragment.id}`);
       }
+      await emitProjectFamilyActivity(project.id, 'roadmap.fragment_integrated', {
+        fragmentId: fragment.id,
+      });
 
       res.json({
         roadmap: await syncRoadmapDependentDocuments(project),
@@ -1289,6 +1319,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         summary: details.summary || savedFeature.summary || '',
       });
       tryDeleteFile(fragmentPath, `phase5: consume features fragment ${fileName}`);
+      await emitProjectFamilyActivity(project.id, 'feature.fragment_consumed', {
+        featureId: savedFeature.id,
+        code: savedFeature.code || details.code || null,
+      });
       res.json({
         features: await syncFeaturesDocument(project, { skipImport: true }),
         roadmap: await syncRoadmapDependentDocuments(project, { skipImport: true }),
@@ -1331,6 +1365,11 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       await upsertPrdFragmentForFeature(project, feature);
       await syncFeaturesDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
+      await emitProjectFamilyActivity(project.id, 'feature.created', {
+        featureId: feature.id,
+        code: feature.code || null,
+        status: feature.status || null,
+      });
       res.json(feature);
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to create feature' });
@@ -1352,6 +1391,11 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       await upsertPrdFragmentForFeature(project, saved);
       await syncFeaturesDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
+      await emitProjectFamilyActivity(project.id, 'feature.updated', {
+        featureId: saved.id,
+        code: saved.code || null,
+        status: saved.status || null,
+      });
       res.json(saved);
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to update feature' });
@@ -1372,6 +1416,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       }
       await syncFeaturesDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
+      await emitProjectFamilyActivity(project.id, 'feature.deleted', {
+        featureId: req.params.featureId,
+        code: feature.code || null,
+      });
       res.json({ ok: true });
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to delete feature' });
@@ -1479,6 +1527,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         summary: details.summary || savedBug.summary || '',
       });
       tryDeleteFile(fragmentPath, `phase5: consume bugs fragment ${fileName}`);
+      await emitProjectFamilyActivity(project.id, 'bug.fragment_consumed', {
+        bugId: savedBug.id,
+        code: savedBug.code || details.code || null,
+      });
       res.json({
         bugs: await syncBugsDocument(project, { skipImport: true }),
         roadmap: await syncRoadmapDependentDocuments(project, { skipImport: true }),
@@ -1524,6 +1576,11 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       });
       await syncBugsDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
+      await emitProjectFamilyActivity(project.id, 'bug.created', {
+        bugId: bug.id,
+        code: bug.code || null,
+        status: bug.status || null,
+      });
       res.json(bug);
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to create bug' });
@@ -1548,6 +1605,11 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       const saved = await saveBugItem(nextPayload);
       await syncBugsDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
+      await emitProjectFamilyActivity(project.id, 'bug.updated', {
+        bugId: saved.id,
+        code: saved.code || null,
+        status: saved.status || null,
+      });
       res.json(saved);
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to update bug' });
@@ -1561,6 +1623,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       await deleteBugItem(project.id, req.params.bugId);
       await syncBugsDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
+      await emitProjectFamilyActivity(project.id, 'bug.deleted', {
+        bugId: req.params.bugId,
+      });
       res.json({ ok: true });
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to delete bug' });
@@ -1605,6 +1670,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         tryDeleteFile(fragment.filePath, `phase5: merge prd fragment ${fragment.id}`);
       }
       await cleanupMergedPrdFragmentFiles(project);
+      await emitProjectFamilyActivity(project.id, 'prd.fragment_merged', {
+        fragmentId: fragment.id,
+      });
 
       const nextPrdState = await syncPrdDocument(project, { skipImport: true });
       res.json({
@@ -1649,6 +1717,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
           status: 'done',
         });
       }
+      await emitProjectFamilyActivity(project.id, 'prd.fragment_integrated', {
+        fragmentId: fragment.id,
+        featureId: feature?.id || null,
+      });
 
       const nextPrdState = await syncPrdDocument(project, { skipImport: true });
       const nextFeaturesState = await syncFeaturesDocument(project, { skipImport: true });
@@ -1692,6 +1764,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         editorState: nextEditorState,
       };
       await saveProjectDocument(project.id, 'prd', nextState);
+      await emitProjectFamilyActivity(project.id, 'prd.saved', {
+        moduleKey: 'prd',
+      });
       const syncedState = await syncPrdDocument(project);
       res.json(syncedState);
     } catch (error) {
@@ -1728,6 +1803,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
           ? req.body.mermaid
           : defaultArchitectureMermaid(project, nextEditorState),
         editorState: nextEditorState,
+      });
+      await emitProjectFamilyActivity(project.id, 'module_document.saved', {
+        moduleKey: 'architecture',
       });
       res.json(await syncArchitectureDocument(project, { skipImport: true }));
     } catch (error) {
@@ -1804,6 +1882,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         editorState: nextEditorState,
       });
       tryDeleteFile(fragmentPath, `phase5: consume architecture fragment ${fileName}`);
+      await emitProjectFamilyActivity(project.id, 'module_document.fragment_consumed', {
+        moduleKey: 'architecture',
+        fileName,
+      });
       res.json({
         architecture: await syncArchitectureDocument(project, { skipImport: true }),
         fragments: mergeFragmentLists(
@@ -1859,6 +1941,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         markdown: renderModuleDocumentEditorStateMarkdown(project, moduleKey, nextEditorState),
         mermaid: req.body && typeof req.body.mermaid === 'string' ? req.body.mermaid : currentState.mermaid,
         editorState: nextEditorState,
+      });
+      await emitProjectFamilyActivity(project.id, 'module_document.saved', {
+        moduleKey,
       });
       res.json(await syncGenericModuleDocument(project, moduleKey, { skipImport: true }));
     } catch (error) {
@@ -1939,6 +2024,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         editorState: nextEditorState,
       });
       tryDeleteFile(fragmentPath, `phase5: consume ${moduleKey} fragment ${fileName}`);
+      await emitProjectFamilyActivity(project.id, 'module_document.fragment_consumed', {
+        moduleKey,
+        fileName,
+      });
       const [documentState, fragments] = await Promise.all([
         syncGenericModuleDocument(project, moduleKey, { skipImport: true }),
         (async () => {
@@ -2046,6 +2135,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         mermaid: req.body && typeof req.body.mermaid === 'string' ? req.body.mermaid : defaultDatabaseSchemaMermaid(project),
         editorState: versionedEditorState,
       });
+      await emitProjectFamilyActivity(project.id, 'module_document.saved', {
+        moduleKey: 'database_schema',
+      });
       res.json(await syncDatabaseSchemaDocument(project));
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to save Database Schema' });
@@ -2073,6 +2165,9 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         markdown: renderDatabaseSchemaEditorStateMarkdown(project, nextEditorState),
         mermaid: existingDocument?.mermaid || defaultDatabaseSchemaMermaid(project),
         editorState: nextEditorState,
+      });
+      await emitProjectFamilyActivity(project.id, 'database_schema.sync_action_applied', {
+        action,
       });
       res.json(await syncDatabaseSchemaDocument(project));
     } catch (error) {
@@ -2199,6 +2294,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         editorState: nextEditorState,
       });
       tryDeleteFile(fragmentPath, `phase5: consume ai environment fragment ${fileName}`);
+      await emitProjectFamilyActivity(project.id, 'module_document.fragment_consumed', {
+        moduleKey: 'ai_environment',
+        fileName,
+      });
       const [aiEnvironment, fragmentPayload] = await Promise.all([
         syncAiEnvironmentDocument(project, { skipImport: true }),
         (async () => {
@@ -2290,6 +2389,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         tryDeleteFile(fragmentPath, `phase5: consume database schema fragment ${req.body.fileName}`);
       }
       config.log(`phase5: imported database schema fragment for project ${project.id} from upload ${req.body && req.body.fileName ? req.body.fileName : '<memory>'}`);
+      await emitProjectFamilyActivity(project.id, 'module_document.fragment_consumed', {
+        moduleKey: 'database_schema',
+        fileName: req.body?.fileName || '',
+      });
       res.json(await syncDatabaseSchemaDocument(project));
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to import database schema fragment' });
@@ -2387,6 +2490,10 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       if (fragmentPath) {
         tryDeleteFile(fragmentPath, `phase5: consume database schema fragment ${fileName}`);
       }
+      await emitProjectFamilyActivity(project.id, 'module_document.fragment_consumed', {
+        moduleKey: 'database_schema',
+        fileName,
+      });
       res.json(await syncDatabaseSchemaDocument(project));
     } catch (error) {
       res.status(400).json({ error: error.message || 'Failed to consume database schema fragment' });
