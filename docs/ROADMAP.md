@@ -207,9 +207,62 @@
       "progress": 0,
       "milestone": false,
       "sortOrder": 0
+    },
+    {
+      "id": "task-1776794268085-1r0wzt2",
+      "projectId": "1772489365575-mj2xfcm",
+      "title": "Add Build configuration to Integrations",
+      "description": "Add build script support for configurations for projects, such as Vercel and Docker.",
+      "category": null,
+      "status": "todo",
+      "priority": "medium",
+      "createdAt": "2026-04-21T17:57:48.085Z",
+      "updatedAt": "2026-04-21T17:57:48.086Z",
+      "dueDate": null,
+      "assignedTo": null,
+      "startDate": null,
+      "endDate": null,
+      "roadmapPhaseId": null,
+      "planningBucket": "considered",
+      "workItemType": "software_feature",
+      "itemType": "feature",
+      "dependencyIds": [],
+      "progress": 0,
+      "milestone": false,
+      "sortOrder": 0
     }
   ],
-  "features": [],
+  "features": [
+    {
+      "id": "feature-1776794268106-3qu3rl4",
+      "projectId": "1772489365575-mj2xfcm",
+      "code": "FEAT-013",
+      "title": "Add Build configuration to Integrations",
+      "summary": "Add build script support for configurations for projects, such as Vercel and Docker.",
+      "description": "Add build script support for configurations for projects, such as Vercel and Docker.",
+      "category": null,
+      "priority": "medium",
+      "dueDate": null,
+      "assignedTo": null,
+      "startDate": null,
+      "endDate": null,
+      "status": "planned",
+      "taskStatus": "todo",
+      "roadmapPhaseId": null,
+      "taskId": "task-1776794268085-1r0wzt2",
+      "planningBucket": "considered",
+      "workItemType": "software_feature",
+      "itemType": "feature",
+      "dependencyIds": [],
+      "affectedModuleKeys": [],
+      "progress": 0,
+      "milestone": false,
+      "sortOrder": 0,
+      "archived": false,
+      "createdAt": "2026-04-21T17:57:48.085Z",
+      "updatedAt": "2026-04-21T17:57:48.086Z"
+    }
+  ],
   "bugs": [
     {
       "id": "bug-1775260498325-6ol1enm",
@@ -477,7 +530,7 @@
     }
   ],
   "templateVersion": "2.1",
-  "mermaid": "flowchart TD\n  roadmap[\"Roadmap\"]\n  planned[\"Planned Items\"]\n  considered[\"Considered Items\"]\n  roadmap --\u003e phase_phase_001[\"PHASE-001: Phase 1 - Completing basic features\"]\n  planned --\u003e bug_bug_1775260498325_6ol1enm[\"BUG-008: Fragment Lifecycle Inconsistency Across Modules\"]\n  planned --\u003e bug_bug_1775260497797_580tuqz[\"BUG-007: Imported Fragment Bodies Remain In Canonical Documents\"]\n  planned --\u003e bug_bug_1775260497330_1iuegfh[\"BUG-006: Drag and Drop Planning Regression\"]\n  planned --\u003e bug_bug_1775259007958_9e1v5uq[\"BUG-005: Fragment Lifecycle Inconsistency Across Modules\"]\n  planned --\u003e bug_bug_1775259007507_oohx0ts[\"BUG-004: Imported Fragment Bodies Remain In Canonical Documents\"]\n  planned --\u003e bug_bug_1775259006850_31h8czq[\"BUG-003: Drag and Drop Planning Regression\"]\n  planned --\u003e bug_bug_1775007912160_wi58d94[\"BUG-001: The application should not produce fragments\"]\n  considered --\u003e bug_bug_1774625378814_fscisc2[\"BUG-002: PRD Fragments should be deleted after merging\"]"
+  "mermaid": "flowchart TD\n  roadmap[\"Roadmap\"]\n  planned[\"Planned Items\"]\n  considered[\"Considered Items\"]\n  roadmap --\u003e phase_phase_001[\"PHASE-001: Phase 1 - Completing basic features\"]\n  planned --\u003e bug_bug_1775260498325_6ol1enm[\"BUG-008: Fragment Lifecycle Inconsistency Across Modules\"]\n  planned --\u003e bug_bug_1775260497797_580tuqz[\"BUG-007: Imported Fragment Bodies Remain In Canonical Documents\"]\n  planned --\u003e bug_bug_1775260497330_1iuegfh[\"BUG-006: Drag and Drop Planning Regression\"]\n  planned --\u003e bug_bug_1775259007958_9e1v5uq[\"BUG-005: Fragment Lifecycle Inconsistency Across Modules\"]\n  planned --\u003e bug_bug_1775259007507_oohx0ts[\"BUG-004: Imported Fragment Bodies Remain In Canonical Documents\"]\n  planned --\u003e bug_bug_1775259006850_31h8czq[\"BUG-003: Drag and Drop Planning Regression\"]\n  planned --\u003e bug_bug_1775007912160_wi58d94[\"BUG-001: The application should not produce fragments\"]\n  considered --\u003e feature_feature_1776794268106_3qu3rl4[\"FEAT-013: Add Build configuration to Integrations\"]\n  considered --\u003e bug_bug_1774625378814_fscisc2[\"BUG-002: PRD Fragments should be deleted after merging\"]"
 }
 -->
 
@@ -522,8 +575,7 @@ No planned features.
 
 ## Considered Features
 
-No considered features.
-
+- FEAT-013: Add Build configuration to Integrations (planned)
 
 ## Mermaid
 
@@ -540,5 +592,6 @@ flowchart TD
   planned --> bug_bug_1775259007507_oohx0ts["BUG-004: Imported Fragment Bodies Remain In Canonical Documents"]
   planned --> bug_bug_1775259006850_31h8czq["BUG-003: Drag and Drop Planning Regression"]
   planned --> bug_bug_1775007912160_wi58d94["BUG-001: The application should not produce fragments"]
+  considered --> feature_feature_1776794268106_3qu3rl4["FEAT-013: Add Build configuration to Integrations"]
   considered --> bug_bug_1774625378814_fscisc2["BUG-002: PRD Fragments should be deleted after merging"]
 ```

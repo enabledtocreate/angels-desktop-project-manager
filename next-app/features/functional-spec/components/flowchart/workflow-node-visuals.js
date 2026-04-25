@@ -16,6 +16,7 @@ export const NODE_VISUALS = {
   external_interaction: { label: 'external interaction', accent: 'violet', className: 'rounded-[1rem] border-violet-200/35 bg-violet-400/12 text-violet-50' },
   formula: { label: 'formula', accent: 'yellow', className: 'rounded-[1rem] border-yellow-200/35 bg-yellow-400/12 text-yellow-50' },
   model_reference: { label: 'model reference', accent: 'sky', className: 'rounded-[1rem] border-sky-200/35 bg-sky-400/12 text-sky-50' },
+  ai_placeholder: { label: 'ai placeholder', accent: 'cyan', className: 'rounded-[1rem] border-dashed border-cyan-200/45 bg-cyan-300/14 text-cyan-50' },
   open_question: { label: 'open question', accent: 'purple', className: 'rounded-[1rem] border-dashed border-purple-200/35 bg-purple-400/12 text-purple-50' },
 };
 
@@ -48,6 +49,7 @@ export function WorkflowNodeIcon({ type, className = '' }) {
   if (normalized === 'external_interaction') return <svg {...common}><path d="M8 12h8" /><path d="M13 7l5 5-5 5" /><path d="M3 5v14h6" /><path d="M21 5v14h-6" /></svg>;
   if (normalized === 'formula') return <svg {...common}><path d="M4 7h16" /><path d="M7 7l4 10" /><path d="M17 7l-4 10" /><path d="M4 17h16" /></svg>;
   if (normalized === 'model_reference') return <svg {...common}><path d="M4 7l8-4 8 4-8 4-8-4z" /><path d="M4 12l8 4 8-4" /><path d="M4 17l8 4 8-4" /></svg>;
+  if (normalized === 'ai_placeholder') return <svg {...common}><path d="M12 3l7 4v6c0 4-3 7-7 8-4-1-7-4-7-8V7l7-4z" /><path d="M9 11h6" /><path d="M12 8v6" /><path d="M8 17c2-1 6-1 8 0" /></svg>;
   if (normalized === 'open_question') return <svg {...common}><path d="M9 9a3 3 0 1 1 5 2.2c-1.1.7-2 1.5-2 3" /><path d="M12 18h.01" /><circle cx="12" cy="12" r="9" /></svg>;
   return <svg {...common}><rect x="4" y="5" width="16" height="14" rx="3" /><path d="M8 12h8" /></svg>;
 }

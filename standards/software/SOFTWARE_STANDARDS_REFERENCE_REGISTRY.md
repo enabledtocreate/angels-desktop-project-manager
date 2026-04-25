@@ -163,6 +163,31 @@ If no strong external standard exists, the generated content should say that it 
 - `notes`:
   - treat this as advisory guidance for structure, not as the only template source
 
+### APM-001
+
+- `name`: APM Fragment Token Reference Convention
+- `type`: internal
+- `url`: internal APM convention
+- `governs`:
+  - token references in generated fragments
+  - AI-readable targeting hints
+  - cross-module and cross-project fragment references
+- `usedBy`:
+  - all fragment templates
+  - AI Environment
+  - Functional Spec Smart Text
+  - parent/child project orchestration fragments
+- `tokenRules`:
+  - `@stable-id`: persisted document item, flow, node, edge, model, directive, setting, project, or relationship target
+  - `#module-or-section`: module, document, or section target such as `#architecture`, `#functional_spec`, or `#bugs`
+  - `$work-item-code`: feature, bug, task, or changelog provenance such as `$FEAT-001`, `$BUG-010`, or `$TASK-003`
+  - `/operation`: intended action such as `/add`, `/update`, `/remove`, `/move`, `/link`, `/unlink`, `/generate`, `/consume`, or `/integrate`
+  - `?question`: unresolved assumption or review-needed item
+  - `!guardrail`: non-negotiable constraint such as `!source-of-truth` or `!do-not-edit-generated-docs`
+- `notes`:
+  - token references supplement structured fragment operations and target ids
+  - tokens must not replace explicit fields such as operation, targetSection, targetItemId, sourceRefs, or managed payload data
+
 ## Current APM Recommendation
 
 Use these baselines by document family:
@@ -186,6 +211,8 @@ Use these baselines by document family:
   - internal APM template rules where needed
 - `ADR`
   - `ADR-001`
+- `Fragment generation`
+  - `APM-001`
 
 ## Future Direction
 

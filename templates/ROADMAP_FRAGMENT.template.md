@@ -1,30 +1,48 @@
-# ROADMAP Fragment Template
+﻿# ROADMAP Fragment Template
 
-This document defines the required structure for `ROADMAP_FRAGMENT_*.md`.
+> Template Contract. Keep filename `ROADMAP_FRAGMENT.template.md`; APM discovers and syncs templates by this name.
+> Managed document. Must comply with template ROADMAP_FRAGMENT.template.md.
 
-## Compliance Rules
-
-- Keep the `APM:DATA` managed block intact and valid JSON.
-- Keep the top compliance note intact.
-- Do not edit `ROADMAP.md` directly when proposing roadmap changes through AI-assisted workflows.
-- Use stable IDs when referring to existing features, phases, and tasks.
-- Keep Mermaid text valid.
-
-## Version
+## 1. Template Contract Metadata
 
 - Template Name: `ROADMAP_FRAGMENT.template.md`
-- Template Version: `1.0`
-- Last Updated: `2026-03-28`
-- AI Agent instruction: Whenever this template is updated, update the template version and last updated date before changing anything else.
+- Template Version: `1.4`
+- Last Updated: `2026-04-23`
+- Template Kind: `fragment`
+- Owning Module: `Roadmap`
+- Generated Artifact: `ROADMAP_FRAGMENT_*.md`
 
-## Model Context Protocol
+## 2. Contract / Allowed Schema
 
-- `ROADMAP_FRAGMENT_*.md` is a proposal document, not the canonical roadmap.
-- The application database is the source of truth.
-- The application reads this fragment, stores it in SQLite, and can integrate the approved changes into roadmap phases, feature assignments, and task assignments.
-- Use feature IDs from `FEATURES.md`.
-- Use task IDs from the Kanban/Gantt task system.
-- Prefer existing phase IDs or phase codes when modifying an existing phase.
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- `fragment.payload.phaseChanges`
+- `fragment.payload.featureAssignments`
+- `fragment.payload.taskAssignments`
+
+### Supported Operations
+
+For `APM:OPERATIONS`, supported first-pass operations are:
+
+- `add`
+- `update`
+- `remove`
+- `reorder`
+- `move`
+- `link`
+- `unlink`
+
+Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
+
+## 3. Actual Template
+
+This document defines the required structure for `ROADMAP_FRAGMENT_*.md`.
 
 ## Required Managed Payload Shape
 
@@ -67,9 +85,33 @@ The fragment markdown body should contain these sections in order:
 5. `## Integration Guidance`
 6. `## Mermaid`
 
-## AI Agent Instruction
+## 4. Examples
 
-- Create or update a roadmap fragment instead of editing `ROADMAP.md` directly.
-- Keep the fragment compliant with this template.
-- Put structural change intent in the managed payload.
-- Use the human-readable markdown body to explain why the roadmap changes are being proposed.
+```json
+[
+  {
+    "operation": "add",
+    "targetSection": "open-questions",
+    "item": {
+      "title": "Example question",
+      "description": "Replace this with a module-specific unresolved question."
+    },
+    "sourceRefs": ["FEAT-000"]
+  }
+]
+```
+
+## 5. Merge / Consumption Rules
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+## 6. Version / Migration Notes
+
+- Version `1.4` moves AI-facing instructions and restrictions into the paired module AI file so this template stays artifact-focused.
+- Version `1.3` moves AI behavior guidance into the paired module AI file and keeps this template artifact-focused.
+- Version `1.2` adds the standardized Template Contract structure.
+- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+- When this template changes again, update `Template Version`, `Last Updated`, and any migrator guidance needed for older unconsumed fragments.

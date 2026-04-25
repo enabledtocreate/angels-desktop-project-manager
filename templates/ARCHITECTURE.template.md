@@ -1,30 +1,32 @@
 # ARCHITECTURE Template
 
-This document defines the required structure for `ARCHITECTURE.md`.
+> Template Contract. Keep filename `ARCHITECTURE.template.md`; APM discovers and syncs templates by this name.
+> Managed document. Must comply with template ARCHITECTURE.template.md.
 
-## Compliance Rules
-
-- Keep the `APM:DATA` managed block intact and valid JSON.
-- Keep the top compliance note intact.
-- Preserve the section order defined in this template.
-- Keep Mermaid text valid and aligned with the component and connection map maintained in the architecture editor.
-- If this template structure changes, update the version section before making any other structural edits.
-
-## Version
+## 1. Template Contract Metadata
 
 - Template Name: `ARCHITECTURE.template.md`
-- Template Version: `2.0`
-- Last Updated: `2026-04-04`
-- AI Agent instruction: Whenever this template is updated, update the template version and last updated date before changing any section definitions.
+- Template Version: `2.3`
+- Last Updated: `2026-04-23`
+- Template Kind: `document`
+- Owning Module: `Architecture`
+- Generated Artifact: `ARCHITECTURE.md`
 
-## Model Context Protocol
+## 2. Contract / Allowed Schema
 
-- `ARCHITECTURE.md` is a managed document generated from application state.
-- The application database is the source of truth for architecture editor fields, generated markdown, and Mermaid content.
-- Architecture should support both single-application projects and larger systems with sub-architectures.
-- Architecture should describe system structure, workflows, stack, persistence strategy, and module interdependence.
-- Significant architectural decisions should also create or update ADR records.
-- If a disk file conflicts with database state, the application may regenerate this file from the database.
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
+
+## 3. Actual Template
+
+This document defines the required structure for `ARCHITECTURE.md`.
 
 ## Structure Definition
 
@@ -64,3 +66,26 @@ The generated `ARCHITECTURE.md` must contain the following sections in this orde
 16. `## Mermaid`
 
 Repeating sections such as stack entries, components, sub-architectures, dependencies, workflows, module interactions, concerns, decisions, constraints, and open questions should use numbered subsection entries with a title and description. Component connections should identify a source, a target, and an optional connection label.
+
+## 4. Examples
+
+```md
+# ARCHITECTURE.md: {{PROJECT_NAME}}
+
+> Managed document. Must comply with template ARCHITECTURE.template.md.
+```
+
+## 5. Merge / Consumption Rules
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+## 6. Version / Migration Notes
+
+- Version `2.3` moves AI-facing instructions and restrictions into the paired module AI file so this template stays artifact-focused.
+- Version `2.2` moves AI behavior guidance into the paired module AI file and keeps this template artifact-focused.
+- Version `2.1` adds the standardized Template Contract structure.
+- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+- When this template changes again, update `Template Version`, `Last Updated`, and any migrator guidance needed for older unconsumed fragments.

@@ -34,6 +34,8 @@ export function FeaturesWorkspace({ project }) {
   const phases = featuresState?.phases || [];
   const features = featuresState?.features || [];
   const activeFeatures = useMemo(() => features.filter((item) => !item.archived), [features]);
+  const editingFeature = useMemo(() => features.find((item) => item.id === editingId) || null, [features, editingId]);
+  const isUnarchivingArchivedFeature = Boolean(editingFeature?.archived && draft.planningBucket !== 'archived');
   const activeFragmentCount = useMemo(() => countActiveFragments(fragments), [fragments]);
   const moduleOptions = useMemo(
     () => (Array.isArray(project.modules) ? project.modules.filter((module) => module.enabled) : []),
@@ -46,6 +48,12 @@ export function FeaturesWorkspace({ project }) {
 
   async function handleSubmit() {
     if (!draft.title.trim()) return;
+    if (isUnarchivingArchivedFeature) {
+      const shouldContinue = typeof window === 'undefined' || window.confirm(
+        'This feature is archived, which usually means it was implemented and moved out of active planning. Move it back to active work anyway?'
+      );
+      if (!shouldContinue) return;
+    }
     const payload = {
       title: draft.title,
       description: draft.description,
@@ -55,6 +63,7 @@ export function FeaturesWorkspace({ project }) {
       roadmapPhaseId: draft.roadmapPhaseId || null,
       category: draft.category || null,
       affectedModuleKeys: draft.affectedModuleKeys,
+      archived: draft.planningBucket === 'archived',
     };
     if (editingId) await updateFeature(editingId, payload);
     else await createFeature(payload);
@@ -95,7 +104,7 @@ export function FeaturesWorkspace({ project }) {
         <StatisticsDisclosure>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <InfoTile eyebrow="Features" title={`${features.length}`} body={`${features.filter((item) => item.archived).length} archived`} />
-            <InfoTile eyebrow="Fragments" title={`${activeFragmentCount}`} body="Feature-linked PRD fragments remain connected through the current backend." />
+            <InfoTile eyebrow="Fragments" title={`${activeFragmentCount}`} body="AI-written feature fragments waiting for review." />
             <InfoTile eyebrow="Planned" title={`${features.filter((item) => item.planningBucket === 'planned').length}`} body="Features actively moving into a roadmap phase." />
             <InfoTile eyebrow="Considered" title={`${features.filter((item) => item.planningBucket === 'considered').length}`} body="Backlog ideas not yet committed to a phase." />
           </div>
@@ -107,7 +116,7 @@ export function FeaturesWorkspace({ project }) {
         instructions={[
           'Use features as a primary trigger for downstream project updates.',
           'Affected modules indicate which modules likely need review or changes alongside this feature.',
-          'If feature scope changes product intent or implementation behavior, create or update a PRD fragment instead of editing PRD directly.',
+          'If feature scope changes product intent or implementation behavior, the AI agent should create the needed downstream fragments instead of editing generated documents directly.',
           'Keep roadmap placement and planning bucket aligned with the actual delivery phase.',
         ]}
       />
@@ -131,6 +140,11 @@ export function FeaturesWorkspace({ project }) {
                 <option value="archived">archived</option>
               </select>
             </div>
+            {isUnarchivingArchivedFeature ? (
+              <div className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+                This feature is archived, which usually means it was already implemented. Saving it outside the archive will move it back into active planning; use this mainly to correct accidental archive placement.
+              </div>
+            ) : null}
             <div className="grid gap-3 md:grid-cols-2">
               <select className="w-full rounded-xl border border-white/10 bg-slate px-4 py-3 text-white outline-none focus:border-accent/60" value={draft.roadmapPhaseId} onChange={(event) => setDraft((current) => ({ ...current, roadmapPhaseId: event.target.value }))}>
                 <option value="">No phase</option>
@@ -168,7 +182,7 @@ export function FeaturesWorkspace({ project }) {
           </div>
         </SectionShell>
 
-        <SectionShell eyebrow="Feature List" title="Live software features" description="Feature cards here are backed by the current backend and still participate in roadmap and PRD generation.">
+        <SectionShell eyebrow="Feature List" title="Live software features" description="Feature cards here are backed by the current backend and participate in roadmap planning. Fragments are only produced by AI agents.">
           <div className="space-y-3">
             {features.length ? features.map((feature) => (
               <SurfaceCard key={feature.id} className="p-4" tone={feature.archived ? 'muted' : 'default'}>

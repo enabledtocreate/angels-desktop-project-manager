@@ -1085,11 +1085,18 @@ async function saveFeatureItem(featureInput) {
   const taskId = existing?.taskId
     || ((featureInput.id && featureInput.taskId) ? featureInput.taskId : null)
     || `task-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  const archived = featureInput.archived !== undefined ? !!featureInput.archived : !!existing?.archived;
+  const inputPlanningBucket = featureInput.planningBucket !== undefined
+    ? String(featureInput.planningBucket || '').trim().toLowerCase()
+    : '';
+  const archived = inputPlanningBucket
+    ? inputPlanningBucket === 'archived'
+    : (featureInput.archived !== undefined ? !!featureInput.archived : !!existing?.archived);
+  const existingPlanningBucket = String(existing?.planningBucket || '').trim().toLowerCase();
+  const fallbackPlanningBucket = existingPlanningBucket === 'archived' ? 'considered' : existing?.planningBucket;
   const planningBucket = archived
     ? 'archived'
     : (featureInput.planningBucket
-    ?? existing?.planningBucket
+    ?? fallbackPlanningBucket
     ?? (featureInput.roadmapPhaseId ? 'phase' : 'considered'));
   const roadmapPhaseId = planningBucket === 'phase'
     ? (featureInput.roadmapPhaseId ?? existing?.roadmapPhaseId ?? null)

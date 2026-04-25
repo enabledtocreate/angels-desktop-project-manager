@@ -111,11 +111,13 @@ const {
   ensureProjectDocsDir,
   ensureProjectWorkspaceDir,
   getProjectDocPath,
+  getProjectModuleAiDir,
   getProjectSoftwareStandardsRegistryPath,
   getTemplateMetadata,
   readProjectManagedDocument,
   computeMd5,
   syncArchivedBugWorkspaceNotes,
+  syncProjectVisibleModuleAiFiles,
   renderRoadmapMermaid,
   renderFeaturesMermaid,
   renderBugsMermaid,
@@ -143,11 +145,7 @@ const {
   renderDatabaseSchemaEditorStateMarkdown,
   renderDatabaseSchemaMarkdown,
   renderDatabaseSchemaDbml,
-  renderPrdFragmentMarkdown,
-  renderRoadmapFragmentMarkdown,
   syncRoadmapFragmentTemplateForProject,
-  writePrdFragmentDocument,
-  writeRoadmapFragmentDocument,
   writeDatabaseSchemaDbmlFile,
   readPrdFragmentDocument,
   readRoadmapFragmentDocument,
@@ -527,6 +525,7 @@ function createApp() {
 
   async function finalizeDocumentSync(project, docType, finalFileMarkdown, dbDocumentInput) {
     const templateSyncRecords = syncProjectTemplateFiles(project);
+    syncProjectVisibleModuleAiFiles(project);
     await recordProjectTemplateFiles(project.id, templateSyncRecords);
     let storedDocument = await readProjectDocument(project.id, docType);
     let fileSnapshot = readProjectManagedDocument(project, docType);
@@ -546,106 +545,6 @@ function createApp() {
 
     return { storedDocument, fileSnapshot, dbMd5 };
   }
-
-  function buildDefaultRoadmapFragmentPayload(project) {
-    return {
-      summary: `Proposed roadmap updates for ${project.name}.`,
-      phaseChanges: [],
-      featureAssignments: [],
-      taskAssignments: [],
-    };
-  }
-
-  function renderDefaultRoadmapFragmentBody(project, payload = {}) {
-    const phaseChanges = Array.isArray(payload.phaseChanges) ? payload.phaseChanges : [];
-    const featureAssignments = Array.isArray(payload.featureAssignments) ? payload.featureAssignments : [];
-    const taskAssignments = Array.isArray(payload.taskAssignments) ? payload.taskAssignments : [];
-    return [
-      '## Executive Summary',
-      '',
-      payload.summary || `Proposed roadmap updates for ${project.name}.`,
-      '',
-      '## Proposed Phase Changes',
-      '',
-      ...(phaseChanges.length
-        ? phaseChanges.flatMap((phase) => [
-            `### ${phase.code || 'NEW_PHASE'}: ${phase.name || 'New Phase'}`,
-            '',
-            `- Goal: ${phase.goal || 'Add a goal for this phase.'}`,
-            `- Status: ${phase.status || 'planned'}`,
-            `- Target Date: ${phase.targetDate || 'TBD'}`,
-            '',
-            phase.summary || 'Describe what this phase should contain.',
-            '',
-          ])
-        : ['- No phase changes proposed yet.', '']),
-      '## Proposed Feature Assignments',
-      '',
-      ...(featureAssignments.length
-        ? featureAssignments.map((assignment) => `- Feature ${assignment.featureId || 'FEAT-XXX'} -> ${assignment.roadmapPhaseCode || assignment.roadmapPhaseId || 'Unassigned'}${assignment.note ? ` (${assignment.note})` : ''}`)
-        : ['- No feature moves proposed yet.']),
-      '',
-      '## Proposed Task Assignments',
-      '',
-      ...(taskAssignments.length
-        ? taskAssignments.map((assignment) => `- Task ${assignment.taskId || 'task-id'} -> ${assignment.roadmapPhaseCode || assignment.roadmapPhaseId || 'Unassigned'}${assignment.note ? ` (${assignment.note})` : ''}`)
-        : ['- No task moves proposed yet.']),
-      '',
-      '## Integration Guidance',
-      '',
-      '- AI agents should update this roadmap fragment instead of editing ROADMAP.md directly.',
-      `- Store roadmap fragment files under data/projects/${project.id}/fragments/.`,
-      '- The roadmap module consumes this fragment and applies the approved changes to the application database.',
-      '- Prefer stable feature IDs, task IDs, and existing phase IDs when possible.',
-    ].join('\n');
-  }
-
-  function renderDefaultPrdFragmentBody(feature, context = {}) {
-    const phaseLabel = context.phase ? `${context.phase.code}: ${context.phase.name}` : 'Unassigned';
-    const taskLabel = context.task ? context.task.title : 'None';
-    return [
-      '## Executive Summary',
-      '',
-      `This fragment captures the PRD changes needed for ${feature.code}: ${feature.title}.`,
-      '',
-      '## Functional Requirements',
-      '',
-      `- Source Feature: ${feature.code}: ${feature.title}`,
-      `- Status: ${feature.status || 'planned'}`,
-      `- Roadmap Phase: ${phaseLabel}`,
-      `- Linked Task: ${taskLabel}`,
-      `- Feature Summary: ${feature.summary || 'Add implementation details for this feature.'}`,
-      '',
-      '## User Experience Requirements',
-      '',
-      '- Describe the user-facing workflow, edge cases, and interface expectations introduced by this feature.',
-      '',
-      '## Data and Integration Notes',
-      '',
-      '- Describe any SQLite schema, generated markdown, plugin, integration, or API updates required by this feature.',
-      '',
-      '## Acceptance Criteria',
-      '',
-      '- Define the outcomes that must exist in the main PRD once this fragment is merged.',
-      '',
-      '## Merge Guidance',
-      '',
-      '- AI agents should update this fragment instead of editing PRD.md directly.',
-      `- Store PRD fragment files under data/projects/${feature.projectId || 'project'}/fragments/.`,
-      '- The PRD module consumes this fragment and merges it into the main PRD when approved.',
-      '',
-    ].join('\n');
-  }
-
-  function renderDefaultPrdFragmentMermaid(feature) {
-    return [
-      'flowchart TD',
-      `  feature_${String(feature.code || feature.id).replace(/[^A-Za-z0-9]+/g, '_')}["${String(feature.code || 'FEATURE').replace(/"/g, '\\"')}: ${String(feature.title || '').replace(/"/g, '\\"')}"]`,
-      '  feature_update["PRD Fragment"]',
-      '  feature_update --> prd["PRD.md"]',
-      `  feature_${String(feature.code || feature.id).replace(/[^A-Za-z0-9]+/g, '_')} --> feature_update`,
-      ].join('\n');
-    }
 
   function buildDefaultPrdEditorState(project) {
     const now = new Date().toISOString();
@@ -1230,111 +1129,6 @@ function createApp() {
     return nextState;
   }
 
-  async function upsertPrdFragmentForFeature(project, feature) {
-    const [existingFragment, phases, tasks] = await Promise.all([
-      getPrdFragmentByFeatureId(project.id, feature.id),
-      readRoadmapPhases(project.id),
-      readProjectTasks(project.id),
-    ]);
-    const phase = phases.find((item) => item.id === feature.roadmapPhaseId);
-    const task = tasks.find((item) => item.id === feature.taskId);
-    const existingStatus = existingFragment && existingFragment.status ? String(existingFragment.status) : '';
-    const savedFragment = await savePrdFragment({
-      id: existingFragment ? existingFragment.id : undefined,
-      projectId: project.id,
-      featureId: feature.id,
-      title: `${feature.code}: ${feature.title}`,
-      markdown: existingFragment && existingFragment.markdown
-        ? existingFragment.markdown
-        : renderDefaultPrdFragmentBody(feature, { phase, task }),
-      mermaid: existingFragment && existingFragment.mermaid
-        ? existingFragment.mermaid
-        : renderDefaultPrdFragmentMermaid(feature),
-      status: ['merged', 'integrated'].includes(existingStatus)
-        ? existingStatus
-        : (feature.archived ? 'archived' : existingStatus || (feature.status === 'done' ? 'ready_to_merge' : 'draft')),
-      merged: existingFragment ? existingFragment.merged : false,
-      mergedAt: existingFragment ? existingFragment.mergedAt : null,
-      fileName: existingFragment ? existingFragment.fileName : null,
-      filePath: existingFragment ? existingFragment.filePath : null,
-      fileUpdatedAt: existingFragment ? existingFragment.fileUpdatedAt : null,
-      fileMd5: existingFragment ? existingFragment.fileMd5 : '',
-      dbMd5: existingFragment ? existingFragment.dbMd5 : '',
-    });
-    return savedFragment;
-  }
-
-  function renderRoadmapPrdFragmentBody(project, context = {}) {
-    const phases = Array.isArray(context.phases) ? context.phases.filter((phase) => !phase.archived) : [];
-    const features = Array.isArray(context.features) ? context.features : [];
-    const bugs = Array.isArray(context.bugs) ? context.bugs : [];
-    return [
-      '## Executive Summary',
-      '',
-      `This fragment captures PRD updates that should stay aligned with the roadmap for ${project.name}.`,
-      '',
-      '## Roadmap Change Summary',
-      '',
-      ...(phases.length
-        ? phases.map((phase) => `- ${phase.code}: ${phase.name} (${phase.status})`)
-        : ['- No active phases captured yet.']),
-      '',
-      '## Feature Planning Impact',
-      '',
-      ...(features.length
-        ? features.map((feature) => `- ${feature.code}: ${feature.title} [${feature.planningBucket || 'considered'}]`)
-        : ['- No feature planning changes captured yet.']),
-      '',
-      '## Bug Planning Impact',
-      '',
-      ...(bugs.length
-        ? bugs.map((bug) => `- ${bug.code}: ${bug.title} [${bug.planningBucket || 'considered'}]`)
-        : ['- No bug planning changes captured yet.']),
-      '',
-      '## PRD Update Guidance',
-      '',
-      '- AI agents should read the roadmap, linked features, linked bugs, and phase sequencing before changing implementation scope.',
-      '- Update this fragment instead of editing PRD.md directly.',
-      `- Store PRD fragment files under data/projects/${project.id}/fragments/.`,
-      '- When implementation changes are approved, merge or integrate this fragment through the PRD module.',
-      '',
-    ].join('\n');
-  }
-
-  function renderRoadmapPrdFragmentMermaid(project, phases = []) {
-    const activePhases = Array.isArray(phases) ? phases.filter((phase) => !phase.archived) : [];
-    const lines = ['flowchart TD', `  roadmap["${String(project.name).replace(/"/g, '\\"')} Roadmap"]`, '  fragment["PRD Fragment"]', '  fragment --> prd["PRD.md"]'];
-    activePhases.forEach((phase) => {
-      const nodeId = `phase_${String(phase.code || phase.id).replace(/[^A-Za-z0-9]+/g, '_')}`;
-      lines.push(`  roadmap --> ${nodeId}["${String(`${phase.code}: ${phase.name}`).replace(/"/g, '\\"')}"]`);
-      lines.push(`  ${nodeId} --> fragment`);
-    });
-    return lines.join('\n');
-  }
-
-  async function upsertRoadmapPrdFragment(project, context = {}) {
-    if (!normalizeWorkspacePlugins(project.workspacePlugins).includes('prd')) return null;
-    const fragments = await readPrdFragments(project.id, { includeMerged: true });
-    const existing = fragments.find((fragment) => !fragment.featureId && fragment.title === 'Roadmap Planning Sync') || null;
-    return savePrdFragment({
-      id: existing ? existing.id : undefined,
-      projectId: project.id,
-      featureId: null,
-      title: 'Roadmap Planning Sync',
-      markdown: renderRoadmapPrdFragmentBody(project, context),
-      mermaid: renderRoadmapPrdFragmentMermaid(project, context.phases || []),
-      status: existing && existing.status ? existing.status : 'draft',
-      merged: existing ? existing.merged : false,
-      mergedAt: existing ? existing.mergedAt : null,
-      mergedFileName: existing ? existing.mergedFileName : null,
-      fileName: existing ? existing.fileName : null,
-      filePath: existing ? existing.filePath : null,
-      fileUpdatedAt: existing ? existing.fileUpdatedAt : null,
-      fileMd5: existing ? existing.fileMd5 : '',
-      dbMd5: existing ? existing.dbMd5 : '',
-    });
-  }
-
   async function importPrdFragmentFromFile(project, fragment, fileSnapshot) {
     const managedFragment = fileSnapshot && fileSnapshot.managed && fileSnapshot.managed.fragment;
     const resolvedMarkdown = typeof managedFragment?.markdown === 'string' && managedFragment.markdown.trim()
@@ -1502,7 +1296,7 @@ function createApp() {
       storedFragment = await getPrdFragmentById(project.id, fragment.id);
     }
     if (!storedFragment) return null;
-    let fileSnapshot = readPrdFragmentDocument(project, storedFragment);
+    let fileSnapshot = storedFragment.filePath ? readPrdFragmentDocument(project, storedFragment) : null;
     if (fileSnapshot && fileSnapshot.managed && isFileNewerThanDatabase(storedFragment, fileSnapshot)) {
       await importPrdFragmentFromFile(project, storedFragment, fileSnapshot);
       storedFragment = await getPrdFragmentById(project.id, storedFragment.id);
@@ -1527,18 +1321,11 @@ function createApp() {
       return storedFragment;
     }
 
-    const fragmentMarkdown = renderPrdFragmentMarkdown(project, storedFragment);
-    const dbMd5 = computeMd5(fragmentMarkdown);
-    let writeResult = null;
-    if (shouldRewriteDocumentFile(storedFragment, fileSnapshot, dbMd5)) {
-      writeResult = writePrdFragmentDocument(project, storedFragment);
-      fileSnapshot = writeResult.snapshot;
-    }
-
+    const dbMd5 = computeMd5([storedFragment.markdown || '', storedFragment.mermaid || ''].join('\n'));
     storedFragment = await savePrdFragment({
       ...storedFragment,
-      fileName: (writeResult && writeResult.fileName) || storedFragment.fileName || (fileSnapshot ? path.basename(fileSnapshot.docPath) : null),
-      filePath: fileSnapshot ? fileSnapshot.docPath : storedFragment.filePath,
+      fileName: storedFragment.fileName || (fileSnapshot ? path.basename(fileSnapshot.docPath) : null),
+      filePath: fileSnapshot ? fileSnapshot.docPath : null,
       fileUpdatedAt: fileSnapshot ? fileSnapshot.updatedAt : null,
       fileMd5: fileSnapshot ? fileSnapshot.md5 : '',
       dbMd5,
@@ -1549,20 +1336,10 @@ function createApp() {
   async function syncPrdFragmentsForProject(project) {
     await discoverPrdFragmentsFromDisk(project);
     await cleanupDuplicatePrdFragments(project);
-    const features = await readFeatureItems(project.id, { includeArchived: true });
-    for (const feature of features) {
-      const fragment = await upsertPrdFragmentForFeature(project, feature);
-      await syncPrdFragment(project, fragment);
-    }
     const fragments = await readPrdFragments(project.id, { includeMerged: true });
-    const fragmentByFeatureId = new Map(features.map((feature) => [feature.id, true]));
     const synchronized = [];
     for (const fragment of fragments) {
-      if (fragment.featureId && !fragmentByFeatureId.has(fragment.featureId)) {
-        synchronized.push(await syncPrdFragment(project, fragment));
-        continue;
-      }
-      if (!fragment.featureId) synchronized.push(await syncPrdFragment(project, fragment));
+      synchronized.push(await syncPrdFragment(project, fragment));
     }
     await cleanupMergedPrdFragmentFiles(project);
     const current = await readPrdFragments(project.id, { includeMerged: true });
@@ -1665,18 +1442,11 @@ function createApp() {
       storedFragment = await getRoadmapFragmentById(project.id, storedFragment.id);
     }
 
-    const fragmentMarkdown = renderRoadmapFragmentMarkdown(project, storedFragment);
-    const dbMd5 = computeMd5(fragmentMarkdown);
-    let writeResult = null;
-    if (shouldRewriteDocumentFile(storedDocMeta, fileSnapshot, dbMd5)) {
-      writeResult = writeRoadmapFragmentDocument(project, storedFragment);
-      fileSnapshot = writeResult.snapshot;
-    }
-
+    const dbMd5 = computeMd5([storedFragment.markdown || '', storedFragment.mermaid || ''].join('\n'));
     storedFragment = await saveRoadmapFragment({
       ...storedFragment,
-      fileName: (writeResult && writeResult.fileName) || storedFragment.fileName || (fileSnapshot ? path.basename(fileSnapshot.docPath) : null),
-      filePath: fileSnapshot ? fileSnapshot.docPath : storedFragment.filePath,
+      fileName: storedFragment.fileName || (fileSnapshot ? path.basename(fileSnapshot.docPath) : null),
+      filePath: fileSnapshot ? fileSnapshot.docPath : null,
       fileUpdatedAt: fileSnapshot ? fileSnapshot.updatedAt : null,
       fileMd5: fileSnapshot ? fileSnapshot.md5 : '',
       dbMd5,
@@ -1798,7 +1568,6 @@ function createApp() {
     if (!options.skipImport) {
       await maybeImportDocumentFile(project, 'roadmap', importRoadmapDocumentFromFile);
     }
-    await syncRoadmapFragmentsForProject(project);
     const state = await buildRoadmapState(project);
     const markdown = renderRoadmapMarkdown(project, state.phases, state.tasks, state.features, state.bugs, state.mermaid, {
       version: state.templateVersion,
@@ -1836,7 +1605,6 @@ function createApp() {
     if (!options.skipImport) {
       await maybeImportDocumentFile(project, 'features', importFeaturesDocumentFromFile);
     }
-    await syncPrdFragmentsForProject(project);
     const state = await buildFeaturesState(project);
     const markdown = renderFeaturesMarkdown(project, state.phases, state.features, state.mermaid);
     const syncResult = await finalizeDocumentSync(project, 'features', markdown, {
@@ -2035,6 +1803,7 @@ function createApp() {
     const shutdownLockedAppBeforeBuildDirectiveEnabled = Boolean(appSettings?.ai?.shutdownLockedAppBeforeBuildDirectiveEnabled);
     const runtimeDatabasePath = path.join(config.getDataDir(), 'app.db');
     const documentPath = getProjectDocPath(project, 'ai_environment');
+    const projectModuleAiDir = getProjectModuleAiDir(project);
     const softwareStandardsPath = getProjectSoftwareStandardsRegistryPath(project);
     const markdownBody = renderAiEnvironmentEditorStateMarkdown(project, editorState, {
       sharedProfiles,
@@ -2070,6 +1839,7 @@ function createApp() {
       directiveRegistry,
       runtimeDatabasePath,
       documentPath,
+      projectModuleAiDir,
       softwareStandardsPath,
     };
   }
@@ -3357,14 +3127,6 @@ function createApp() {
 
   async function syncRoadmapDependentDocuments(project, options = {}) {
     const roadmapState = await syncRoadmapDocument(project, options);
-    const roadmapFragment = await upsertRoadmapPrdFragment(project, {
-      phases: roadmapState.phases,
-      features: roadmapState.features,
-      bugs: roadmapState.bugs,
-    });
-    if (roadmapFragment) {
-      await syncPrdDocument(project, options);
-    }
     return roadmapState;
   }
 
@@ -3486,7 +3248,6 @@ function createApp() {
     ensureWorkspaceProject,
     removeWorkspacePluginArtifacts,
     removeProjectModuleArtifacts,
-    upsertPrdFragmentForFeature,
     syncPrdFragmentsForProject,
     cleanupMergedPrdFragmentFiles,
     syncRoadmapFragmentsForProject,

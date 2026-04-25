@@ -6,6 +6,7 @@ import { DocumentFieldMeta } from '@/components/ui/document-field-meta';
 import { FragmentBrowserModal } from '@/components/ui/fragment-browser-modal';
 import { InfoTile } from '@/components/ui/info-tile';
 import { SectionShell } from '@/components/ui/section-shell';
+import { SmartTokenField } from '@/components/ui/smart-token-field';
 import { StatisticsDisclosure } from '@/components/ui/statistics-disclosure';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { StructuredEntryListEditor } from '@/components/ui/structured-entry-list-editor';
@@ -23,9 +24,12 @@ const TABS = [
   { id: 'preview', label: 'Preview', title: 'Generated Functional Spec', description: 'Review the markdown that will drive fragments and downstream modules.' },
 ];
 
-const NODE_ORDER = ['start', 'user_action', 'system_action', 'decision', 'validation', 'loop', 'input', 'output', 'endpoint', 'return', 'error_path', 'log_audit', 'external_interaction', 'formula', 'model_reference', 'open_question'];
+const NODE_ORDER = ['start', 'user_action', 'system_action', 'decision', 'validation', 'loop', 'input', 'output', 'endpoint', 'return', 'error_path', 'log_audit', 'external_interaction', 'formula', 'model_reference', 'ai_placeholder', 'open_question'];
 const EDGE_TYPES = ['continue', 'if_then', 'else', 'loop_until', 'on_success', 'on_failure', 'returns_to', 'emits', 'consumes'];
 const NODE_DRAG_DATA_TYPE = 'application/x-apm-functional-node';
+const SMART_TEXT_ACTIONS = ['open', 'show', 'save', 'load', 'validate', 'generate', 'review', 'consume', 'integrate', 'archive', 'retry', 'return', 'emit', 'sync'];
+const SMART_TEXT_QUESTION_HINTS = ['assumption', 'decision', 'review', 'unknown', 'dependency', 'clarify'];
+const SMART_TEXT_GUARDRAILS = ['error', 'warning', 'audit', 'security', 'accessibility', 'performance', 'retry', 'log'];
 
 function createId(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
 function flowKey(flow, fallback = '') { return String(flow?.id || flow?.stableId || fallback || '').trim(); }
@@ -52,6 +56,7 @@ function nodeTypeLabel(value) {
     external_interaction: 'External Interaction',
     formula: 'Formula',
     model_reference: 'Model Reference',
+    ai_placeholder: 'AI Placeholder',
     open_question: 'Open Question',
   }[nodeType(value)] || 'Action';
 }
@@ -203,6 +208,102 @@ function splitLegacyTextToEntries(value) {
   return parts.map((description) => ({ title: '', description }));
 }
 
+function uniqueSmartEntries(entries) {
+  const seen = new Set();
+  return (Array.isArray(entries) ? entries : []).filter((entry) => {
+    const value = String(entry?.value || '').trim().toLowerCase();
+    if (!value || seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
+function buildFunctionalSmartTextCatalog(project, editableState, workItemLookup) {
+  const references = [];
+  const sections = [];
+  const workItems = [];
+  const actions = SMART_TEXT_ACTIONS.map((action) => ({
+    value: `/${action}`,
+    label: action,
+    detail: 'Functional action vocabulary',
+  }));
+  const questions = SMART_TEXT_QUESTION_HINTS.map((item) => ({
+    value: `?${item}`,
+    label: item,
+    detail: 'Open question / review marker',
+  }));
+  const guardrails = SMART_TEXT_GUARDRAILS.map((item) => ({
+    value: `!${item}`,
+    label: item,
+    detail: 'Guardrail or non-happy-path marker',
+  }));
+
+  (Array.isArray(editableState?.functionalAreas) ? editableState.functionalAreas : []).forEach((area, index) => {
+    const id = String(area?.stableId || areaKey(area, index)).trim();
+    if (!id) return;
+    references.push({ value: `@${id}`, label: areaTitle(area, index), detail: 'Functional area' });
+  });
+
+  (Array.isArray(editableState?.logicalFlows) ? editableState.logicalFlows : []).forEach((flow, index) => {
+    const id = String(flow?.stableId || flowKey(flow, `flow-${index + 1}`)).trim();
+    if (!id) return;
+    references.push({ value: `@${id}`, label: flow.title || `Flow ${index + 1}`, detail: 'Logical flow' });
+  });
+
+  (Array.isArray(editableState?.flowEndpoints) ? editableState.flowEndpoints : []).forEach((entry, index) => {
+    const id = String(entry?.stableId || entry?.id || `endpoint-${index + 1}`).trim();
+    if (!id) return;
+    references.push({ value: `@${id}`, label: entry.title || `Endpoint ${index + 1}`, detail: 'Flow endpoint or return point' });
+  });
+
+  (Array.isArray(editableState?.flowVisuals) ? editableState.flowVisuals : []).forEach((visual, visualIndex) => {
+    (Array.isArray(visual?.nodes) ? visual.nodes : []).forEach((node, nodeIndex) => {
+      const id = String(node?.stableId || node?.id || '').trim();
+      if (!id) return;
+      references.push({ value: `@${id}`, label: node.label || `${nodeTypeLabel(node.type)} ${nodeIndex + 1}`, detail: `${nodeTypeLabel(node.type)} node` });
+    });
+    (Array.isArray(visual?.edges) ? visual.edges : []).forEach((edge, edgeIndex) => {
+      const id = String(edge?.stableId || edge?.id || '').trim();
+      if (!id) return;
+      references.push({ value: `@${id}`, label: edge.label || `Connection ${edgeIndex + 1}`, detail: `${edgeTypeLabel(edge.type)} connection` });
+    });
+    const flowId = String(visual?.flowStableId || visual?.flowId || `flow-${visualIndex + 1}`).trim();
+    if (flowId) references.push({ value: `@${flowId}`, label: `Visual ${visualIndex + 1}`, detail: 'Flow visual' });
+  });
+
+  TABS.forEach((tab) => {
+    sections.push({ value: `#${tab.id}`, label: tab.title, detail: 'Functional Spec tab / section' });
+  });
+  NODE_ORDER.forEach((type) => {
+    sections.push({ value: `#${type}`, label: nodeTypeLabel(type), detail: 'Workflow node type' });
+  });
+  (Array.isArray(project?.modules) ? project.modules : []).forEach((module) => {
+    if (!module?.enabled) return;
+    const key = String(module.key || '').trim();
+    if (!key) return;
+    sections.push({ value: `#${key}`, label: module.label || module.name || key, detail: 'Enabled module' });
+  });
+
+  Object.values(workItemLookup || {}).forEach((item) => {
+    const code = String(item?.code || '').trim();
+    if (!code) return;
+    workItems.push({
+      value: `$${code}`,
+      label: `${code} - ${item.title || code}`,
+      detail: `${item.type || 'work item'} ${item.status ? `(${item.status})` : ''}`.trim(),
+    });
+  });
+
+  return {
+    '@': uniqueSmartEntries(references),
+    '#': uniqueSmartEntries(sections),
+    '$': uniqueSmartEntries(workItems),
+    '/': uniqueSmartEntries(actions),
+    '?': uniqueSmartEntries(questions),
+    '!': uniqueSmartEntries(guardrails),
+  };
+}
+
 function normalizeNode(value = {}, index = 0) {
   return {
     id: String(value?.id || createId('functional-node')),
@@ -331,18 +432,17 @@ function buildEditorState(editableState, currentState) {
   };
 }
 
-function FunctionalSpecTextArea({ label, help, rows = 6, value, onChange, stableId = '', sourceRefs = [], workItemLookup = {} }) {
+function FunctionalSpecTextArea({ label, help, rows = 6, value, onChange, stableId = '', sourceRefs = [], workItemLookup = {}, smartCatalog = {} }) {
   return (
     <SurfaceCard className="space-y-3">
-      <div className="space-y-1">
-        <p className="text-sm font-semibold text-white">{label}</p>
-        {help ? <p className="text-sm leading-6 text-sky-100/72">{help}</p> : null}
-      </div>
-      <textarea
+      <SmartTokenField
+        label={label}
+        help={help}
         rows={rows}
-        className="min-h-32 w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm leading-6 text-white outline-none focus:border-accent/60"
         value={value}
-        onChange={onChange}
+        onChange={(nextValue) => onChange({ target: { value: nextValue } })}
+        catalog={smartCatalog}
+        inputClassName="min-h-32 rounded-2xl px-3 py-3 text-sm leading-6"
       />
       <DocumentFieldMeta stableId={stableId} sourceRefs={sourceRefs} workItemLookup={workItemLookup} />
     </SurfaceCard>
@@ -562,6 +662,10 @@ export function FunctionalSpecWorkspace({ project, module }) {
   const selectedNode = useMemo(() => (selectedVisual?.nodes || []).find((node) => node.id === selectedNodeId) || null, [selectedVisual, selectedNodeId]);
   const selectedEdge = useMemo(() => (selectedVisual?.edges || []).find((edge) => edge.id === selectedEdgeId) || null, [selectedVisual, selectedEdgeId]);
   const hookPoints = useMemo(() => deriveEndpoints(editableState.logicalFlows, editableState.flowVisuals), [editableState.logicalFlows, editableState.flowVisuals]);
+  const smartTextCatalog = useMemo(
+    () => buildFunctionalSmartTextCatalog(project, { ...editableState, flowEndpoints: hookPoints }, workItemLookup),
+    [project, editableState, hookPoints, workItemLookup]
+  );
   const visibleFlowEntries = useMemo(() => editableState.logicalFlows
     .map((flow, index) => {
       const key = flowKey(flow, `flow-${index + 1}`);
@@ -718,7 +822,7 @@ export function FunctionalSpecWorkspace({ project, module }) {
         <div className="mt-5 space-y-4">
           {activeTab === 'overview' ? (
             <div className="space-y-4">
-              <FunctionalSpecTextArea label="Executive Summary" rows={6} help="Describe the behavioral scope this functional spec is defining, without dropping into implementation details." stableId={editableState.executiveSummaryMeta?.stableId} sourceRefs={editableState.executiveSummaryMeta?.sourceRefs} workItemLookup={workItemLookup} value={editableState.executiveSummary} onChange={(event) => setEditableState((current) => ({ ...current, executiveSummary: event.target.value }))} />
+              <FunctionalSpecTextArea label="Executive Summary" rows={6} help="Describe the behavioral scope this functional spec is defining, without dropping into implementation details." stableId={editableState.executiveSummaryMeta?.stableId} sourceRefs={editableState.executiveSummaryMeta?.sourceRefs} workItemLookup={workItemLookup} smartCatalog={smartTextCatalog} value={editableState.executiveSummary} onChange={(event) => setEditableState((current) => ({ ...current, executiveSummary: event.target.value }))} />
               <StructuredEntryListEditor label="Cross-Project Flow Attachments" help="Use this when a workflow in this project starts in, ends in, or coordinates with a parent project or sibling child project." entries={editableState.crossProjectFlows} onChange={(crossProjectFlows) => setEditableState((current) => ({ ...current, crossProjectFlows }))} workItemLookup={workItemLookup} primaryLabel="Attachment Title" primaryPlaceholder="Settings flow hands off to platform authentication" secondaryLabel="Attachment Description" secondaryPlaceholder="The parent platform invokes this child flow, then control returns through a shared endpoint after authentication succeeds." emptyLabel="No cross-project flow attachments defined yet." />
               <SurfaceCard className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/60">Unattached Functional Notes</p>
@@ -781,8 +885,67 @@ export function FunctionalSpecWorkspace({ project, module }) {
                     )) : <SurfaceCard><p className="text-sm leading-6 text-sky-100/70">No visible flows match this hierarchy selection. Select a different area or unhide a flow.</p></SurfaceCard>}
                     <WorkflowActionPalette onAddNode={addNode} />
                     <div className="grid gap-4 xl:grid-cols-2">
-                    {selectedNode ? <SurfaceCard className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/60">Selected Node</p><label className="space-y-2 text-sm text-sky-100/75"><span className="font-medium text-white">Node Type</span><select className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" value={selectedNode.type} onChange={(event) => updateNode({ type: event.target.value })}>{NODE_ORDER.map((type) => <option key={type} value={type}>{nodeTypeLabel(type)}</option>)}</select></label><label className="space-y-2 text-sm text-sky-100/75"><span className="font-medium text-white">Label</span><input className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" value={selectedNode.label} onChange={(event) => updateNode({ label: event.target.value })} /></label><label className="space-y-2 text-sm text-sky-100/75"><span className="font-medium text-white">Description</span><textarea rows={4} className="min-h-24 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" value={selectedNode.description} onChange={(event) => updateNode({ description: event.target.value })} /></label><label className="space-y-2 text-sm text-sky-100/75"><span className="font-medium text-white">Command / Intent</span><input className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" placeholder="Open, save, validate, retry..." value={selectedNode.command} onChange={(event) => updateNode({ command: event.target.value })} /></label><DocumentFieldMeta stableId={selectedNode.stableId} sourceRefs={selectedNode.sourceRefs} workItemLookup={workItemLookup} /><ActionButton variant="ghost" onClick={removeNode}>Delete Node</ActionButton></SurfaceCard> : null}
-                    {selectedEdge ? <SurfaceCard className="space-y-3"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/60">Selected Connection</p><label className="space-y-2 text-sm text-sky-100/75"><span className="font-medium text-white">Connection Type</span><select className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" value={selectedEdge.type || 'continue'} onChange={(event) => updateEdge({ type: event.target.value })}>{EDGE_TYPES.map((type) => <option key={type} value={type}>{edgeTypeLabel(type)}</option>)}</select></label><label className="space-y-2 text-sm text-sky-100/75"><span className="font-medium text-white">Label</span><input className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" placeholder="success, failure, yes, no..." value={selectedEdge.label} onChange={(event) => updateEdge({ label: event.target.value })} /></label><label className="space-y-2 text-sm text-sky-100/75"><span className="font-medium text-white">Condition / Logic Hint</span><textarea rows={3} className="min-h-20 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" placeholder="If @model.field is greater than..." value={selectedEdge.conditionText || ''} onChange={(event) => updateEdge({ conditionText: event.target.value })} /></label><label className="flex items-center gap-2 text-sm text-sky-100/75"><input type="checkbox" checked={Boolean(selectedEdge.hidden)} onChange={(event) => updateEdge({ hidden: event.target.checked })} /><span>Hide this connection in the canvas</span></label><DocumentFieldMeta stableId={selectedEdge.stableId} sourceRefs={selectedEdge.sourceRefs} workItemLookup={workItemLookup} /><ActionButton variant="ghost" onClick={removeEdge}>Delete Connection</ActionButton></SurfaceCard> : null}
+                    {selectedNode ? (
+                      <SurfaceCard className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/60">Selected Node</p>
+                        <label className="space-y-2 text-sm text-sky-100/75">
+                          <span className="font-medium text-white">Node Type</span>
+                          <select className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" value={selectedNode.type} onChange={(event) => updateNode({ type: event.target.value })}>
+                            {NODE_ORDER.map((type) => <option key={type} value={type}>{nodeTypeLabel(type)}</option>)}
+                          </select>
+                        </label>
+                        <label className="space-y-2 text-sm text-sky-100/75">
+                          <span className="font-medium text-white">Label</span>
+                          <input className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" value={selectedNode.label} onChange={(event) => updateNode({ label: event.target.value })} />
+                        </label>
+                        <SmartTokenField
+                          label="Description"
+                          help="Use Smart Text to reference related nodes, flows, modules, and work items while keeping the functional wording human-readable."
+                          rows={4}
+                          value={selectedNode.description}
+                          onChange={(nextValue) => updateNode({ description: nextValue })}
+                          catalog={smartTextCatalog}
+                        />
+                        <SmartTokenField
+                          label="Command / Intent"
+                          help="Prefer readable actions like /open, /save, /validate, or /consume. You can also mix in work-item or module references."
+                          multiline={false}
+                          value={selectedNode.command}
+                          onChange={(nextValue) => updateNode({ command: nextValue })}
+                          placeholder="Open, save, validate, retry..."
+                          catalog={smartTextCatalog}
+                        />
+                        <DocumentFieldMeta stableId={selectedNode.stableId} sourceRefs={selectedNode.sourceRefs} workItemLookup={workItemLookup} />
+                        <ActionButton variant="ghost" onClick={removeNode}>Delete Node</ActionButton>
+                      </SurfaceCard>
+                    ) : null}
+                    {selectedEdge ? (
+                      <SurfaceCard className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/60">Selected Connection</p>
+                        <label className="space-y-2 text-sm text-sky-100/75">
+                          <span className="font-medium text-white">Connection Type</span>
+                          <select className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" value={selectedEdge.type || 'continue'} onChange={(event) => updateEdge({ type: event.target.value })}>
+                            {EDGE_TYPES.map((type) => <option key={type} value={type}>{edgeTypeLabel(type)}</option>)}
+                          </select>
+                        </label>
+                        <label className="space-y-2 text-sm text-sky-100/75">
+                          <span className="font-medium text-white">Label</span>
+                          <input className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:border-accent/60" placeholder="success, failure, yes, no..." value={selectedEdge.label} onChange={(event) => updateEdge({ label: event.target.value })} />
+                        </label>
+                        <SmartTokenField
+                          label="Condition / Logic Hint"
+                          help="Use Smart Text for first-pass logic such as @references, $work items, /actions, and !guardrails without forcing a full programming syntax."
+                          rows={3}
+                          value={selectedEdge.conditionText || ''}
+                          onChange={(nextValue) => updateEdge({ conditionText: nextValue })}
+                          placeholder="If @model.field is greater than..."
+                          catalog={smartTextCatalog}
+                        />
+                        <label className="flex items-center gap-2 text-sm text-sky-100/75"><input type="checkbox" checked={Boolean(selectedEdge.hidden)} onChange={(event) => updateEdge({ hidden: event.target.checked })} /><span>Hide this connection in the canvas</span></label>
+                        <DocumentFieldMeta stableId={selectedEdge.stableId} sourceRefs={selectedEdge.sourceRefs} workItemLookup={workItemLookup} />
+                        <ActionButton variant="ghost" onClick={removeEdge}>Delete Connection</ActionButton>
+                      </SurfaceCard>
+                    ) : null}
                     <SurfaceCard className="xl:col-span-2"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-100/60">Shared Flow References</p><div className="mt-3 space-y-2">{editableState.logicalFlows.filter((flow) => flow.isShared).length ? editableState.logicalFlows.filter((flow) => flow.isShared).map((flow, index) => { const area = editableState.functionalAreas.find((entry, areaIndex) => areaKey(entry, areaIndex) === flowAreaKey(flow)); return <div key={flowKey(flow, `shared-flow-${index}`)} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-3"><p className="text-sm font-semibold text-white">{flow.title || 'Untitled shared flow'}</p><p className="mt-1 text-xs leading-5 text-sky-100/70">Referenced by {area ? areaTitle(area) : 'Unassigned'}.</p></div>; }) : <p className="text-sm leading-6 text-sky-100/68">Mark a flow as shared to track where it is reused.</p>}</div></SurfaceCard>
                     </div>
                   </div>

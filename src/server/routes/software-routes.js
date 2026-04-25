@@ -28,7 +28,6 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
     readProjectDocument,
     saveProjectDocument,
     ensureWorkspaceProject,
-    upsertPrdFragmentForFeature,
     syncPrdFragmentsForProject,
     cleanupMergedPrdFragmentFiles,
     syncRoadmapFragmentsForProject,
@@ -1303,7 +1302,6 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         planningBucket: existing?.planningBucket || 'planned',
         archived: false,
       });
-      await upsertPrdFragmentForFeature(project, savedFeature);
       await appendDocumentFragmentHistory(project, 'features', {
         id: `features:${details.code || savedFeature.code || fileName}`,
         code: details.code || savedFeature.code || fileName.replace(/\.md$/i, ''),
@@ -1360,9 +1358,8 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
         progress: req.body.progress,
         milestone: req.body.milestone,
         sortOrder: req.body.sortOrder,
-        archived: !!req.body.archived,
+        archived: req.body.archived,
       });
-      await upsertPrdFragmentForFeature(project, feature);
       await syncFeaturesDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
       await emitProjectFamilyActivity(project.id, 'feature.created', {
@@ -1382,13 +1379,14 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
       ensureWorkspaceProject(project);
       const feature = await getFeatureItemById(project.id, req.params.featureId);
       if (!feature) return res.status(404).json({ error: 'Feature not found' });
-      const saved = await saveFeatureItem({
+      const nextPayload = {
         ...feature,
         ...req.body,
         id: feature.id,
         projectId: project.id,
-      });
-      await upsertPrdFragmentForFeature(project, saved);
+      };
+      if (req.body?.archived === undefined) delete nextPayload.archived;
+      const saved = await saveFeatureItem(nextPayload);
       await syncFeaturesDocument(project, { skipImport: true });
       await syncRoadmapDependentDocuments(project, { skipImport: true });
       await emitProjectFamilyActivity(project.id, 'feature.updated', {

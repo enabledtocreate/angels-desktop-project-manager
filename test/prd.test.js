@@ -595,7 +595,7 @@ test('AI environment module syncs a managed document and persists structured edi
   const currentRoots = await request('/api/roots');
   assert.match(result.body.markdown, /## 1\. Mission/);
   assert.match(result.body.markdown, /## 4\. APM Term Dictionary/);
-  assert.match(result.body.markdown, /## 7\. Directive Template References/);
+  assert.match(result.body.markdown, /## 7\. Module AI and Template References/);
   assert.match(result.body.markdown, /## 8\. Locked System Directives/);
   assert.match(result.body.markdown, /Use the configured fragments path/);
   assert.match(result.body.markdown, /Fragments generated for this project must be placed in/);
@@ -603,7 +603,9 @@ test('AI environment module syncs a managed document and persists structured edi
     result.body.softwareStandardsPath,
     path.join(currentRoots.body.dataDir, 'projects', project.id, 'standards', 'software', 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')
   );
+  assert.match(result.body.markdown, /ai\/modules\/ROADMAP\.ai\.md/);
   assert.match(result.body.markdown, /templates\/ROADMAP\.template\.md/);
+  assert.match(result.body.markdown, /templates\/ROADMAP_FRAGMENT\.template\.md/);
   assert.match(result.body.markdown, /## 9\. Module Directive Index/);
   assert.match(result.body.markdown, /### 9\.1 Roadmap/);
   assert.match(result.body.markdown, /#### 9\.1\.1 Use active roadmap and feature context/);
@@ -1301,6 +1303,11 @@ test('nextjs migration sweep wires remaining software and core workspaces into t
   assert.match(architectureWorkspace, /Project Family Orchestration/);
   assert.match(domainModelsWorkspace, /ProjectFamilyDocumentContext/);
   assert.match(domainModelsWorkspace, /Project Family Model Sharing/);
+  assert.match(domainModelsWorkspace, /Field Registry Table/);
+  assert.match(domainModelsWorkspace, /Model Settings/);
+  assert.match(domainModelsWorkspace, /validateDomainField/);
+  assert.match(domainModelsWorkspace, /Default Value/);
+  assert.match(domainModelsWorkspace, /Allowed Values/);
   assert.match(projectFamilyDocumentContext, /Project Family Context/);
   assert.match(projectFamilyDocumentContext, /Parent orchestration/);
   assert.match(projectFamilyDocumentContext, /Child autonomous/);
@@ -1315,6 +1322,9 @@ test('nextjs migration sweep wires remaining software and core workspaces into t
   assert.match(featuresWorkspace, /Features workspace/);
   assert.match(featuresWorkspace, /Create feature/);
   assert.match(featuresWorkspace, /Load Fragments/);
+  assert.match(featuresWorkspace, /isUnarchivingArchivedFeature/);
+  assert.match(featuresWorkspace, /which usually means it was implemented/);
+  assert.match(featuresWorkspace, /window\.confirm/);
   assert.match(bugsHook, /\/api\/projects\/\$\{project\.id\}\/bugs/);
   assert.match(bugsHook, /\/api\/projects\/\$\{project\.id\}\/bugs\/fragments/);
   assert.match(bugsWorkspace, /Bugs workspace/);
@@ -1527,6 +1537,7 @@ test('architecture and database schema modules are editable through the shared d
   assert.doesNotMatch(result.body.dbml, /Table stale/);
 
   const projectDocsDir = path.join(project.absolutePath, 'docs');
+  const projectModuleAiDir = path.join(project.absolutePath, 'ai', 'modules');
   const rootsForSchema = await request('/api/roots');
   const projectTemplatesDir = path.join(rootsForSchema.body.dataDir, 'projects', project.id, 'templates');
   const projectWorkspaceDir = path.join(project.absolutePath, '.apm', '_WORKSPACE');
@@ -1537,6 +1548,8 @@ test('architecture and database schema modules are editable through the shared d
   const architectureTemplatePath = path.join(projectTemplatesDir, 'ARCHITECTURE.template.md');
   const schemaTemplatePath = path.join(projectTemplatesDir, 'DATABASE_SCHEMA.template.md');
   const schemaFragmentTemplatePath = path.join(projectFragmentsDir, 'DATABASE_SCHEMA_FRAGMENT.template.md');
+  const architectureAiPath = path.join(projectModuleAiDir, 'ARCHITECTURE.ai.md');
+  const schemaAiPath = path.join(projectModuleAiDir, 'DATABASE_SCHEMA.ai.md');
   const workspaceTodoPath = path.join(projectWorkspaceDir, 'TODO.md');
   assert.equal(fs.existsSync(architectureDocPath), true);
   assert.equal(fs.existsSync(schemaDocPath), true);
@@ -1544,6 +1557,8 @@ test('architecture and database schema modules are editable through the shared d
   assert.equal(fs.existsSync(architectureTemplatePath), true);
   assert.equal(fs.existsSync(schemaTemplatePath), true);
   assert.equal(fs.existsSync(schemaFragmentTemplatePath), true);
+  assert.equal(fs.existsSync(architectureAiPath), true);
+  assert.equal(fs.existsSync(schemaAiPath), true);
   assert.equal(fs.existsSync(workspaceTodoPath), true);
 
   const architectureFile = fs.readFileSync(architectureDocPath, 'utf8');
@@ -1559,17 +1574,21 @@ test('architecture and database schema modules are editable through the shared d
   const schemaFragmentTemplateFile = fs.readFileSync(schemaFragmentTemplatePath, 'utf8');
   assert.match(schemaFragmentTemplateFile, /DATABASE_SCHEMA_FRAGMENT\.template\.md/);
   assert.match(schemaFragmentTemplateFile, /## DBML/);
-  assert.match(schemaFragmentTemplateFile, /Do not invent tables, fields, keys, defaults, indexes, or constraints/);
+  const schemaAiFile = fs.readFileSync(path.join(repoRoot, 'templates', 'DATABASE_SCHEMA.ai.md'), 'utf8');
+  assert.match(schemaAiFile, /Do not invent tables, fields, keys, defaults, indexes, or constraints/);
+  const architectureAiFile = fs.readFileSync(architectureAiPath, 'utf8');
+  assert.match(architectureAiFile, /# Architecture Module AI/);
+  assert.match(architectureAiFile, /Document Rules/);
   const architectureTemplateFile = fs.readFileSync(architectureTemplatePath, 'utf8');
   assert.match(architectureTemplateFile, /### 1\.3 Architectural Style/);
   assert.match(architectureTemplateFile, /### 4\.2 Component Connections/);
   assert.match(architectureTemplateFile, /### 5\.2 Architecture Workflows/);
-  assert.match(architectureTemplateFile, /Template Version: `2\.0`/);
+  assert.match(architectureTemplateFile, /Template Version: `2\.3`/);
 
   const adrTemplateFile = fs.readFileSync(path.join(repoRoot, 'templates', 'ADR.template.md'), 'utf8');
   assert.match(adrTemplateFile, /## 2\. Decision Metadata/);
   assert.match(adrTemplateFile, /## 8\. Related Architecture Elements/);
-  assert.match(adrTemplateFile, /Template Version: `2\.0`/);
+  assert.match(adrTemplateFile, /Template Version: `2\.3`/);
 
   const architectureRow = await dbModule.dbGet(
     'SELECT module_key, template_name, source_of_truth, editor_state FROM project_md_documents WHERE project_id = ? AND doc_type = ?',
@@ -2768,6 +2787,50 @@ test('typed work items expose a unified core work-item view while keeping softwa
   assert.equal(syncedFeature.category, 'Delivery');
   assert.equal(syncedFeature.progress, 60);
 
+  result = await request(`/api/projects/${project.id}/features`, {
+    method: 'POST',
+    body: JSON.stringify({
+      title: 'Archived feature can return',
+      summary: 'Feature should be restorable from archive.',
+      planningBucket: 'archived',
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.archived, true);
+  const archivedFeature = result.body;
+  result = await request(`/api/projects/${project.id}/features/${archivedFeature.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      planningBucket: 'planned',
+      status: 'planned',
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.archived, false);
+  assert.equal(result.body.planningBucket, 'planned');
+
+  result = await request(`/api/projects/${project.id}/features/${archivedFeature.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      planningBucket: 'considered',
+      archived: true,
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.archived, false);
+  assert.equal(result.body.planningBucket, 'considered');
+
+  result = await request(`/api/projects/${project.id}/features/${archivedFeature.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      planningBucket: 'archived',
+      archived: false,
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.archived, true);
+  assert.equal(result.body.planningBucket, 'archived');
+
   result = await request(`/api/projects/${project.id}/work-items/${bug.taskId}`);
   assert.equal(result.response.status, 200);
   assert.equal(result.body.workItemType, 'software_bug');
@@ -3097,7 +3160,7 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   });
   assert.equal(result.response.status, 200);
   assert.match(result.body.markdown, /Phase 5 planning surface/);
-  assert.equal(result.body.fragments.some((fragment) => fragment.featureId === feature.id), true);
+  assert.equal(result.body.fragments.some((fragment) => fragment.featureId === feature.id), false);
   assert.equal(result.body.editorState.executiveSummary.text, 'Phase 5 planning surface.');
 
   const roadmapState = (await request(`/api/projects/${project.id}/roadmap`)).body;
@@ -3111,8 +3174,8 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
 
   const featuresState = (await request(`/api/projects/${project.id}/features`)).body;
   assert.equal(featuresState.features.length, 1);
-  assert.equal(featuresState.fragments.some((fragment) => fragment.featureId === feature.id), true);
-  assert.match(featuresState.markdown, /AI Agent instruction: When this feature is implemented, create or update the matching PRD fragment in the database first/);
+  assert.equal(featuresState.fragments.some((fragment) => fragment.featureId === feature.id), false);
+  assert.match(featuresState.markdown, /The application tracks and consumes fragments, but does not generate them automatically/);
 
   const bugsState = (await request(`/api/projects/${project.id}/bugs`)).body;
   assert.equal(bugsState.bugs.length, 1);
@@ -3121,12 +3184,11 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   assert.match(bugsState.markdown, /#### Expected Behavior/);
 
   const prdState = (await request(`/api/projects/${project.id}/prd`)).body;
-  const featurePrdFragment = prdState.fragments.find((fragment) => fragment.featureId === feature.id);
   assert.match(prdState.markdown, /Phase 5 planning surface/);
-  assert(featurePrdFragment);
-  assert.match(featurePrdFragment.markdown, /AI agents should update this fragment instead of editing PRD\.md directly\./);
+  assert.equal(prdState.fragments.some((fragment) => fragment.featureId === feature.id), false);
 
   const alphaDocsDir = path.join(roots.projectsRoot, 'Alpha', 'docs');
+  const alphaProjectAiDir = path.join(roots.projectsRoot, 'Alpha', 'ai', 'modules');
   const alphaTemplatesDir = path.join(roots.dataDir, 'projects', project.id, 'templates');
   const alphaSoftwareStandardsDir = path.join(roots.dataDir, 'projects', project.id, 'standards', 'software');
   const alphaFragmentsDir = path.join(roots.dataDir, 'projects', project.id, 'fragments');
@@ -3139,20 +3201,23 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'BUGS.template.md')), true);
   assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'PRD.template.md')), true);
   assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'FUNCTIONAL_SPEC.template.md')), true);
+  assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'ROADMAP.ai.md')), true);
+  assert.equal(fs.existsSync(path.join(alphaTemplatesDir, 'FUNCTIONAL_SPEC.ai.md')), true);
+  assert.equal(fs.existsSync(path.join(alphaProjectAiDir, 'ROADMAP.ai.md')), true);
+  assert.equal(fs.existsSync(path.join(alphaProjectAiDir, 'FUNCTIONAL_SPEC.ai.md')), true);
   assert.equal(fs.existsSync(path.join(alphaSoftwareStandardsDir, 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')), true);
-  assert.equal(fs.existsSync(path.join(alphaFragmentsDir, featurePrdFragment.fileName)), true);
   for (const templateName of Object.values(workspaceDocs.FRAGMENT_TEMPLATE_NAMES)) {
     assert.equal(fs.existsSync(path.join(alphaFragmentsDir, templateName)), true);
   }
   const generatedRoadmapTemplate = fs.readFileSync(path.join(alphaTemplatesDir, 'ROADMAP.template.md'), 'utf8');
-  assert.match(generatedRoadmapTemplate, /## Version/);
-  assert.match(generatedRoadmapTemplate, /Template Version: `2\.1`/);
-  assert.match(generatedRoadmapTemplate, /## Model Context Protocol/);
+  assert.match(generatedRoadmapTemplate, /## 1\. Template Contract Metadata/);
+  assert.match(generatedRoadmapTemplate, /Template Version: `2\.4`/);
+  assert.match(generatedRoadmapTemplate, /## Structure Definition/);
   assert.match(generatedRoadmapTemplate, /### Phases/);
   assert.match(generatedRoadmapTemplate, /### Planned Features/);
   assert.match(generatedRoadmapTemplate, /### Considered Features/);
   const generatedFunctionalSpecTemplate = fs.readFileSync(path.join(alphaTemplatesDir, 'FUNCTIONAL_SPEC.template.md'), 'utf8');
-  assert.match(generatedFunctionalSpecTemplate, /Template Version: `2\.0`/);
+  assert.match(generatedFunctionalSpecTemplate, /Template Version: `2\.4`/);
   assert.match(generatedFunctionalSpecTemplate, /## Functional Flowchart Action Vocabulary/);
   assert.match(generatedFunctionalSpecTemplate, /### Node Types/);
   assert.match(generatedFunctionalSpecTemplate, /Decision: Describes a conditional branch/);
@@ -3163,7 +3228,8 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
     'SELECT template_name, template_kind, template_version, source_md5, target_md5, target_path FROM project_template_files WHERE project_id = ?',
     [project.id]
   );
-  assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.template.md' && row.template_version === '2.0'));
+  assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.template.md' && row.template_version === '2.4'));
+  assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.ai.md' && row.template_kind === 'ai'));
   assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC_FRAGMENT.template.md' && row.template_kind === 'fragment'));
   assert(templateRegistryRows.every((row) => row.source_md5 && row.target_md5 && row.target_path));
 
@@ -3218,11 +3284,12 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   const fragmentTime = new Date(Date.now() + 10000);
   fs.utimesSync(path.join(alphaFragmentsDir, roadmapFragment.fileName), fragmentTime, fragmentTime);
 
+  const roadmapFragmentDiscovery = (await request(`/api/projects/${project.id}/roadmap/fragments`)).body;
+  assert.equal(roadmapFragmentDiscovery.fragments.length, 1);
   const roadmapAfterFragmentDiscovery = (await request(`/api/projects/${project.id}/roadmap`)).body;
-  assert.equal(roadmapAfterFragmentDiscovery.fragments.length, 1);
   assert.equal(roadmapAfterFragmentDiscovery.features.filter((item) => !item.archived).length >= 1, true);
 
-  result = await request(`/api/projects/${project.id}/roadmap/fragments/${roadmapAfterFragmentDiscovery.fragments[0].id}/integrate`, {
+  result = await request(`/api/projects/${project.id}/roadmap/fragments/${roadmapFragmentDiscovery.fragments[0].id}/integrate`, {
     method: 'POST',
     body: JSON.stringify({}),
   });
@@ -3250,60 +3317,18 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   const importedBugsState = (await request(`/api/projects/${project.id}/bugs`)).body;
   assert.equal(importedBugsState.bugs[0].currentBehavior, expectedImportedCurrentBehavior);
 
-  result = await request(`/api/projects/${project.id}/prd/fragments/${featurePrdFragment.id}/merge`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
-  assert.equal(result.response.status, 200);
-  assert.equal(result.body.fragment.merged, true);
-  assert.match(result.body.prd.markdown, /## 10\. Applied Fragments/);
-  assert.equal(fs.existsSync(path.join(alphaFragmentsDir, featurePrdFragment.fileName)), false);
-
-  const prdAfterMerge = (await request(`/api/projects/${project.id}/prd`)).body;
-  const mergedFeatureFragment = prdAfterMerge.fragments.find((fragment) => fragment.id === featurePrdFragment.id);
-  assert(mergedFeatureFragment);
-  assert.equal(mergedFeatureFragment.merged, true);
-  assert.equal(fs.existsSync(path.join(alphaFragmentsDir, featurePrdFragment.fileName)), false);
-  assert.match(prdAfterMerge.markdown, /Status: merged/);
-
-  result = await request(`/api/projects/${project.id}/prd/fragments/${featurePrdFragment.id}/integrate`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
-  assert.equal(result.response.status, 200);
-  assert.equal(result.body.fragment.status, 'integrated');
-  assert.equal(result.body.features.features[0].archived, true);
-  assert.match(result.body.prd.markdown, /## 9\. Future Enhancements/);
-  assert.match(result.body.prd.markdown, /Status: integrated/);
-  assert.doesNotMatch(result.body.prd.markdown, /```text/);
-  assert.doesNotMatch(result.body.prd.markdown, /Store PRD fragment files under/);
-
   const bugDocRow = await dbModule.dbGet('SELECT file_path, file_updated_at, file_md5, db_md5 FROM project_md_documents WHERE project_id = ? AND doc_type = ?', [project.id, 'bugs']);
   assert.equal(bugDocRow.file_path.endsWith(path.join('Alpha', 'docs', 'BUGS.md')), true);
   assert.equal(Boolean(bugDocRow.file_updated_at), true);
   assert.equal(Boolean(bugDocRow.file_md5), true);
   assert.equal(Boolean(bugDocRow.db_md5), true);
 
-  const fragmentRow = await dbModule.dbGet('SELECT feature_id, file_name, merged_file_name, file_path, file_updated_at, file_md5, db_md5, merged, status FROM prd_fragments WHERE project_id = ? AND feature_id = ?', [project.id, feature.id]);
-  assert.equal(fragmentRow.feature_id, feature.id);
-  assert.equal(fragmentRow.file_name, featurePrdFragment.fileName);
-  assert.equal(fragmentRow.merged_file_name, featurePrdFragment.fileName);
-  assert.equal(fragmentRow.file_path, null);
-  assert.equal(fragmentRow.file_updated_at, null);
-  assert.equal(fragmentRow.file_md5, '');
-  assert.equal(Boolean(fragmentRow.db_md5), true);
-  assert.equal(fragmentRow.merged, 1);
-  assert.equal(fragmentRow.status, 'integrated');
-
   const prdRow = await dbModule.dbGet('SELECT editor_state FROM project_md_documents WHERE project_id = ? AND doc_type = ?', [project.id, 'prd']);
+  const featureFragmentCount = await dbModule.dbGet('SELECT COUNT(*) AS count FROM prd_fragments WHERE project_id = ? AND feature_id = ?', [project.id, feature.id]);
+  assert.equal(featureFragmentCount.count, 0);
   const parsedEditorState = JSON.parse(prdRow.editor_state);
   assert.equal(parsedEditorState.executiveSummary.text, 'Phase 5 planning surface.');
-  assert.equal(parsedEditorState.appliedFragments.some((item) => item.status === 'integrated'), true);
   assert.equal(parsedEditorState.futureEnhancements.some((item) => item && item.featureId === feature.id), false);
-  const integratedAuditEntry = parsedEditorState.appliedFragments.find((item) => item && item.fragmentId === featurePrdFragment.id);
-  assert(integratedAuditEntry);
-  assert.equal(integratedAuditEntry.sourceFeatureStatus, 'implemented');
-  assert.equal(Boolean(integratedAuditEntry.summary), true);
 
   const roadmapTemplateRepo = path.join(repoRoot, 'templates', 'ROADMAP.template.md');
   assert.equal(fs.existsSync(roadmapTemplateRepo), true);
@@ -3313,7 +3338,7 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   assert.equal(fs.existsSync(path.join(repoRoot, 'templates', 'DATABASE_SCHEMA_FRAGMENT.template.md')), true);
 });
 
-test('imported shared PRD fragments are persisted once, source-cleaned, and rewritten to the project fragment directory', async () => {
+test('imported shared PRD fragments are persisted once and source-cleaned without app-generated rewrites', async () => {
   const { body: roots } = await request('/api/roots');
   const project = (await request('/api/projects')).body.find((item) => item.id === 'legacy-project-1');
   assert(project);
@@ -3344,7 +3369,7 @@ test('imported shared PRD fragments are persisted once, source-cleaned, and rewr
   assert.equal(result.response.status, 200);
   assert.equal(result.body.fragments.filter((fragment) => fragment.code === 'PRDFRAG-IMPORT-001').length, 1);
   assert.equal(fs.existsSync(sharedFragmentPath), false);
-  assert.equal(fs.existsSync(path.join(projectFragmentsDir, fileName)), true);
+  assert.equal(fs.existsSync(path.join(projectFragmentsDir, fileName)), false);
 
   result = await request(`/api/projects/${project.id}/prd/fragments`);
   assert.equal(result.response.status, 200);
@@ -3580,15 +3605,16 @@ test('merged PRD fragment files are deleted from the docs folder and stay delete
     status: 'draft',
     merged: false,
   });
-  const writeResult = workspaceDocs.writePrdFragmentDocument(project, fragment);
-  const writtenFragmentPath = writeResult.snapshot.docPath;
+  const writtenFragmentPath = workspaceDocs.getPrdFragmentPath(project, fragment);
+  fs.writeFileSync(writtenFragmentPath, workspaceDocs.renderPrdFragmentMarkdown(project, fragment), 'utf8');
+  const writtenSnapshot = workspaceDocs.readManagedFileSnapshot(writtenFragmentPath);
   await persistence.savePrdFragment({
     ...fragment,
     fileName: path.basename(writtenFragmentPath),
     filePath: writtenFragmentPath,
-    fileUpdatedAt: writeResult.snapshot.updatedAt,
-    fileMd5: writeResult.snapshot.md5,
-    dbMd5: writeResult.snapshot.md5,
+    fileUpdatedAt: writtenSnapshot.updatedAt,
+    fileMd5: writtenSnapshot.md5,
+    dbMd5: writtenSnapshot.md5,
   });
   assert.equal(fs.existsSync(writtenFragmentPath), true);
 
@@ -3677,16 +3703,17 @@ test('archived PRD fragments keep history but clean up their on-disk file', asyn
     status: 'draft',
     merged: false,
   });
-  const writeResult = workspaceDocs.writePrdFragmentDocument(project, fragment);
-  const writtenFragmentPath = writeResult.snapshot.docPath;
+  const writtenFragmentPath = workspaceDocs.getPrdFragmentPath(project, fragment);
+  fs.writeFileSync(writtenFragmentPath, workspaceDocs.renderPrdFragmentMarkdown(project, fragment), 'utf8');
+  const writtenSnapshot = workspaceDocs.readManagedFileSnapshot(writtenFragmentPath);
   await persistence.savePrdFragment({
     ...fragment,
     status: 'archived',
     fileName: path.basename(writtenFragmentPath),
     filePath: writtenFragmentPath,
-    fileUpdatedAt: writeResult.snapshot.updatedAt,
-    fileMd5: writeResult.snapshot.md5,
-    dbMd5: writeResult.snapshot.md5,
+    fileUpdatedAt: writtenSnapshot.updatedAt,
+    fileMd5: writtenSnapshot.md5,
+    dbMd5: writtenSnapshot.md5,
   });
   assert.equal(fs.existsSync(writtenFragmentPath), true);
 
@@ -4104,7 +4131,7 @@ test('AI environment markdown always includes locked system directives for fragm
 
   assert.match(markdown, /## 1\. Mission/);
   assert.match(markdown, /## 4\. APM Term Dictionary/);
-  assert.match(markdown, /## 7\. Directive Template References/);
+  assert.match(markdown, /## 7\. Module AI and Template References/);
   assert.match(markdown, /## 8\. Locked System Directives/);
   assert.match(markdown, /Use the configured fragments path/);
   assert.match(markdown, /live runtime SQLite database/);
@@ -4121,6 +4148,13 @@ test('AI environment markdown always includes locked system directives for fragm
   assert.match(markdown, /Create stable human-readable ids for persisted items/);
   assert.match(markdown, /apm\.shared\.stable-id\.naming/);
   assert.match(markdown, /short lowercase kebab-case identifier scoped by module or item type/);
+  assert.match(markdown, /Use token references in generated fragments/);
+  assert.match(markdown, /apm\.shared\.fragment-token-references/);
+  assert.match(markdown, /@stable-id/);
+  assert.match(markdown, /#module-or-section/);
+  assert.match(markdown, /\$work-item-code/);
+  assert.match(markdown, /\/operation/);
+  assert.match(markdown, /!guardrail/);
   assert.match(markdown, /Parent Project/);
   assert.match(markdown, /Project Family/);
   assert.match(markdown, /Cross-Project Relationship/);
@@ -4130,11 +4164,13 @@ test('AI environment markdown always includes locked system directives for fragm
   assert.match(markdown, /apm\.module\.bugs\.regression-test-followup/);
   assert.match(markdown, /Paths:/);
   assert.match(markdown, /Project Fragments Path/);
+  assert.match(markdown, /ai\/modules\/CHANGELOG\.ai\.md/);
   assert.match(markdown, /templates\/CHANGELOG\.template\.md/);
+  assert.match(markdown, /templates\/CHANGELOG_FRAGMENT\.template\.md/);
   assert.match(markdown, /\| Stable ID \|/);
   assert.match(markdown, /ai-environment-term-dictionary-apm/);
   assert.match(markdown, /apm\.module\.changelog\.traceability/);
-  assert.match(markdown, /Module and template directives are authoritative/);
+  assert.match(markdown, /Module AI files and artifact templates are authoritative/);
   assert.match(markdown, /## 12\. Project Family Read Order/);
   assert.match(markdown, /## 13\. Project Family Inheritance Rules/);
   assert.match(markdown, /app\.db/);
@@ -4607,12 +4643,49 @@ test('roadmap and features markdown only render active unfinished feature work',
 
 test('template inventory includes document and fragment templates for every document-oriented module', () => {
   for (const definition of Object.values(workspaceDocs.DOC_TYPES)) {
-    assert.equal(fs.existsSync(path.join(repoRoot, 'templates', definition.templateName)), true);
+    const templatePath = path.join(repoRoot, 'templates', definition.templateName);
+    assert.equal(fs.existsSync(templatePath), true);
+    const templateText = fs.readFileSync(templatePath, 'utf8');
+    assert.match(templateText, /Template Contract Metadata/);
+    assert.match(templateText, /Contract \/ Allowed Schema/);
+    assert.match(templateText, /Actual Template/);
+    assert.match(templateText, /Merge \/ Consumption Rules/);
+    assert.match(templateText, /Version \/ Migration Notes/);
   }
 
   for (const templateName of Object.values(workspaceDocs.FRAGMENT_TEMPLATE_NAMES)) {
-    assert.equal(fs.existsSync(path.join(repoRoot, 'templates', templateName)), true);
+    const templatePath = path.join(repoRoot, 'templates', templateName);
+    assert.equal(fs.existsSync(templatePath), true);
+    const templateText = fs.readFileSync(templatePath, 'utf8');
+    assert.match(templateText, /Template Contract Metadata/);
+    assert.match(templateText, /Contract \/ Allowed Schema/);
+    assert.match(templateText, /Actual Template/);
+    assert.match(templateText, /Supported Operations/);
+    assert.match(templateText, /Merge \/ Consumption Rules/);
+    assert.match(templateText, /Version \/ Migration Notes/);
   }
+
+  const domainModelsFragmentTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'DOMAIN_MODELS_FRAGMENT.template.md'), 'utf8');
+  assert.match(domainModelsFragmentTemplate, /Domain Model Field Types/);
+  assert.match(domainModelsFragmentTemplate, /`collection`/);
+  assert.match(domainModelsFragmentTemplate, /conceptual types, not database, API, UI, or programming-language contracts/);
+});
+
+test('module AI inventory includes a module AI file for every document-oriented module', () => {
+  for (const aiFileName of Object.values(workspaceDocs.MODULE_AI_FILE_NAMES)) {
+    const aiPath = path.join(repoRoot, 'templates', aiFileName);
+    assert.equal(fs.existsSync(aiPath), true);
+    const aiText = fs.readFileSync(aiPath, 'utf8');
+    assert.match(aiText, /AI File Metadata/);
+    assert.match(aiText, /Document Rules/);
+    assert.match(aiText, /Fragment Rules/);
+    assert.match(aiText, /Allowed Values \/ Contracts/);
+    assert.match(aiText, /Guardrails/);
+  }
+
+  const domainModelsAi = fs.readFileSync(path.join(repoRoot, 'templates', 'DOMAIN_MODELS.ai.md'), 'utf8');
+  assert.match(domainModelsAi, /Allowed `conceptualType` values/);
+  assert.match(domainModelsAi, /`reference`/);
 });
 
 test('software standards registry is available from the top-level standards directory', () => {
@@ -4622,6 +4695,11 @@ test('software standards registry is available from the top-level standards dire
     path.normalize(workspaceDocs.getSoftwareStandardsRegistrySourcePath()),
     path.join(repoRoot, 'standards', 'software', 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md')
   );
+  const registryText = fs.readFileSync(workspaceDocs.getSoftwareStandardsRegistrySourcePath(), 'utf8');
+  assert.match(registryText, /APM Fragment Token Reference Convention/);
+  assert.match(registryText, /@stable-id/);
+  assert.match(registryText, /#module-or-section/);
+  assert.match(registryText, /\$work-item-code/);
 });
 
 test('software standards source directory syncs into the project data standards folder', () => {
@@ -4666,6 +4744,7 @@ test('AI environment workspace exposes save path, fragments path, and custom ins
   assert.match(aiWorkspace, /AI_ENVIRONMENT\.md:/);
   assert.match(aiWorkspace, /Fragments Path:/);
   assert.match(aiWorkspace, /Project Fragments:/);
+  assert.match(aiWorkspace, /Project Module AI:/);
   assert.match(aiWorkspace, /Runtime Database:/);
   assert.match(aiWorkspace, /Software Standards:/);
   assert.match(aiWorkspace, /Load Fragments/);
@@ -4726,6 +4805,7 @@ test('structured list editors surface stable ids underneath saved items', () => 
 test('functional spec workspace exposes a visual flow canvas with node controls', () => {
   const functionalSpecWorkspace = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'functional-spec-workspace.js'), 'utf8');
   const functionalFlowNode = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'functional-flow-node.js'), 'utf8');
+  const smartTokenField = fs.readFileSync(path.join(repoRoot, 'next-app', 'components', 'ui', 'smart-token-field.js'), 'utf8');
   const flowchartInterface = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'flowchart', 'functional-flowchart-interface.js'), 'utf8');
   const reactFlowImplementation = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'flowchart', 'react-flowchart-implementation.js'), 'utf8');
   const reactCanvasImplementation = fs.readFileSync(path.join(repoRoot, 'next-app', 'features', 'functional-spec', 'components', 'flowchart', 'react-canvas-flowchart-implementation.js'), 'utf8');
@@ -4739,6 +4819,7 @@ test('functional spec workspace exposes a visual flow canvas with node controls'
   assert.match(functionalSpecWorkspace, /function FunctionalSpecTextArea/);
   assert.match(functionalSpecWorkspace, /function FunctionalAreaTree/);
   assert.match(functionalSpecWorkspace, /function WorkflowActionPalette/);
+  assert.match(functionalSpecWorkspace, /ai_placeholder/);
   assert.match(functionalSpecWorkspace, /function FlowCanvasGroup/);
   assert.match(functionalSpecWorkspace, /Unattached Functional Notes/);
   assert.match(functionalSpecWorkspace, /Cross-Project Flow Attachments/);
@@ -4748,6 +4829,9 @@ test('functional spec workspace exposes a visual flow canvas with node controls'
   assert.match(functionalSpecWorkspace, /Unattached Interface Expectations/);
   assert.match(functionalSpecWorkspace, /Unattached Edge Cases/);
   assert.match(functionalSpecWorkspace, /Unattached Open Questions/);
+  assert.match(functionalSpecWorkspace, /buildFunctionalSmartTextCatalog/);
+  assert.match(functionalSpecWorkspace, /Use Smart Text to reference related nodes, flows, modules, and work items/);
+  assert.match(functionalSpecWorkspace, /Use Smart Text for first-pass logic/);
   assert.match(functionalSpecWorkspace, /draggable/);
   assert.match(functionalSpecWorkspace, /NODE_DRAG_DATA_TYPE/);
   assert.match(functionalSpecWorkspace, /Clean Visible Layouts/);
@@ -4830,6 +4914,9 @@ test('functional spec workspace exposes a visual flow canvas with node controls'
   assert.match(functionalSpecWorkspace, /targetHandle/);
   assert.match(functionalSpecWorkspace, /replaceDraft/);
   assert.match(functionalSpecWorkspace, /draft: Boolean/);
+  assert.match(smartTokenField, /Use @ references, # modules, \$ work items, \/ actions, \? questions, and ! guardrails/);
+  assert.match(smartTokenField, /Detected Tokens/);
+  assert.match(smartTokenField, /Suggestions/);
   assert.match(workspaceDocs, /sourceHandle/);
   assert.match(workspaceDocs, /targetHandle/);
   assert.match(workspaceDocs, /Connection Status: Unconnected draft/);
@@ -4837,6 +4924,7 @@ test('functional spec workspace exposes a visual flow canvas with node controls'
   assert.match(workspaceDocs, /## 6\. Flow Endpoints and Return Points/);
   assert.match(workspaceDocs, /## 7\. User Actions and System Responses/);
   assert.match(workspaceDocs, /Functional Flowchart Action Vocabulary/);
+  assert.match(workspaceDocs, /AI Placeholder: Freeform placeholder with a stable id/);
   assert.match(workspaceDocs, /Create Draft Edge: Create an unattached connection/);
   assert.match(workspaceDocs, /## 8\. Validation Rules/);
   assert.match(workspaceDocs, /## 9\. Interface Expectations/);
@@ -4849,6 +4937,7 @@ test('functional spec workspace exposes a visual flow canvas with node controls'
   assert.match(functionalFlowNode, /WorkflowNodeIcon/);
   assert.match(functionalFlowNode, /Handle/);
   assert.match(workflowNodeVisuals, /decision/);
+  assert.match(workflowNodeVisuals, /ai placeholder/);
 });
 
 test('app theme provider forwards global client errors to the backend logger endpoint', () => {
@@ -5360,6 +5449,12 @@ test('functional spec fragments can add visual flow graphs through operations', 
           "type": "return",
           "label": "Return Review State",
           "description": "The UI displays the fragment review state."
+        },
+        {
+          "id": "functional-node-review-fragment-ai-placeholder",
+          "type": "ai_placeholder",
+          "label": "AI Refines Review Logic",
+          "description": "Placeholder for an AI agent to replace with a more precise validation and merge flow."
         }
       ],
       "edges": [
@@ -5380,10 +5475,12 @@ test('functional spec fragments can add visual flow graphs through operations', 
   const markdown = workspaceDocs.renderModuleDocumentEditorStateMarkdown(project, 'functional_spec', nextState);
 
   assert.equal(nextState.logicalFlows[0].stableId, 'functional-spec-logical-flows-review-fragment');
-  assert.equal(nextState.flowVisuals[0].nodes.length, 2);
+  assert.equal(nextState.flowVisuals[0].nodes.length, 3);
   assert.equal(nextState.flowVisuals[0].edges[0].type, 'returns_to');
   assert.match(markdown, /## 4\. Flow Nodes and Connections/);
   assert.match(markdown, /Review Requested/);
+  assert.match(markdown, /AI Refines Review Logic/);
+  assert.match(markdown, /- Type: ai_placeholder/);
   assert.match(markdown, /review state/);
 });
 
@@ -5489,7 +5586,28 @@ test('domain model catalog does not duplicate model update anchors', () => {
         summary: 'A proposed document update.',
         description: 'A proposed document update.',
         modelType: 'command',
-        fields: [],
+        fields: [
+          {
+            name: 'status',
+            description: 'Current request status.',
+            conceptualType: 'enum',
+            required: true,
+            defaultValue: 'draft',
+            allowedValues: ['draft', 'ready'],
+          },
+          {
+            name: 'relatedFragments',
+            description: 'Related fragment ids.',
+            conceptualType: 'collection',
+            collectionItemType: 'identifier',
+          },
+          {
+            name: 'project',
+            description: 'Owning project reference.',
+            conceptualType: 'reference',
+            referenceModelStableId: 'domain-models-model-project',
+          },
+        ],
         relationships: [],
         rules: [],
         examples: [],
@@ -5503,6 +5621,9 @@ test('domain model catalog does not duplicate model update anchors', () => {
 
   assert.deepEqual(duplicates, []);
   assert.equal(ids.filter((id) => id === 'domain-models-model-fragment-request').length, 1);
+  assert.match(markdown, /Allowed Values: draft, ready/);
+  assert.match(markdown, /Collection Item Type: identifier/);
+  assert.match(markdown, /Reference Model ID: domain-models-model-project/);
 });
 
 test('architecture fragments support phase-1 document operations against stable item ids', async () => {

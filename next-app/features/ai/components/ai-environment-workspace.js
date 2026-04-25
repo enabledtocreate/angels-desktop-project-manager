@@ -84,14 +84,18 @@ function groupDirectivesByModule(directives = []) {
       const group = {
         moduleKey,
         moduleLabel: directive?.moduleLabel || moduleKey,
+        aiFileName: directive?.aiFileName || '',
         templateName: directive?.templateName || '',
+        fragmentTemplateName: directive?.fragmentTemplateName || '',
         directives: [],
       };
       byKey.set(moduleKey, group);
       groups.push(group);
     }
     const group = byKey.get(moduleKey);
+    if (!group.aiFileName && directive?.aiFileName) group.aiFileName = directive.aiFileName;
     if (!group.templateName && directive?.templateName) group.templateName = directive.templateName;
+    if (!group.fragmentTemplateName && directive?.fragmentTemplateName) group.fragmentTemplateName = directive.fragmentTemplateName;
     group.directives.push(directive);
   });
   return groups;
@@ -338,8 +342,14 @@ export function AiEnvironmentWorkspace({ project }) {
             </div>
             <p className="break-words text-[11px] uppercase tracking-[0.14em] text-ink/45">Directive ID: {directive.id}</p>
             <p className="text-sm leading-6 text-ink/75">{directive.description}</p>
+            {directive.aiFileName ? (
+              <p className="text-xs text-ink/55">Source AI File: templates/{directive.aiFileName}</p>
+            ) : null}
             {directive.templateName ? (
-              <p className="text-xs text-ink/55">Source Template: templates/{directive.templateName}</p>
+              <p className="text-xs text-ink/55">Document Template: templates/{directive.templateName}</p>
+            ) : null}
+            {directive.fragmentTemplateName ? (
+              <p className="text-xs text-ink/55">Fragment Template: templates/{directive.fragmentTemplateName}</p>
             ) : null}
             {pathHints.length ? (
               <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
@@ -641,7 +651,7 @@ export function AiEnvironmentWorkspace({ project }) {
                             <span className="block text-sm font-semibold text-ink">{moduleGroup.moduleLabel}</span>
                             <span className="block text-xs text-ink/55">
                               {moduleGroup.directives.length} emitted directive{moduleGroup.directives.length === 1 ? '' : 's'}
-                              {moduleGroup.templateName ? ` from ${moduleGroup.templateName}` : ''}
+                              {moduleGroup.aiFileName ? ` from ${moduleGroup.aiFileName}` : ''}
                             </span>
                           </span>
                           <span className="rounded-full border border-white/10 px-2 py-0.5 text-xs font-semibold text-ink/70">
@@ -678,6 +688,7 @@ export function AiEnvironmentWorkspace({ project }) {
               <p><span className="font-semibold text-ink">Fragments Path:</span> {aiEnvironment?.fragmentsRootDir || 'Not available yet.'}</p>
               <p><span className="font-semibold text-ink">Project Fragments:</span> {aiEnvironment?.projectFragmentsDir || 'Not available yet.'}</p>
               <p><span className="font-semibold text-ink">Shared Fragments:</span> {aiEnvironment?.sharedFragmentsDir || 'Not available yet.'}</p>
+              <p><span className="font-semibold text-ink">Project Module AI:</span> {aiEnvironment?.projectModuleAiDir || 'Not available yet.'}</p>
               <p><span className="font-semibold text-ink">Software Standards:</span> {aiEnvironment?.softwareStandardsPath || 'Not available yet.'}</p>
               <p><span className="font-semibold text-ink">Runtime Database:</span> {aiEnvironment?.runtimeDatabasePath || 'Not available yet.'}</p>
             </div>

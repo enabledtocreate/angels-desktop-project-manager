@@ -146,6 +146,156 @@
           "DOMAIN_MODELS_FRAGMENT_20260411_fragment_integration_request_001",
           "DOC-TEST-001"
         ]
+      },
+      {
+        "id": "domain-model-fragment-refresh-event",
+        "stableId": "domain-models-model-fragment-refresh-event",
+        "name": "Fragment Refresh Event",
+        "summary": "A watched fragment-file change that tells a module UI to refresh its fragment list.",
+        "description": "A Fragment Refresh Event is the conceptual signal produced when a watched fragment markdown file is added, changed, or removed. The Functional Spec uses it to describe how file watcher activity causes a module to debounce, reload, migrate older payloads when needed, and return an updated fragment list.",
+        "modelType": "event",
+        "fields": [
+          {
+            "name": "eventType",
+            "displayName": "Event Type",
+            "description": "The kind of file-system event observed for the fragment file.",
+            "conceptualType": "enum",
+            "required": true,
+            "allowedValues": [
+              "added",
+              "changed",
+              "removed"
+            ],
+            "defaultValue": "changed",
+            "id": "domain-models-field-fragment-refresh-event-eventtype",
+            "stableId": "domain-models-field-fragment-refresh-event-eventtype",
+            "constraints": [],
+            "sourceRefs": [],
+            "versionDate": ""
+          },
+          {
+            "name": "fileName",
+            "displayName": "File Name",
+            "description": "The markdown fragment file name that changed.",
+            "conceptualType": "text",
+            "required": true,
+            "id": "domain-models-field-fragment-refresh-event-filename",
+            "stableId": "domain-models-field-fragment-refresh-event-filename",
+            "defaultValue": "",
+            "allowedValues": [],
+            "constraints": [],
+            "sourceRefs": [],
+            "versionDate": ""
+          },
+          {
+            "name": "sourceScope",
+            "displayName": "Source Scope",
+            "description": "Where the fragment was discovered from the module perspective.",
+            "conceptualType": "enum",
+            "required": true,
+            "allowedValues": [
+              "project",
+              "shared",
+              "history"
+            ],
+            "id": "domain-models-field-fragment-refresh-event-sourcescope",
+            "stableId": "domain-models-field-fragment-refresh-event-sourcescope",
+            "defaultValue": "",
+            "constraints": [],
+            "sourceRefs": [],
+            "versionDate": ""
+          },
+          {
+            "name": "moduleKey",
+            "displayName": "Module Key",
+            "description": "The module whose fragment browser should refresh.",
+            "conceptualType": "identifier",
+            "required": true,
+            "id": "domain-models-field-fragment-refresh-event-modulekey",
+            "stableId": "domain-models-field-fragment-refresh-event-modulekey",
+            "defaultValue": "",
+            "allowedValues": [],
+            "constraints": [],
+            "sourceRefs": [],
+            "versionDate": ""
+          },
+          {
+            "name": "watchedPath",
+            "displayName": "Watched Path",
+            "description": "The configured project or shared fragments path being watched.",
+            "conceptualType": "text",
+            "required": true,
+            "id": "domain-models-field-fragment-refresh-event-watchedpath",
+            "stableId": "domain-models-field-fragment-refresh-event-watchedpath",
+            "defaultValue": "",
+            "allowedValues": [],
+            "constraints": [],
+            "sourceRefs": [],
+            "versionDate": ""
+          },
+          {
+            "name": "debounceMs",
+            "displayName": "Debounce Milliseconds",
+            "description": "The delay used to avoid refreshing repeatedly while related file events settle.",
+            "conceptualType": "number",
+            "required": false,
+            "defaultValue": "250",
+            "id": "domain-models-field-fragment-refresh-event-debouncems",
+            "stableId": "domain-models-field-fragment-refresh-event-debouncems",
+            "allowedValues": [],
+            "constraints": [],
+            "sourceRefs": [],
+            "versionDate": ""
+          }
+        ],
+        "relationships": [
+          {
+            "title": "Refreshes Fragment Review State",
+            "description": "The event causes the active module fragment browser to reload pending and archived fragment review state.",
+            "relationshipType": "triggers",
+            "targetModelName": "Fragment Integration Request",
+            "targetModelStableId": "domain-models-model-fragment-integration-request",
+            "id": "domain-models-relationship-fragment-refresh-event-refreshes-fragment-review-state",
+            "stableId": "domain-models-relationship-fragment-refresh-event-refreshes-fragment-review-state",
+            "sourceRefs": [],
+            "versionDate": ""
+          }
+        ],
+        "rules": [
+          {
+            "title": "Debounce before refresh",
+            "description": "The UI should debounce file watcher events before requesting the refreshed fragment list.",
+            "id": "",
+            "versionDate": "",
+            "stableId": "domain-models-model-fragment-refresh-event-rules-debounce-before-refresh",
+            "sourceRefs": []
+          },
+          {
+            "title": "Do not consume automatically",
+            "description": "The event refreshes the visible fragment list only; it must not integrate or archive a fragment without explicit user action.",
+            "id": "",
+            "versionDate": "",
+            "stableId": "domain-models-model-fragment-refresh-event-rules-do-not-consume-automatically",
+            "sourceRefs": []
+          }
+        ],
+        "examples": [
+          {
+            "title": "Domain Models fragment added",
+            "description": "A DOMAIN_MODELS_FRAGMENT file appears in the project fragments folder, causing the Domain Models fragment browser to show one new pending item.",
+            "id": "",
+            "versionDate": "",
+            "stableId": "domain-models-model-fragment-refresh-event-examples-domain-models-fragment-added",
+            "sourceRefs": []
+          }
+        ],
+        "versionDate": "2026-04-22",
+        "sourceRefs": [
+          "DOMAIN_MODELS_FRAGMENT_20260422_functional_workflow_models_001",
+          "FUNCTIONAL_SPEC_FRAGMENT_20260414_fragment_migration_refresh_001",
+          "functional-spec-logical-flows-load-migrated-fragment",
+          "functional-spec-logical-flows-refresh-fragments-on-file-change"
+        ]
       }
     ],
     "projections": [
@@ -194,10 +344,71 @@
         ],
         "excludedFields": [],
         "additionalFields": []
+      },
+      {
+        "id": "domain-projection-functional-fragment-refresh-event",
+        "stableId": "domain-models-projection-functional-fragment-refresh-event",
+        "baseModelId": "domain-model-fragment-refresh-event",
+        "baseModelStableId": "domain-models-model-fragment-refresh-event",
+        "baseModelName": "Fragment Refresh Event",
+        "owningModule": "functional_spec",
+        "projectionType": "functional",
+        "name": "Functional Fragment Refresh Event",
+        "description": "Functional Spec uses this projection to connect file watcher events to the Load Migrated Fragment and Refresh Fragments On File Change workflows.",
+        "fieldMappings": [
+          {
+            "title": "Event source to fragment scan",
+            "description": "`fileName`, `sourceScope`, and `moduleKey` provide the input used by the fragment scan and migration flow.",
+            "id": "",
+            "versionDate": "",
+            "stableId": "domain-models-projection-functional-fragment-refresh-event-field-mappings-event-source-to-fragment-scan",
+            "sourceRefs": []
+          },
+          {
+            "title": "Debounce to return point",
+            "description": "`debounceMs` expresses the wait before the UI requests and receives the refreshed fragment list.",
+            "id": "",
+            "versionDate": "",
+            "stableId": "domain-models-projection-functional-fragment-refresh-event-field-mappings-debounce-to-return-point",
+            "sourceRefs": []
+          }
+        ],
+        "constraints": [
+          {
+            "title": "Refresh only",
+            "description": "This projection must not imply automatic fragment consumption; it only refreshes review state.",
+            "id": "",
+            "versionDate": "",
+            "stableId": "domain-models-projection-functional-fragment-refresh-event-constraints-refresh-only",
+            "sourceRefs": []
+          }
+        ],
+        "versionDate": "2026-04-22",
+        "sourceRefs": [
+          "DOMAIN_MODELS_FRAGMENT_20260422_functional_workflow_models_001",
+          "FUNCTIONAL_SPEC_FRAGMENT_20260414_fragment_migration_refresh_001",
+          "functional-spec-logical-flows-load-migrated-fragment",
+          "functional-spec-logical-flows-refresh-fragments-on-file-change"
+        ],
+        "excludedFields": [],
+        "additionalFields": []
       }
     ],
     "openQuestions": [],
     "fragmentHistory": [
+      {
+        "id": "project:DOMAIN_MODELS_FRAGMENT_20260422_functional_workflow_models_001.md",
+        "code": "DOMAIN_MODELS_FRAGMENT_20260422_functional_workflow_models_001",
+        "title": "Functional Workflow Event Models",
+        "status": "integrated",
+        "sourceScope": "project",
+        "integratedAt": "2026-04-22T22:34:27.869Z",
+        "summary": "Adds a Fragment Refresh Event model and a Functional Spec projection tied to the current fragment migration and file-watcher workflows.",
+        "revision": 1,
+        "lineageKey": "DOMAIN_MODELS_FRAGMENT_20260422_functional_workflow_models",
+        "supersedesCode": "",
+        "supersedesRevision": null
+      },
       {
         "id": "project:DOMAIN_MODELS_FRAGMENT_20260411_fragment_integration_request_001.md",
         "code": "DOMAIN_MODELS_FRAGMENT_20260411_fragment_integration_request_001",
@@ -233,6 +444,13 @@ Domain models for Angel's Project Manager are still being defined.
 - Fields: 5
 - Relationships: 1
 - Summary: A proposed managed-document change packaged as a reviewable fragment.
+
+### 2.2 Fragment Refresh Event
+
+- Type: event
+- Fields: 6
+- Relationships: 1
+- Summary: A watched fragment-file change that tells a module UI to refresh its fragment list.
 
 ## 3. Domain Models
 
@@ -354,6 +572,139 @@ APM-ID: domain-models-model-fragment-integration-request-examples-functional-flo
 
 A Functional Spec fragment can add a workflow and its visual node graph as one reviewable integration request.
 
+<!--
+APM-ID: domain-models-model-fragment-refresh-event
+APM-REFS: DOMAIN_MODELS_FRAGMENT_20260422_functional_workflow_models_001, FUNCTIONAL_SPEC_FRAGMENT_20260414_fragment_migration_refresh_001, functional-spec-logical-flows-load-migrated-fragment, functional-spec-logical-flows-refresh-fragments-on-file-change
+APM-LAST-UPDATED: 2026-04-22
+-->
+
+### 3.2 Fragment Refresh Event
+
+- Model Type: event
+- Summary: A watched fragment-file change that tells a module UI to refresh its fragment list.
+
+A Fragment Refresh Event is the conceptual signal produced when a watched fragment markdown file is added, changed, or removed. The Functional Spec uses it to describe how file watcher activity causes a module to debounce, reload, migrate older payloads when needed, and return an updated fragment list.
+
+#### 3.2.1 Fields
+
+<!--
+APM-ID: domain-models-field-fragment-refresh-event-eventtype
+-->
+
+#### 3.2.1.1 Field: eventType
+
+- Display Name: Event Type
+- Conceptual Type: enum
+- Required: Yes
+- Default Value: changed
+- Allowed Values: added, changed, removed
+
+The kind of file-system event observed for the fragment file.
+
+<!--
+APM-ID: domain-models-field-fragment-refresh-event-filename
+-->
+
+#### 3.2.1.2 Field: fileName
+
+- Display Name: File Name
+- Conceptual Type: text
+- Required: Yes
+
+The markdown fragment file name that changed.
+
+<!--
+APM-ID: domain-models-field-fragment-refresh-event-sourcescope
+-->
+
+#### 3.2.1.3 Field: sourceScope
+
+- Display Name: Source Scope
+- Conceptual Type: enum
+- Required: Yes
+- Allowed Values: project, shared, history
+
+Where the fragment was discovered from the module perspective.
+
+<!--
+APM-ID: domain-models-field-fragment-refresh-event-modulekey
+-->
+
+#### 3.2.1.4 Field: moduleKey
+
+- Display Name: Module Key
+- Conceptual Type: identifier
+- Required: Yes
+
+The module whose fragment browser should refresh.
+
+<!--
+APM-ID: domain-models-field-fragment-refresh-event-watchedpath
+-->
+
+#### 3.2.1.5 Field: watchedPath
+
+- Display Name: Watched Path
+- Conceptual Type: text
+- Required: Yes
+
+The configured project or shared fragments path being watched.
+
+<!--
+APM-ID: domain-models-field-fragment-refresh-event-debouncems
+-->
+
+#### 3.2.1.6 Field: debounceMs
+
+- Display Name: Debounce Milliseconds
+- Conceptual Type: number
+- Required: No
+- Default Value: 250
+
+The delay used to avoid refreshing repeatedly while related file events settle.
+
+#### 3.2.2 Relationships
+
+<!--
+APM-ID: domain-models-relationship-fragment-refresh-event-refreshes-fragment-review-state
+-->
+
+#### 3.2.2.1 Relationship: Refreshes Fragment Review State
+
+- Type: triggers
+- Target Model: Fragment Integration Request
+- Target Model ID: domain-models-model-fragment-integration-request
+
+The event causes the active module fragment browser to reload pending and archived fragment review state.
+
+#### 3.2.3 Rules
+
+<!--
+APM-ID: domain-models-model-fragment-refresh-event-rules-debounce-before-refresh
+-->
+
+### 3.2.3.1 Debounce before refresh
+
+The UI should debounce file watcher events before requesting the refreshed fragment list.
+
+<!--
+APM-ID: domain-models-model-fragment-refresh-event-rules-do-not-consume-automatically
+-->
+
+### 3.2.3.2 Do not consume automatically
+
+The event refreshes the visible fragment list only; it must not integrate or archive a fragment without explicit user action.
+
+#### 3.2.4 Examples
+
+<!--
+APM-ID: domain-models-model-fragment-refresh-event-examples-domain-models-fragment-added
+-->
+
+### 3.2.4.1 Domain Models fragment added
+
+A DOMAIN_MODELS_FRAGMENT file appears in the project fragments folder, causing the Domain Models fragment browser to show one new pending item.
+
 ## 4. Model Projections
 
 <!--
@@ -403,10 +754,65 @@ APM-ID: domain-models-projection-functional-fragment-integration-request-constra
 
 Update, remove, move, reorder, link, and unlink operations should use stable target ids when modifying existing items.
 
+<!--
+APM-ID: domain-models-projection-functional-fragment-refresh-event
+APM-REFS: DOMAIN_MODELS_FRAGMENT_20260422_functional_workflow_models_001, FUNCTIONAL_SPEC_FRAGMENT_20260414_fragment_migration_refresh_001, functional-spec-logical-flows-load-migrated-fragment, functional-spec-logical-flows-refresh-fragments-on-file-change
+APM-LAST-UPDATED: 2026-04-22
+-->
+
+### 4.2 Functional Fragment Refresh Event
+
+- Projection Type: functional
+- Owning Module: functional_spec
+- Base Model: Fragment Refresh Event
+- Base Model ID: domain-models-model-fragment-refresh-event
+
+Functional Spec uses this projection to connect file watcher events to the Load Migrated Fragment and Refresh Fragments On File Change workflows.
+
+#### Field Mappings
+
+<!--
+APM-ID: domain-models-projection-functional-fragment-refresh-event-field-mappings-event-source-to-fragment-scan
+-->
+
+### 4.2.1.1 Event source to fragment scan
+
+`fileName`, `sourceScope`, and `moduleKey` provide the input used by the fragment scan and migration flow.
+
+<!--
+APM-ID: domain-models-projection-functional-fragment-refresh-event-field-mappings-debounce-to-return-point
+-->
+
+### 4.2.1.2 Debounce to return point
+
+`debounceMs` expresses the wait before the UI requests and receives the refreshed fragment list.
+
+#### Additional Fields
+
+No additional fields defined yet.
+
+#### Constraints
+
+<!--
+APM-ID: domain-models-projection-functional-fragment-refresh-event-constraints-refresh-only
+-->
+
+### 4.2.3.1 Refresh only
+
+This projection must not imply automatic fragment consumption; it only refreshes review state.
+
 ## 5. Open Questions
 
 No open questions yet.
 ## 6. Applied Fragments
+
+### DOMAIN_MODELS_FRAGMENT_20260422_functional_workflow_models_001: Functional Workflow Event Models
+
+- Status: integrated
+- Source: project
+- Integrated: 2026-04-22T22:34:27.869Z
+
+Adds a Fragment Refresh Event model and a Functional Spec projection tied to the current fragment migration and file-watcher workflows.
 
 ### DOMAIN_MODELS_FRAGMENT_20260411_fragment_integration_request_001: Fragment Integration Request
 

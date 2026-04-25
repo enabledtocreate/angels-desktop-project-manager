@@ -85,6 +85,12 @@ const FRAGMENT_TEMPLATE_NAMES = {
   adr: 'ADR_FRAGMENT.template.md',
   test_strategy: 'TEST_STRATEGY_FRAGMENT.template.md',
 };
+const MODULE_AI_FILE_NAMES = Object.freeze(Object.fromEntries(
+  Object.entries(DOC_TYPES).map(([docType, definition]) => [
+    docType,
+    String(definition?.fileName || `${String(docType || '').toUpperCase()}.md`).replace(/\.md$/i, '.ai.md'),
+  ])
+));
 const FRAGMENT_DOC_TYPE_ALIASES = {
   ux_ui_fragment: 'experience_design_fragment',
   ux_ui: 'experience_design',
@@ -147,15 +153,15 @@ const AI_MODULE_DIRECTIVE_DEFINITIONS = [
   {
     id: 'apm.module.features.destination-fragments',
     moduleKey: 'features',
-    title: 'Implemented features create destination fragments',
-    description: 'When feature implementation changes canonical documents, create destination fragments for affected modules and keep the feature code attached.',
+    title: 'AI agents create destination fragments for implemented features',
+    description: 'When feature implementation changes canonical documents, the AI agent must create destination fragments for affected modules and keep the feature code attached. The application must not automatically generate those fragments.',
     emitsToAiEnvironment: true,
   },
   {
     id: 'apm.module.bugs.lifecycle-and-archive',
     moduleKey: 'bugs',
     title: 'Preserve bug lifecycle and archive rules',
-    description: 'Only active bugs remain in BUGS.md; resolved or closed bugs move to archived history and create follow-up guidance for affected documents.',
+    description: 'Only active bugs remain in BUGS.md; resolved or closed bugs move to archived history. If the fix changes canonical behavior, generate downstream fragments that reference the bug code and affected document item ids.',
     emitsToAiEnvironment: true,
   },
   {
@@ -268,6 +274,18 @@ function getProjectDocsDir(project) {
   return path.join(projectDir, 'docs');
 }
 
+function getProjectAiDir(project) {
+  const projectDir = resolveProjectDirectory(project);
+  if (!projectDir) return null;
+  return path.join(projectDir, 'ai');
+}
+
+function getProjectModuleAiDir(project) {
+  const aiDir = getProjectAiDir(project);
+  if (!aiDir) return null;
+  return path.join(aiDir, 'modules');
+}
+
 function getProjectApmDir(project) {
   const projectDir = resolveProjectDirectory(project);
   if (!projectDir) return null;
@@ -363,6 +381,27 @@ function ensureProjectDocsDir(project) {
     config.log(`workspace-docs: created docs directory ${docsDir}`);
   }
   return docsDir;
+}
+
+function ensureProjectModuleAiDir(project) {
+  const projectDir = resolveProjectDirectory(project);
+  if (!projectDir) throw new Error('Project must be a folder project to manage module AI files.');
+  if (!fs.existsSync(projectDir) || !fs.statSync(projectDir).isDirectory()) {
+    throw new Error(`Project folder does not exist: ${projectDir}`);
+  }
+  const aiDir = getProjectAiDir(project);
+  if (!aiDir) throw new Error('Project must be a folder project to manage module AI files.');
+  if (!fs.existsSync(aiDir)) {
+    fs.mkdirSync(aiDir, { recursive: true });
+    config.log(`workspace-docs: created ai directory ${aiDir}`);
+  }
+  const moduleAiDir = getProjectModuleAiDir(project);
+  if (!moduleAiDir) throw new Error('Project must be a folder project to manage module AI files.');
+  if (!fs.existsSync(moduleAiDir)) {
+    fs.mkdirSync(moduleAiDir, { recursive: true });
+    config.log(`workspace-docs: created module ai directory ${moduleAiDir}`);
+  }
+  return moduleAiDir;
 }
 
 function ensureProjectTemplatesDir(project) {
@@ -579,6 +618,35 @@ function syncFragmentTemplateRecordForProject(project, docType) {
   return syncTemplateFileForProject(project, templateName, 'fragment', fragmentsDir);
 }
 
+function syncModuleAiRecordForProject(project, docType) {
+  const templatesDir = ensureProjectTemplatesDir(project);
+  const aiFileName = MODULE_AI_FILE_NAMES[docType];
+  if (!aiFileName) return null;
+  return syncTemplateFileForProject(project, aiFileName, 'ai', templatesDir);
+}
+
+function syncProjectVisibleModuleAiFile(project, docType) {
+  const aiFileName = MODULE_AI_FILE_NAMES[docType];
+  if (!aiFileName) return null;
+  const moduleAiDir = ensureProjectModuleAiDir(project);
+  const sourcePath = path.join(TEMPLATE_DIR, aiFileName);
+  const targetPath = path.join(moduleAiDir, aiFileName);
+  if (!fs.existsSync(sourcePath)) {
+    config.log(`workspace-docs: module ai source missing at ${sourcePath}`);
+    return null;
+  }
+  const sourceContent = fs.readFileSync(sourcePath, 'utf8');
+  const sourceMd5 = computeMd5(sourceContent);
+  const targetMd5Before = fs.existsSync(targetPath)
+    ? computeMd5(fs.readFileSync(targetPath, 'utf8'))
+    : '';
+  if (sourceMd5 !== targetMd5Before) {
+    fs.copyFileSync(sourcePath, targetPath);
+    config.log(`workspace-docs: synced project module ai ${aiFileName} -> ${targetPath}`);
+  }
+  return targetPath;
+}
+
 function syncFragmentTemplateForProject(project, docType) {
   const record = syncFragmentTemplateRecordForProject(project, docType);
   return record ? record.targetPath : null;
@@ -604,12 +672,29 @@ function syncAllDocumentTemplateRecordsForProject(project) {
     .filter(Boolean);
 }
 
+function syncAllModuleAiRecordsForProject(project) {
+  return Object.keys(MODULE_AI_FILE_NAMES)
+    .map((docType) => syncModuleAiRecordForProject(project, docType))
+    .filter(Boolean);
+}
+
+function syncProjectVisibleModuleAiFiles(project, docType = null) {
+  const docTypes = docType ? [docType] : Object.keys(MODULE_AI_FILE_NAMES);
+  return docTypes
+    .map((candidateDocType) => syncProjectVisibleModuleAiFile(project, candidateDocType))
+    .filter(Boolean);
+}
+
 function syncProjectTemplateFiles(project, docType = null) {
   const documentRecords = docType
     ? [syncDocumentTemplateRecordForProject(project, docType)]
     : syncAllDocumentTemplateRecordsForProject(project);
+  const moduleAiRecords = docType
+    ? [syncModuleAiRecordForProject(project, docType)]
+    : syncAllModuleAiRecordsForProject(project);
   return [
     ...documentRecords.filter(Boolean),
+    ...moduleAiRecords.filter(Boolean),
     ...syncAllFragmentTemplateRecordsForProject(project),
   ];
 }
@@ -1115,7 +1200,7 @@ function getTemplateMetadata(templateName) {
     };
   }
   const content = fs.readFileSync(templatePath, 'utf8');
-  const versionMatch = content.match(/Template Version:\s*`([^`]+)`/i);
+  const versionMatch = content.match(/(?:Template|AI File) Version:\s*`([^`]+)`/i);
   const updatedMatch = content.match(/Last Updated:\s*`([^`]+)`/i);
   return {
     templateName,
@@ -1285,6 +1370,7 @@ function renderFunctionalSpecActionVocabulary() {
     '- External Interaction: Interaction with another system, service, API, file system, database, device, or module.',
     '- Formula: Calculation, derivation, comparison, transformation, or logical expression.',
     '- Model Reference: Relationship to a shared domain model, schema model, external payload, or data concept.',
+    '- AI Placeholder: Freeform placeholder with a stable id where an AI agent should later generate a fragment that replaces or expands it into a more precise logical workflow structure.',
     '- Open Question: Unresolved design question attached to a flow, node, edge, endpoint, Functional Area, or document scope.',
     '',
     '#### 1.1.2 Connection Types',
@@ -1829,7 +1915,7 @@ function renderRoadmapMarkdown(project, phases, tasks, features, bugs, mermaid, 
     '',
     '> AI Agent instruction: Use feature IDs in this roadmap to cross-reference active planned entries in FEATURES.md. Implemented, completed, resolved, closed, and archived work is omitted from this document unless explicitly requested as history.',
     '> AI Agent instruction: If you need to propose roadmap changes, create or update a ROADMAP_FRAGMENT document that complies with ROADMAP_FRAGMENT.template.md instead of editing ROADMAP.md directly.',
-    '> AI Agent instruction: If roadmap work changes implementation scope, create or update a PRD fragment instead of editing PRD.md directly.',
+    '> AI Agent instruction: If roadmap work changes implementation scope, the AI agent must create the needed module fragments instead of editing generated documents directly. The application must not generate those fragments automatically.',
     '',
     '## Phased Implementation Plan',
     '',
@@ -1878,7 +1964,7 @@ function renderFeaturesMarkdown(project, phases, features, mermaid) {
             `- Linked Task: ${feature.taskId || 'None'}`,
             `- Summary: ${feature.summary || 'No summary yet.'}`,
             '',
-            '> AI Agent instruction: When this feature is implemented, create or update the matching PRD fragment in the database first, keep the fragment compliant with PRD_FRAGMENT.template.md, and let the PRD module merge it into PRD.md.',
+            '> AI Agent instruction: When this feature is implemented and canonical documents need to change, the AI agent must create the needed module fragments. The application tracks and consumes fragments, but does not generate them automatically.',
             '',
           ].join('\n');
         }).join('\n')
@@ -2709,7 +2795,7 @@ function buildFunctionalFlowKey(flow = {}, fallback = '') {
 function normalizeFunctionalFlowNodeType(value) {
   const normalized = String(value || '').trim().toLowerCase();
   if (normalized === 'action') return 'system_action';
-  if (['start', 'user_action', 'system_action', 'decision', 'validation', 'loop', 'input', 'output', 'endpoint', 'return', 'error_path', 'log_audit', 'external_interaction', 'formula', 'model_reference', 'open_question'].includes(normalized)) return normalized;
+  if (['start', 'user_action', 'system_action', 'decision', 'validation', 'loop', 'input', 'output', 'endpoint', 'return', 'error_path', 'log_audit', 'external_interaction', 'formula', 'model_reference', 'ai_placeholder', 'open_question'].includes(normalized)) return normalized;
   return 'system_action';
 }
 
@@ -2891,6 +2977,8 @@ function createDomainModelFieldEntry(value = {}, index = 0, model = {}) {
     allowedValues: Array.isArray(value?.allowedValues)
       ? value.allowedValues.map((item) => String(item || '').trim()).filter(Boolean)
       : String(value?.allowedValues || '').split(/[,;\n]+/).map((item) => item.trim()).filter(Boolean),
+    collectionItemType: String(value?.collectionItemType || value?.typeDetail || '').trim(),
+    referenceModelStableId: String(value?.referenceModelStableId || '').trim(),
     constraints: normalizeModuleDetailList(value?.constraints, { docType: 'domain_models', sectionKey: 'field-constraints' }),
     sourceRefs: normalizeSourceRefs(value?.sourceRefs),
     versionDate: String(value?.versionDate || ''),
@@ -3037,6 +3125,8 @@ function renderDomainModelFields(model, modelNumber) {
     `- Required: ${field.required ? 'Yes' : 'No'}`,
     field.defaultValue ? `- Default Value: ${field.defaultValue}` : null,
     field.allowedValues.length ? `- Allowed Values: ${field.allowedValues.join(', ')}` : null,
+    field.collectionItemType ? `- Collection Item Type: ${field.collectionItemType}` : null,
+    field.referenceModelStableId ? `- Reference Model ID: ${field.referenceModelStableId}` : null,
     field.description ? ['', field.description] : null,
     field.constraints.length ? ['', 'Constraints:', '', ...renderModuleDetailList(field.constraints, 'No field constraints defined yet.', `${modelNumber}.${index + 1}`)] : null,
     '',
@@ -4861,7 +4951,9 @@ function normalizeAiDirectiveDefinition(directive, defaults = {}) {
     locked: directive?.locked !== undefined ? Boolean(directive.locked) : Boolean(defaults.locked),
     required: directive?.required !== undefined ? Boolean(directive.required) : Boolean(defaults.required),
     emitsToAiEnvironment: directive?.emitsToAiEnvironment !== undefined ? Boolean(directive.emitsToAiEnvironment) : Boolean(defaults.emitsToAiEnvironment),
+    aiFileName: String(directive?.aiFileName || defaults.aiFileName || ''),
     templateName: String(directive?.templateName || defaults.templateName || ''),
+    fragmentTemplateName: String(directive?.fragmentTemplateName || defaults.fragmentTemplateName || ''),
     version: String(directive?.version || defaults.version || '1.0'),
     pathHints: normalizeAiDirectivePathHints(directive?.pathHints !== undefined ? directive.pathHints : defaults.pathHints),
   };
@@ -4930,6 +5022,15 @@ function buildCodeOwnedAiDirectiveDefinitions(project, options = {}) {
     id: 'apm.shared.stable-id.naming',
     title: 'Create stable human-readable ids for persisted items',
     description: 'Directive ID: apm.shared.stable-id.naming. When AI creates or updates any persisted item that supports an id, stableId, node id, edge id, document item id, or fragment target id, use a short lowercase kebab-case identifier scoped by module or item type. IDs must identify the concept rather than truncate the description, must remain stable across title or wording edits, and must not be regenerated unless the item is intentionally replaced. Keep database primary keys, work item codes, document stable ids, and UI/canvas ids distinct but cross-referenceable.',
+    locked: true,
+    required: true,
+    scope: 'shared',
+    source: 'code',
+  });
+  directives.push({
+    id: 'apm.shared.fragment-token-references',
+    title: 'Use token references in generated fragments',
+    description: 'Directive ID: apm.shared.fragment-token-references. When AI generates or updates fragments, include token-style references when they clarify targets or intent. Use @stable-id for persisted items, #module-or-section for module and document targets, $work-item-code for feature/bug/task provenance, /operation for intended actions, ?question for unresolved review points, and !guardrail for constraints that must not be violated. Tokens supplement structured fragment operations and target ids; they must not replace explicit fields such as operation, targetSection, targetItemId, sourceRefs, or managed payload data.',
     locked: true,
     required: true,
     scope: 'shared',
@@ -5043,18 +5144,36 @@ function buildModuleAiDirectiveDefinitions(options = {}) {
   return AI_MODULE_DIRECTIVE_DEFINITIONS
     .filter((directive) => !enabledModuleKeys.size || enabledModuleKeys.has(directive.moduleKey))
     .map((directive) => {
-      const templateName = DOC_TYPES[directive.moduleKey]?.templateName || FRAGMENT_TEMPLATE_NAMES[directive.moduleKey] || '';
+      const aiFileName = MODULE_AI_FILE_NAMES[directive.moduleKey] || '';
+      const templateName = DOC_TYPES[directive.moduleKey]?.templateName || '';
+      const fragmentTemplateName = FRAGMENT_TEMPLATE_NAMES[directive.moduleKey] || '';
       return normalizeAiDirectiveDefinition({
         ...directive,
         scope: 'module',
-        source: 'template',
+        source: 'module_ai',
         locked: directive.locked !== undefined ? directive.locked : true,
         required: directive.required !== undefined ? directive.required : true,
+        aiFileName,
         templateName,
-        pathHints: templateName
+        fragmentTemplateName,
+        pathHints: aiFileName || templateName || fragmentTemplateName
           ? [
-              { label: 'Project Template Copy', path: `data/projects/${projectId}/templates/${templateName}` },
-              { label: 'Repository Template Source', path: path.join(TEMPLATE_DIR, templateName) },
+              ...(aiFileName ? [
+                { label: 'Project Module AI Export', path: `ai/modules/${aiFileName}` },
+                ...(options?.project && resolveProjectDirectory(options.project)
+                  ? [{ label: 'Project Module AI Export (Absolute)', path: path.join(resolveProjectDirectory(options.project), 'ai', 'modules', aiFileName) }]
+                  : []),
+                { label: 'Project Module AI Runtime Copy', path: `data/projects/${projectId}/templates/${aiFileName}` },
+                { label: 'Repository Module AI Source', path: path.join(TEMPLATE_DIR, aiFileName) },
+              ] : []),
+              ...(templateName ? [
+                { label: 'Project Document Template Copy', path: `data/projects/${projectId}/templates/${templateName}` },
+                { label: 'Repository Document Template Source', path: path.join(TEMPLATE_DIR, templateName) },
+              ] : []),
+              ...(fragmentTemplateName ? [
+                { label: 'Project Fragment Template Copy', path: `data/projects/${projectId}/fragments/${fragmentTemplateName}` },
+                { label: 'Repository Fragment Template Source', path: path.join(TEMPLATE_DIR, fragmentTemplateName) },
+              ] : []),
             ]
           : [],
       });
@@ -5111,7 +5230,7 @@ function filterEditorStateDirectiveDetails(details, registry) {
     'generate regression tests for bug fixes',
     'shut down locked running application processes before rebuilds',
     'create adr records when architectural decisions are made',
-    'create destination fragments after implementation',
+    'AI agents create destination fragments after implementation',
     'treat features as the planning register',
     'read roadmap and active work item codes before scope changes',
   ].forEach((title) => registryTitles.add(normalizeDirectiveTitleKey(title)));
@@ -5134,7 +5253,9 @@ function getImmutableAiDirectives(project, options = {}) {
       scope: directive.scope,
       source: directive.source,
       moduleKey: directive.moduleKey,
+      aiFileName: directive.aiFileName,
       templateName: directive.templateName,
+      fragmentTemplateName: directive.fragmentTemplateName,
       pathHints: directive.pathHints,
     }));
 }
@@ -5148,14 +5269,18 @@ function groupAiDirectivesByModule(directives) {
       const group = {
         moduleKey,
         moduleLabel: directive?.moduleLabel || AI_DIRECTIVE_MODULE_LABELS[moduleKey] || moduleKey,
+        aiFileName: directive?.aiFileName || '',
         templateName: directive?.templateName || '',
+        fragmentTemplateName: directive?.fragmentTemplateName || '',
         directives: [],
       };
       byKey.set(moduleKey, group);
       groups.push(group);
     }
     const group = byKey.get(moduleKey);
+    if (!group.aiFileName && directive?.aiFileName) group.aiFileName = directive.aiFileName;
     if (!group.templateName && directive?.templateName) group.templateName = directive.templateName;
+    if (!group.fragmentTemplateName && directive?.fragmentTemplateName) group.fragmentTemplateName = directive.fragmentTemplateName;
     group.directives.push(directive);
   });
   return groups;
@@ -5191,14 +5316,20 @@ function renderAiEnvironmentDirectiveTemplateReferences(groups) {
   const references = [];
   const seen = new Set();
   (Array.isArray(groups) ? groups : []).forEach((group) => {
+    const aiFileName = String(group?.aiFileName || '').trim();
     const templateName = String(group?.templateName || '').trim();
-    if (!templateName) return;
-    const key = `${group.moduleKey || ''}:${templateName}`;
+    const fragmentTemplateName = String(group?.fragmentTemplateName || '').trim();
+    if (!aiFileName && !templateName && !fragmentTemplateName) return;
+    const key = `${group.moduleKey || ''}:${aiFileName}:${templateName}:${fragmentTemplateName}`;
     if (seen.has(key)) return;
     seen.add(key);
-    references.push(`- ${group.moduleLabel || group.moduleKey || 'Module'}: \`templates/${templateName}\``);
+    const parts = [];
+    if (aiFileName) parts.push(`AI: \`ai/modules/${aiFileName}\``);
+    if (templateName) parts.push(`Document Template: \`templates/${templateName}\``);
+    if (fragmentTemplateName) parts.push(`Fragment Template: \`templates/${fragmentTemplateName}\``);
+    references.push(`- ${group.moduleLabel || group.moduleKey || 'Module'}: ${parts.join('; ')}`);
   });
-  return references.length ? [...references, ''] : ['No module template directive references are currently emitted.', ''];
+  return references.length ? [...references, ''] : ['No module AI or template references are currently emitted.', ''];
 }
 
 function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = {}) {
@@ -5286,9 +5417,9 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
           '',
         ])
       : ['No shared AI profiles are currently applied.', '']),
-    '## 7. Directive Template References',
+    '## 7. Module AI and Template References',
     '',
-    'Template-owned AI directives remain authoritative in their source templates. Read these templates when a module-specific directive applies.',
+    'Module AI files remain authoritative for module-specific AI behavior. Read the module AI file first, then the paired document and fragment templates for literal artifact shape.',
     '',
     ...renderAiEnvironmentDirectiveTemplateReferences(emittedModuleDirectiveGroups),
     ...(lockedSystemDirectives.length
@@ -5300,14 +5431,16 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
       : []),
     '## 9. Module Directive Index',
     '',
-    'Module and template directives are authoritative in their owning module templates. Follow the enabled directive references below, but read the referenced module/template for granular instructions instead of expecting this document to duplicate every module directive body.',
+    'Module AI files and artifact templates are authoritative in their owning module files. Follow the enabled directive references below, but read the referenced module AI file first for behavior and then the paired templates for exact document and fragment structure.',
     '',
     ...(emittedModuleDirectiveGroups.length
       ? emittedModuleDirectiveGroups.flatMap((group, groupIndex) => [
           `### 9.${groupIndex + 1} ${group.moduleLabel || group.moduleKey || 'Module'}`,
           '',
           `- Module Key: ${group.moduleKey}`,
-          `- Source Template: ${group.templateName ? `templates/${group.templateName}` : 'Module template'}`,
+          `- Source AI File: ${group.aiFileName ? `ai/modules/${group.aiFileName}` : 'Module AI file'}`,
+          `- Document Template: ${group.templateName ? `templates/${group.templateName}` : 'Not defined'}`,
+          `- Fragment Template: ${group.fragmentTemplateName ? `templates/${group.fragmentTemplateName}` : 'Not defined'}`,
           '',
           ...group.directives.flatMap((directive, directiveIndex) => [
             `#### 9.${groupIndex + 1}.${directiveIndex + 1} ${directive.title}`,
@@ -6170,30 +6303,6 @@ function readManagedFileSnapshot(filePath) {
   };
 }
 
-function writePrdFragmentDocument(project, fragment) {
-  syncPrdFragmentTemplateForProject(project);
-  const filePath = getPrdFragmentPath(project, fragment);
-  const markdown = renderPrdFragmentMarkdown(project, fragment);
-  return {
-    markdown,
-    snapshot: writeManagedFile(filePath, markdown, `prd fragment ${fragment.id} for project ${project.id}`),
-    fileName: path.basename(filePath),
-    filePath,
-  };
-}
-
-function writeRoadmapFragmentDocument(project, fragment) {
-  syncRoadmapFragmentTemplateForProject(project);
-  const filePath = getRoadmapFragmentPath(project, fragment);
-  const markdown = renderRoadmapFragmentMarkdown(project, fragment);
-  return {
-    markdown,
-    snapshot: writeManagedFile(filePath, markdown, `roadmap fragment ${fragment.id} for project ${project.id}`),
-    fileName: path.basename(filePath),
-    filePath,
-  };
-}
-
 function readPrdFragmentDocument(project, fragment) {
   const filePath = getPrdFragmentPath(project, fragment);
   return readManagedFileSnapshot(filePath);
@@ -6277,18 +6386,22 @@ module.exports = {
   ROADMAP_FRAGMENT_TEMPLATE_NAME,
   DATABASE_SCHEMA_FRAGMENT_TEMPLATE_NAME,
   FRAGMENT_TEMPLATE_NAMES,
+  MODULE_AI_FILE_NAMES,
   FRAGMENT_DOC_TYPE_ALIASES,
   FRAGMENT_DOC_TYPES_BY_MODULE,
   TEMPLATE_DIR,
   STANDARDS_DIR,
   SOFTWARE_STANDARDS_REFERENCE_REGISTRY_NAME,
   ensureProjectDocsDir,
+  ensureProjectModuleAiDir,
   ensureProjectTemplatesDir,
   ensureProjectStandardsDir,
   ensureProjectWorkspaceDir,
   ensureProjectFragmentsDir,
   ensureSharedFragmentsDir,
   getProjectDocsDir,
+  getProjectAiDir,
+  getProjectModuleAiDir,
   getProjectApmDir,
   getProjectsDataDir,
   getProjectDataDir,
@@ -6309,8 +6422,11 @@ module.exports = {
   syncProjectTemplateFiles,
   syncDocumentTemplateRecordForProject,
   syncFragmentTemplateRecordForProject,
+  syncModuleAiRecordForProject,
   syncAllDocumentTemplateRecordsForProject,
   syncAllFragmentTemplateRecordsForProject,
+  syncAllModuleAiRecordsForProject,
+  syncProjectVisibleModuleAiFiles,
   syncSoftwareStandardsRegistryForProject,
   syncPrdFragmentTemplateForProject,
   syncRoadmapFragmentTemplateForProject,
@@ -6368,8 +6484,6 @@ module.exports = {
   writeDatabaseSchemaDbmlFile,
   readProjectManagedDocument,
   readManagedFileSnapshot,
-  writePrdFragmentDocument,
-  writeRoadmapFragmentDocument,
   readPrdFragmentDocument,
   readRoadmapFragmentDocument,
   listProjectDocFiles,

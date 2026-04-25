@@ -125,7 +125,7 @@ export function RoadmapWorkspace({ project }) {
         instructions={[
           'Treat phases as the canonical delivery sequence and keep features, bugs, and work items aligned with that sequence.',
           'Use roadmap fragments for proposed roadmap changes instead of editing the canonical roadmap directly.',
-          'If roadmap work changes implementation scope, create or update a PRD fragment as follow-up work.',
+          'If roadmap work changes implementation scope, the AI agent should create the needed downstream fragments as follow-up work.',
         ]}
       />
 

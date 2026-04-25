@@ -1,9 +1,32 @@
-﻿# Functional Specification
+# Functional Spec Template
 
+> Template Contract. Keep filename `FUNCTIONAL_SPEC.template.md`; APM discovers and syncs templates by this name.
 > Managed document. Must comply with template FUNCTIONAL_SPEC.template.md.
 
-- Template Version: `2.0`
-- Last Updated: `2026-04-13`
+## 1. Template Contract Metadata
+
+- Template Name: `FUNCTIONAL_SPEC.template.md`
+- Template Version: `2.4`
+- Last Updated: `2026-04-23`
+- Template Kind: `document`
+- Owning Module: `Functional Spec`
+- Generated Artifact: `FUNCTIONAL_SPEC.md`
+
+## 2. Contract / Allowed Schema
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
+
+## 3. Actual Template
+
+# Functional Specification
 
 ## Purpose
 
@@ -28,11 +51,10 @@ Describe how the software should behave in precise, testable terms.
 - The template version is the contract for generated Functional Specification documents and fragments.
 - When this template changes, update `Template Version` and `Last Updated`.
 - Project-local copies in `data/projects/<project-id>/templates` must be replaced when the source template version or content hash changes.
-- AI agents must follow the latest copied template before generating or applying Functional Specification fragments.
 
 ## Functional Flowchart Action Vocabulary
 
-Functional workflows are descriptive, not implementation code. Use these standard actions so the UI, markdown document, and AI agents can translate the same workflow consistently.
+Functional workflows are descriptive, not implementation code. Use these standard actions so the UI and markdown document can represent the same workflow consistently.
 
 ### Node Types
 
@@ -51,6 +73,7 @@ Functional workflows are descriptive, not implementation code. Use these standar
 - External Interaction: Describes interaction with another system, service, API, file system, database, device, or module.
 - Formula: Describes a calculation, derivation, comparison, transformation, or logical expression.
 - Model Reference: Describes a relationship to a shared domain model, schema model, external payload, or data concept.
+- AI Placeholder: Describes a freeform placeholder with a stable id where an AI agent should later generate a fragment that replaces or expands it into a more precise logical workflow structure.
 - Open Question: Describes an unresolved design question attached to a flow, node, edge, endpoint, Functional Area, or the document as a whole.
 
 ### Connection Types
@@ -93,16 +116,25 @@ Functional workflows are descriptive, not implementation code. Use these standar
 - `@log`, `@audit`, `@error`, `@recover`: Express observability and error-handling behavior.
 - `@module`, `@flow`, `@node`, `@edge`, `@endpoint`: Reference stable ids from the Functional Spec or another module.
 
-## Guidance
+## 4. Examples
 
-- Focus on behavior, not implementation detail.
-- Keep it aligned with the PRD and roadmap.
-- Use language that can feed architecture, Experience Design, and test strategy work.
-- Keep the terminology technology-neutral unless the technology itself changes the required behavior.
-- Group workflows by Functional Area when the application has recognizable areas such as File Menu, Project List, Fragment Management, or SFTP Transfers.
-- Put user actions, system responses, validation, decisions, edge cases, errors, logging, inputs, and outputs inside the flow graph as typed nodes or connections instead of maintaining duplicate standalone sections.
-- Use standalone sections for unattached notes only when the item does not yet belong to a specific flow, node, edge, group, endpoint, or model reference.
-- Every workflow, node, edge, control point, model reference, and open question should have stable ids so fragments can target them precisely.
-- Treat open questions like comments that may attach to a workflow, node, edge, control point, Functional Area, or the document as a whole.
-- Backend-only systems are valid Functional Spec targets; use inputs, outputs, validation, return points, errors, logging, external interactions, and control points even when there is no UI.
+```md
+# FUNCTIONAL_SPEC.md: {{PROJECT_NAME}}
 
+> Managed document. Must comply with template FUNCTIONAL_SPEC.template.md.
+```
+
+## 5. Merge / Consumption Rules
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+## 6. Version / Migration Notes
+
+- Version `2.4` moves AI-facing instructions and restrictions into the paired module AI file so this template stays artifact-focused.
+- Version `2.3` moves AI behavior guidance into the paired module AI file and keeps this template artifact-focused.
+- Version `2.2` adds the standardized Template Contract structure.
+- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+- When this template changes again, update `Template Version`, `Last Updated`, and any migrator guidance needed for older unconsumed fragments.

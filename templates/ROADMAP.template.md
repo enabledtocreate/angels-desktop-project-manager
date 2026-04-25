@@ -1,35 +1,32 @@
 # ROADMAP Template
 
-This document defines the required structure for `ROADMAP.md`.
+> Template Contract. Keep filename `ROADMAP.template.md`; APM discovers and syncs templates by this name.
+> Managed document. Must comply with template ROADMAP.template.md.
 
-## Compliance Rules
-
-- Keep the `APM:DATA` managed block intact and valid JSON.
-- Keep the top compliance note intact.
-- Preserve the section order defined in this template.
-- Keep roadmap phases, linked task references, and feature references aligned with the application database.
-- Mermaid text must remain valid.
-- If the structure of this template changes, update the version section in both this template and the generated `ROADMAP.md` context that depends on it.
-
-## Version
+## 1. Template Contract Metadata
 
 - Template Name: `ROADMAP.template.md`
-- Template Version: `2.1`
-- Last Updated: `2026-04-18`
-- AI Agent instruction: Whenever this template is updated, update the template version and last updated date before making any other structural edits.
+- Template Version: `2.4`
+- Last Updated: `2026-04-23`
+- Template Kind: `document`
+- Owning Module: `Roadmap`
+- Generated Artifact: `ROADMAP.md`
 
-## Model Context Protocol
+## 2. Contract / Allowed Schema
 
-This section defines how an AI agent must treat `ROADMAP.md` when reading or editing it.
+### Required Contract Rules
 
-- `ROADMAP.md` is a managed document generated from application state.
-- The application database is the source of truth for phases, linked tasks, planned features, and considered features.
-- The roadmap document must remain structurally readable by both the application and an AI agent.
-- Feature IDs in `ROADMAP.md` refer to active unfinished entries in `FEATURES.md`.
-- AI agents should use active feature IDs for planning and implementation context.
-- AI agents should ignore implemented, completed, resolved, closed, and archived work unless explicitly asked to review project history.
-- Tasks referenced in roadmap phases are linked to the Kanban board and Gantt/timeline scheduling.
-- If a document edit conflicts with application data, the application may regenerate the file from the database.
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
+
+## 3. Actual Template
+
+This document defines the required structure for `ROADMAP.md`.
 
 ## Structure Definition
 
@@ -54,7 +51,7 @@ Unique section.
 - Purpose: Summarize the roadmap at a project level.
 - Expected content:
   - Plain-language summary of what the roadmap represents
-  - AI-agent guidance for how to interpret active feature IDs and omitted historical work
+  - Interpretation note for active feature IDs and omitted historical work
 
 ### Phased Implementation Plan
 
@@ -112,8 +109,6 @@ Unique section.
 ```md
 # ROADMAP: {{PROJECT_NAME}}
 
-> Managed document. Must comply with template ROADMAP.template.md.
-
 <!-- APM:DATA
 { ... }
 -->
@@ -121,8 +116,6 @@ Unique section.
 ## Executive Summary
 
 {{EXECUTIVE_SUMMARY}}
-
-> AI Agent instruction: Use feature IDs in this roadmap to cross-reference active planned entries in FEATURES.md. Implemented, completed, resolved, closed, and archived work is omitted unless explicitly asked to review history.
 
 ## Phased Implementation Plan
 
@@ -159,3 +152,26 @@ flowchart TD
   roadmap["Roadmap"]
 ```
 ```
+
+## 4. Examples
+
+```md
+# ROADMAP.md: {{PROJECT_NAME}}
+
+> Managed document. Must comply with template ROADMAP.template.md.
+```
+
+## 5. Merge / Consumption Rules
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+## 6. Version / Migration Notes
+
+- Version `2.4` moves AI-facing instructions and restrictions into the paired module AI file so this template stays artifact-focused.
+- Version `2.3` moves AI behavior guidance into the paired module AI file and keeps this template artifact-focused.
+- Version `2.2` adds the standardized Template Contract structure.
+- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+- When this template changes again, update `Template Version`, `Last Updated`, and any migrator guidance needed for older unconsumed fragments.

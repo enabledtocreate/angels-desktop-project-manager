@@ -1,33 +1,52 @@
-# DATABASE_SCHEMA Fragment Template
+﻿# DATABASE_SCHEMA Fragment Template
 
-This document defines the required structure for `DATABASE_SCHEMA_FRAGMENT_*.md`.
+> Template Contract. Keep filename `DATABASE_SCHEMA_FRAGMENT.template.md`; APM discovers and syncs templates by this name.
+> Managed document. Must comply with template DATABASE_SCHEMA_FRAGMENT.template.md.
 
-## Compliance Rules
-
-- Keep the `APM:DATA` managed block intact and valid JSON.
-- Keep the top compliance note intact.
-- Do not edit `DATABASE_SCHEMA.md`, `DATABASE_SCHEMA.dbml`, or the canonical schema model directly when proposing imported or AI-assisted schema updates.
-- Use stable IDs for entities, fields, indexes, constraints, and relationships whenever they are known.
-- Distinguish clearly between `observed`, `inferred`, and `unknown` information.
-- Do not invent tables, fields, keys, defaults, indexes, or constraints when they are not supported by the source material.
-- Put unresolved uncertainty in `Open Questions` instead of filling gaps with guessed schema structure.
-- Keep the DBML section valid and keep Mermaid text valid.
-
-## Version
+## 1. Template Contract Metadata
 
 - Template Name: `DATABASE_SCHEMA_FRAGMENT.template.md`
-- Template Version: `1.0`
-- Last Updated: `2026-03-29`
-- AI Agent instruction: Whenever this template is updated, update the template version and last updated date before changing anything else.
+- Template Version: `1.4`
+- Last Updated: `2026-04-23`
+- Template Kind: `fragment`
+- Owning Module: `Database Schema`
+- Generated Artifact: `DATABASE_SCHEMA_FRAGMENT_*.md`
 
-## Model Context Protocol
+## 2. Contract / Allowed Schema
 
-- `DATABASE_SCHEMA_FRAGMENT_*.md` is a proposal/import document, not the canonical schema.
-- The application database is the source of truth after a fragment is reviewed and merged.
-- The purpose of this fragment is to safely move schema knowledge from an existing application, database, migration set, or AI-assisted analysis into the manager.
-- Prefer facts from a live database first, then migrations, then schema SQL, then ORM/model code, and only then AI inference.
-- If a value is not directly supported by the source, mark it as `inferred` or add an open question.
-- The application should be able to reconstruct `DATABASE_SCHEMA.dbml`, `DATABASE_SCHEMA.md`, and Mermaid ER output from the merged schema model.
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- `entities`
+- `relationships`
+- `constraints`
+- `indexes`
+- `migrations`
+- `open-questions`
+- `synchronization-rules`
+
+### Supported Operations
+
+For `APM:OPERATIONS`, supported first-pass operations are:
+
+- `add`
+- `update`
+- `remove`
+- `reorder`
+- `move`
+- `link`
+- `unlink`
+
+Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
+
+## 3. Actual Template
+
+This document defines the required structure for `DATABASE_SCHEMA_FRAGMENT_*.md`.
 
 ## Required Managed Payload Shape
 
@@ -130,21 +149,10 @@ The fragment markdown body should contain these sections in order:
 10. `## Mermaid`
 11. `## Merge Guidance`
 
-## AI Agent Instruction
-
-- If you are reading an existing application schema, prefer extraction and normalization over reinterpretation.
-- Preserve exact names for entities, fields, indexes, and constraints when they are observed directly.
-- Mark inferred items clearly and keep them minimal.
-- If you cannot prove a relationship, type, or default, put that uncertainty in `Open Questions`.
-- Generate valid DBML that the manager can later consume as a portable schema artifact.
-- The markdown explanation should help a human understand what was imported and where uncertainty remains.
-
 ## Example Skeleton
 
 ```md
 # Database Schema Fragment: {{SOURCE_LABEL}}
-
-> Managed document. Must comply with template DATABASE_SCHEMA_FRAGMENT.template.md.
 
 <!-- APM:DATA
 { ... }
@@ -192,3 +200,34 @@ erDiagram
   }
 ```
 ```
+
+## 4. Examples
+
+```json
+[
+  {
+    "operation": "add",
+    "targetSection": "open-questions",
+    "item": {
+      "title": "Example question",
+      "description": "Replace this with a module-specific unresolved question."
+    },
+    "sourceRefs": ["FEAT-000"]
+  }
+]
+```
+
+## 5. Merge / Consumption Rules
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+## 6. Version / Migration Notes
+
+- Version `1.4` moves AI-facing instructions and restrictions into the paired module AI file so this template stays artifact-focused.
+- Version `1.3` moves AI behavior guidance into the paired module AI file and keeps this template artifact-focused.
+- Version `1.2` adds the standardized Template Contract structure.
+- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+- When this template changes again, update `Template Version`, `Last Updated`, and any migrator guidance needed for older unconsumed fragments.
