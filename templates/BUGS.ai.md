@@ -6,8 +6,8 @@
 ## 1. AI File Metadata
 
 - AI File Name: `BUGS.ai.md`
-- AI File Version: `1.2`
-- Last Updated: `2026-04-23`
+- AI File Version: `1.4`
+- Last Updated: `2026-04-25`
 - Owning Module: `Bugs`
 - Document Template: `BUGS.template.md`
 - Fragment Template: `BUGS_FRAGMENT.template.md`
@@ -51,7 +51,7 @@ Use Bugs to track active software defects, their lifecycle states, and the docum
 - Do not keep resolved or closed bugs in the active bug list.
 - Do not edit BUGS.md directly when the bug module or bug fragments should own the change.
 
-## 9. Imported Template Guidance
+## 9. Template Construction Rules
 
 - Use token references where helpful: `@stable-id` for persisted targets, `#module-or-section` for document/module scope, `$work-item-code` for provenance, `/operation` for intended action, `?question` for review points, and `!guardrail` for constraints.
 - Token references supplement structured operations and target ids; they do not replace explicit fields such as operation, targetSection, targetItemId, sourceRefs, or managed payload data.
@@ -60,3 +60,88 @@ Use Bugs to track active software defects, their lifecycle states, and the docum
 - Note whether the bug should stay planned, move to implemented history, or trigger follow-up work elsewhere.
 - Use stable ids for persisted document items, fragment targets, graph nodes, graph edges, models, and projections.
 - Keep titles concise; put long detail in description or body fields.
+
+### BUGS.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: `{{PROJECT_NAME}}`
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
+
+#### Imported Artifact Shape Notes
+
+This document defines the required structure for `BUGS.md`.
+
+Rules:
+- Keep the `APM:DATA` managed block intact and valid JSON.
+- Preserve the workflow-first structure with `## 1. Bug Workflow` before any bug entries.
+- Preserve the approved lifecycle vocabulary and active/archive rules.
+- Each bug must preserve its tracking ID.
+- Each bug must include both `Current Behavior` and `Expected Behavior`.
+- Only active bugs belong in `BUGS.md`.
+- Resolved and closed bugs move into archived workspace follow-up notes under `.apm/_WORKSPACE` instead of remaining in the main document.
+- Completed and regressed states must stay explicit.
+- Preserve optional `@item-id` association hints when they exist.
+- Preserve the `## Mermaid` section.
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+### BUGS_FRAGMENT.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: none currently defined.
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- `bugs`
+- `open-questions`
+
+### Supported Operations
+
+For `APM:OPERATIONS`, supported first-pass operations are:
+
+- `add`
+- `update`
+- `remove`
+- `reorder`
+- `move`
+- `link`
+- `unlink`
+
+Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
+
+#### Imported Artifact Shape Notes
+
+No extra artifact-shape notes were imported from the paired template.
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.

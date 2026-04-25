@@ -6,6 +6,7 @@ const config = require('./config');
 const TEMPLATE_DIR = path.join(config.APP_DIR, 'templates');
 const STANDARDS_DIR = path.join(config.APP_DIR, 'standards');
 const SOFTWARE_STANDARDS_REFERENCE_REGISTRY_NAME = 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md';
+const TEMPLATE_PLACEHOLDER_REGEX = /\{\{([A-Z0-9_]+)\}\}/g;
 const DOC_TYPES = {
   project_brief: {
     fileName: 'PROJECT_BRIEF.md',
@@ -1197,6 +1198,7 @@ function getTemplateMetadata(templateName) {
       templateName,
       version: '',
       lastUpdated: '',
+      placeholders: [],
     };
   }
   const content = fs.readFileSync(templatePath, 'utf8');
@@ -1206,7 +1208,35 @@ function getTemplateMetadata(templateName) {
     templateName,
     version: versionMatch ? versionMatch[1] : '',
     lastUpdated: updatedMatch ? updatedMatch[1] : '',
+    placeholders: extractTemplatePlaceholders(content),
   };
+}
+
+function extractTemplatePlaceholders(content) {
+  const seen = new Set();
+  const placeholders = [];
+  const source = String(content || '');
+  let match = TEMPLATE_PLACEHOLDER_REGEX.exec(source);
+  while (match) {
+    const key = String(match[1] || '').trim();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      placeholders.push(key);
+    }
+    match = TEMPLATE_PLACEHOLDER_REGEX.exec(source);
+  }
+  TEMPLATE_PLACEHOLDER_REGEX.lastIndex = 0;
+  return placeholders;
+}
+
+function renderTemplateFillIns(templateText, fillIns = {}) {
+  const normalized = fillIns && typeof fillIns === 'object' ? fillIns : {};
+  return String(templateText || '').replace(TEMPLATE_PLACEHOLDER_REGEX, (fullMatch, key) => {
+    const slot = String(key || '').trim();
+    if (!slot) return fullMatch;
+    if (!Object.prototype.hasOwnProperty.call(normalized, slot)) return fullMatch;
+    return String(normalized[slot] ?? '');
+  });
 }
 
 function defaultModuleDocumentEditorState(project, docType) {
@@ -2082,9 +2112,9 @@ function defaultPrdMarkdown(project) {
   let template = fs.existsSync(templatePath)
     ? fs.readFileSync(templatePath, 'utf8')
     : '# Product Requirements Document\n';
-  template = template
-    .replace(/\{\{PROJECT_NAME\}\}/g, project.name)
-    .replace(/Angel's Project Manager/g, project.name);
+  template = renderTemplateFillIns(template, {
+    PROJECT_NAME: project.name,
+  }).replace(/Angel's Project Manager/g, project.name);
   return template.trim();
 }
 
@@ -6434,6 +6464,8 @@ module.exports = {
   syncFragmentTemplateForProject,
   syncAllFragmentTemplatesForProject,
   getTemplateMetadata,
+  extractTemplatePlaceholders,
+  renderTemplateFillIns,
   normalizeFragmentDocType,
   getFragmentDocTypesForModule,
   inferFragmentDocTypeFromFileName,

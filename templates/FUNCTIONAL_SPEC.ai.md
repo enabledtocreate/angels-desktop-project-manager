@@ -6,8 +6,8 @@
 ## 1. AI File Metadata
 
 - AI File Name: `FUNCTIONAL_SPEC.ai.md`
-- AI File Version: `1.2`
-- Last Updated: `2026-04-23`
+- AI File Version: `1.4`
+- Last Updated: `2026-04-25`
 - Owning Module: `Functional Spec`
 - Document Template: `FUNCTIONAL_SPEC.template.md`
 - Fragment Template: `FUNCTIONAL_SPEC_FRAGMENT.template.md`
@@ -51,7 +51,7 @@ Use Functional Spec to define logical workflows, control points, smart-text stat
 - Do not reduce Functional Spec to raw programming syntax.
 - Do not edit generated FUNCTIONAL_SPEC.md directly when the workflow editor or fragments should own the change.
 
-## 9. Imported Template Guidance
+## 9. Template Construction Rules
 
 - Prefer stable ids and fragment operations when updating an existing functional flow.
 - Prefer graph-aware operations for workflows, nodes, edges, control points, model references, and open questions once those ids exist.
@@ -75,3 +75,83 @@ Use Functional Spec to define logical workflows, control points, smart-text stat
 - Every workflow, node, edge, control point, model reference, and open question should have stable ids so fragments can target them precisely.
 - Treat open questions like comments that may attach to a workflow, node, edge, control point, Functional Area, or the document as a whole.
 - Backend-only systems are valid Functional Spec targets; use inputs, outputs, validation, return points, errors, logging, external interactions, and control points even when there is no UI.
+
+### FUNCTIONAL_SPEC.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: `{{PROJECT_NAME}}`
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
+
+#### Imported Artifact Shape Notes
+
+# Functional Specification
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+### FUNCTIONAL_SPEC_FRAGMENT.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: none currently defined.
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- `functional-areas`
+- `logical-flows`
+- `flow-visuals`
+- `flow-endpoints`
+- `user-actions-and-system-responses`
+- `validation-rules`
+- `interface-expectations`
+- `edge-cases`
+- `open-questions`
+
+### Supported Operations
+
+For `APM:OPERATIONS`, supported first-pass operations are:
+
+- `add`
+- `update`
+- `remove`
+- `reorder`
+- `move`
+- `link`
+- `unlink`
+
+Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
+
+#### Imported Artifact Shape Notes
+
+# Functional Spec Fragment Template
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.

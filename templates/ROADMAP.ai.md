@@ -6,8 +6,8 @@
 ## 1. AI File Metadata
 
 - AI File Name: `ROADMAP.ai.md`
-- AI File Version: `1.2`
-- Last Updated: `2026-04-23`
+- AI File Version: `1.4`
+- Last Updated: `2026-04-25`
 - Owning Module: `Roadmap`
 - Document Template: `ROADMAP.template.md`
 - Fragment Template: `ROADMAP_FRAGMENT.template.md`
@@ -52,7 +52,7 @@ Use Roadmap to plan phases, sequencing, and active future work without duplicati
 - Do not use Roadmap as the implemented feature archive.
 - Do not edit generated ROADMAP.md directly.
 
-## 9. Imported Template Guidance
+## 9. Template Construction Rules
 
 - Keep the `APM:DATA` managed block intact and valid JSON.
 - Keep the top compliance note intact.
@@ -88,3 +88,77 @@ Use Roadmap to plan phases, sequencing, and active future work without duplicati
 - Tasks referenced in roadmap phases are linked to the Kanban board and Gantt/timeline scheduling.
 - If a document edit conflicts with application data, the application may regenerate the file from the database.
 - AI Agent instruction: Use feature IDs in this roadmap to cross-reference active planned entries in FEATURES.md. Implemented, completed, resolved, closed, and archived work is omitted unless explicitly asked to review history.
+
+### ROADMAP.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: `{{PROJECT_NAME}}`, `{{PHASE_CODE}}`, `{{PHASE_NAME}}`, `{{PHASE_GOAL}}`, `{{PHASE_STATUS}}`, `{{PHASE_TARGET_DATE}}`, `{{PHASE_SUMMARY}}`, `{{FEATURE_ID}}`, `{{FEATURE_TITLE}}`, `{{FEATURE_STATUS}}`, `{{EXECUTIVE_SUMMARY}}`, `{{TASK_TITLE}}`, `{{TASK_STATUS}}`
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
+
+#### Imported Artifact Shape Notes
+
+This document defines the required structure for `ROADMAP.md`.
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+### ROADMAP_FRAGMENT.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: none currently defined.
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- `fragment.payload.phaseChanges`
+- `fragment.payload.featureAssignments`
+- `fragment.payload.taskAssignments`
+
+### Supported Operations
+
+For `APM:OPERATIONS`, supported first-pass operations are:
+
+- `add`
+- `update`
+- `remove`
+- `reorder`
+- `move`
+- `link`
+- `unlink`
+
+Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
+
+#### Imported Artifact Shape Notes
+
+This document defines the required structure for `ROADMAP_FRAGMENT_*.md`.
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.

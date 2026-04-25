@@ -6,8 +6,8 @@
 ## 1. AI File Metadata
 
 - AI File Name: `ARCHITECTURE.ai.md`
-- AI File Version: `1.2`
-- Last Updated: `2026-04-23`
+- AI File Version: `1.4`
+- Last Updated: `2026-04-25`
 - Owning Module: `Architecture`
 - Document Template: `ARCHITECTURE.template.md`
 - Fragment Template: `ARCHITECTURE_FRAGMENT.template.md`
@@ -51,7 +51,7 @@ Use Architecture to describe system boundaries, layers, components, connections,
 - Do not turn Architecture into a dump of implementation code details.
 - Do not edit generated ARCHITECTURE.md directly.
 
-## 9. Imported Template Guidance
+## 9. Template Construction Rules
 
 - Use token references where helpful: `@stable-id` for persisted targets, `#module-or-section` for document/module scope, `$work-item-code` for provenance, `/operation` for intended action, `?question` for review points, and `!guardrail` for constraints.
 - Token references supplement structured operations and target ids; they do not replace explicit fields such as operation, targetSection, targetItemId, sourceRefs, or managed payload data.
@@ -75,3 +75,87 @@ Use Architecture to describe system boundaries, layers, components, connections,
 - Architecture should describe system structure, workflows, stack, persistence strategy, and module interdependence.
 - Significant architectural decisions should also create or update ADR records.
 - If a disk file conflicts with database state, the application may regenerate this file from the database.
+
+### ARCHITECTURE.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: `{{PROJECT_NAME}}`
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
+
+#### Imported Artifact Shape Notes
+
+This document defines the required structure for `ARCHITECTURE.md`.
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+### ARCHITECTURE_FRAGMENT.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: none currently defined.
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- `tech-stack`
+- `external-dependencies`
+- `boundaries`
+- `application-workflows`
+- `architecture-workflows`
+- `module-interactions`
+- `project-family-orchestration`
+- `child-project-boundaries`
+- `cross-project-interfaces`
+- `cross-cutting-concerns`
+- `decisions`
+- `constraints`
+- `open-questions`
+
+### Supported Operations
+
+For `APM:OPERATIONS`, supported first-pass operations are:
+
+- `add`
+- `update`
+- `remove`
+- `reorder`
+- `move`
+- `link`
+- `unlink`
+
+Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
+
+#### Imported Artifact Shape Notes
+
+# Architecture Fragment Template
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.

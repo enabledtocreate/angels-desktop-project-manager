@@ -6,8 +6,8 @@
 ## 1. AI File Metadata
 
 - AI File Name: `DATABASE_SCHEMA.ai.md`
-- AI File Version: `1.2`
-- Last Updated: `2026-04-23`
+- AI File Version: `1.4`
+- Last Updated: `2026-04-25`
 - Owning Module: `Database Schema`
 - Document Template: `DATABASE_SCHEMA.template.md`
 - Fragment Template: `DATABASE_SCHEMA_FRAGMENT.template.md`
@@ -53,7 +53,7 @@ Use Database Schema to describe persistence structure and schema narrative while
 - Do not edit generated DATABASE_SCHEMA.md or DBML directly outside schema workflows.
 - Do not treat migration-sized fragments as full replacements.
 
-## 9. Imported Template Guidance
+## 9. Template Construction Rules
 
 - Keep the `APM:DATA` managed block intact and valid JSON.
 - Keep the top compliance note intact.
@@ -90,3 +90,81 @@ Use Database Schema to describe persistence structure and schema narrative while
 - Schema changes should remain consistent with architecture decisions, work-item relationships, migrations, and source-of-truth rules.
 - Imported or AI-proposed schema changes should flow through `DATABASE_SCHEMA_FRAGMENT.template.md` rather than editing this narrative document directly.
 - If a disk file conflicts with database state, the application may regenerate this file from the database.
+
+### DATABASE_SCHEMA.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: `{{PROJECT_NAME}}`, `{{SCHEMA_PURPOSE}}`, `{{STORAGE_STRATEGY}}`, `{{ENTITY_DESCRIPTION}}`
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
+
+#### Imported Artifact Shape Notes
+
+This document defines the required structure for `DATABASE_SCHEMA.md`.
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+
+### DATABASE_SCHEMA_FRAGMENT.template.md
+
+- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
+- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
+- Fill-in slots: `{{SOURCE_LABEL}}`
+
+#### Imported Construction Contract
+
+### Required Contract Rules
+
+- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
+- Keep the managed-document compliance note in generated artifacts.
+- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
+
+### Allowed Target Sections
+
+- `entities`
+- `relationships`
+- `constraints`
+- `indexes`
+- `migrations`
+- `open-questions`
+- `synchronization-rules`
+
+### Supported Operations
+
+For `APM:OPERATIONS`, supported first-pass operations are:
+
+- `add`
+- `update`
+- `remove`
+- `reorder`
+- `move`
+- `link`
+- `unlink`
+
+Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
+
+#### Imported Artifact Shape Notes
+
+This document defines the required structure for `DATABASE_SCHEMA_FRAGMENT_*.md`.
+
+#### Imported Merge Notes
+
+- APM copies this template into the active project workspace and records its version/hash in the template registry.
+- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
+- The consuming module validates managed metadata and applies supported operations to structured module state.
+- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.

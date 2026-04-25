@@ -1573,22 +1573,22 @@ test('architecture and database schema modules are editable through the shared d
   assert.match(schemaDbmlFile, /Project "Software Designer Docs"/);
   const schemaFragmentTemplateFile = fs.readFileSync(schemaFragmentTemplatePath, 'utf8');
   assert.match(schemaFragmentTemplateFile, /DATABASE_SCHEMA_FRAGMENT\.template\.md/);
-  assert.match(schemaFragmentTemplateFile, /## DBML/);
+  assert.match(schemaFragmentTemplateFile, /## 2\. Template Fill-In Slots/);
+  assert.match(schemaFragmentTemplateFile, /`{{SOURCE_LABEL}}`/);
   const schemaAiFile = fs.readFileSync(path.join(repoRoot, 'templates', 'DATABASE_SCHEMA.ai.md'), 'utf8');
   assert.match(schemaAiFile, /Do not invent tables, fields, keys, defaults, indexes, or constraints/);
   const architectureAiFile = fs.readFileSync(architectureAiPath, 'utf8');
   assert.match(architectureAiFile, /# Architecture Module AI/);
   assert.match(architectureAiFile, /Document Rules/);
   const architectureTemplateFile = fs.readFileSync(architectureTemplatePath, 'utf8');
-  assert.match(architectureTemplateFile, /### 1\.3 Architectural Style/);
-  assert.match(architectureTemplateFile, /### 4\.2 Component Connections/);
-  assert.match(architectureTemplateFile, /### 5\.2 Architecture Workflows/);
-  assert.match(architectureTemplateFile, /Template Version: `2\.3`/);
+  assert.match(architectureTemplateFile, /## 2\. Template Fill-In Slots/);
+  assert.match(architectureTemplateFile, /`{{PROJECT_NAME}}`/);
+  assert.match(architectureTemplateFile, /Template Version: `2\.4`/);
 
   const adrTemplateFile = fs.readFileSync(path.join(repoRoot, 'templates', 'ADR.template.md'), 'utf8');
-  assert.match(adrTemplateFile, /## 2\. Decision Metadata/);
-  assert.match(adrTemplateFile, /## 8\. Related Architecture Elements/);
-  assert.match(adrTemplateFile, /Template Version: `2\.3`/);
+  assert.match(adrTemplateFile, /## 2\. Template Fill-In Slots/);
+  assert.match(adrTemplateFile, /`{{PROJECT_NAME}}`/);
+  assert.match(adrTemplateFile, /Template Version: `2\.4`/);
 
   const architectureRow = await dbModule.dbGet(
     'SELECT module_key, template_name, source_of_truth, editor_state FROM project_md_documents WHERE project_id = ? AND doc_type = ?',
@@ -3211,24 +3211,21 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
   }
   const generatedRoadmapTemplate = fs.readFileSync(path.join(alphaTemplatesDir, 'ROADMAP.template.md'), 'utf8');
   assert.match(generatedRoadmapTemplate, /## 1\. Template Contract Metadata/);
-  assert.match(generatedRoadmapTemplate, /Template Version: `2\.4`/);
-  assert.match(generatedRoadmapTemplate, /## Structure Definition/);
-  assert.match(generatedRoadmapTemplate, /### Phases/);
-  assert.match(generatedRoadmapTemplate, /### Planned Features/);
-  assert.match(generatedRoadmapTemplate, /### Considered Features/);
+  assert.match(generatedRoadmapTemplate, /Template Version: `2\.5`/);
+  assert.match(generatedRoadmapTemplate, /## 2\. Template Fill-In Slots/);
+  assert.match(generatedRoadmapTemplate, /`{{PHASE_CODE}}`/);
+  assert.match(generatedRoadmapTemplate, /`{{FEATURE_ID}}`/);
   const generatedFunctionalSpecTemplate = fs.readFileSync(path.join(alphaTemplatesDir, 'FUNCTIONAL_SPEC.template.md'), 'utf8');
-  assert.match(generatedFunctionalSpecTemplate, /Template Version: `2\.4`/);
-  assert.match(generatedFunctionalSpecTemplate, /## Functional Flowchart Action Vocabulary/);
-  assert.match(generatedFunctionalSpecTemplate, /### Node Types/);
-  assert.match(generatedFunctionalSpecTemplate, /Decision: Describes a conditional branch/);
-  assert.match(generatedFunctionalSpecTemplate, /### Connection Types/);
-  assert.match(generatedFunctionalSpecTemplate, /Create Draft Edge/);
+  assert.match(generatedFunctionalSpecTemplate, /Template Version: `2\.5`/);
+  assert.match(generatedFunctionalSpecTemplate, /## 2\. Template Fill-In Slots/);
+  assert.match(generatedFunctionalSpecTemplate, /`{{PROJECT_NAME}}`/);
+  assert.match(generatedFunctionalSpecTemplate, /## 3\. Actual Template/);
 
   const templateRegistryRows = await dbModule.dbAll(
     'SELECT template_name, template_kind, template_version, source_md5, target_md5, target_path FROM project_template_files WHERE project_id = ?',
     [project.id]
   );
-  assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.template.md' && row.template_version === '2.4'));
+  assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.template.md' && row.template_version === '2.5'));
   assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.ai.md' && row.template_kind === 'ai'));
   assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC_FRAGMENT.template.md' && row.template_kind === 'fragment'));
   assert(templateRegistryRows.every((row) => row.source_md5 && row.target_md5 && row.target_path));
@@ -4647,9 +4644,8 @@ test('template inventory includes document and fragment templates for every docu
     assert.equal(fs.existsSync(templatePath), true);
     const templateText = fs.readFileSync(templatePath, 'utf8');
     assert.match(templateText, /Template Contract Metadata/);
-    assert.match(templateText, /Contract \/ Allowed Schema/);
+    assert.match(templateText, /Template Fill-In Slots/);
     assert.match(templateText, /Actual Template/);
-    assert.match(templateText, /Merge \/ Consumption Rules/);
     assert.match(templateText, /Version \/ Migration Notes/);
   }
 
@@ -4658,17 +4654,14 @@ test('template inventory includes document and fragment templates for every docu
     assert.equal(fs.existsSync(templatePath), true);
     const templateText = fs.readFileSync(templatePath, 'utf8');
     assert.match(templateText, /Template Contract Metadata/);
-    assert.match(templateText, /Contract \/ Allowed Schema/);
+    assert.match(templateText, /Template Fill-In Slots/);
     assert.match(templateText, /Actual Template/);
-    assert.match(templateText, /Supported Operations/);
-    assert.match(templateText, /Merge \/ Consumption Rules/);
     assert.match(templateText, /Version \/ Migration Notes/);
   }
 
   const domainModelsFragmentTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'DOMAIN_MODELS_FRAGMENT.template.md'), 'utf8');
-  assert.match(domainModelsFragmentTemplate, /Domain Model Field Types/);
-  assert.match(domainModelsFragmentTemplate, /`collection`/);
-  assert.match(domainModelsFragmentTemplate, /conceptual types, not database, API, UI, or programming-language contracts/);
+  assert.match(domainModelsFragmentTemplate, /Template Fill-In Slots/);
+  assert.match(domainModelsFragmentTemplate, /No uppercase mustache fill-in slots are currently defined/);
 });
 
 test('module AI inventory includes a module AI file for every document-oriented module', () => {
@@ -4681,11 +4674,24 @@ test('module AI inventory includes a module AI file for every document-oriented 
     assert.match(aiText, /Fragment Rules/);
     assert.match(aiText, /Allowed Values \/ Contracts/);
     assert.match(aiText, /Guardrails/);
+    assert.match(aiText, /Template Construction Rules/);
   }
 
   const domainModelsAi = fs.readFileSync(path.join(repoRoot, 'templates', 'DOMAIN_MODELS.ai.md'), 'utf8');
   assert.match(domainModelsAi, /Allowed `conceptualType` values/);
   assert.match(domainModelsAi, /`reference`/);
+});
+
+test('template metadata exposes uppercase mustache fill-in slots', () => {
+  const roadmapMeta = workspaceDocs.getTemplateMetadata('ROADMAP.template.md');
+  assert.equal(roadmapMeta.version, '2.5');
+  assert(roadmapMeta.placeholders.includes('PROJECT_NAME'));
+  assert(roadmapMeta.placeholders.includes('PHASE_CODE'));
+
+  const rendered = workspaceDocs.renderTemplateFillIns('Hello {{PROJECT_NAME}} / {{UNKNOWN_SLOT}}', {
+    PROJECT_NAME: 'Alpha',
+  });
+  assert.equal(rendered, 'Hello Alpha / {{UNKNOWN_SLOT}}');
 });
 
 test('software standards registry is available from the top-level standards directory', () => {
