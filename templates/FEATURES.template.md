@@ -1,30 +1,31 @@
-# FEATURES Template
-
-> Template Contract. Keep filename `FEATURES.template.md`; APM discovers and syncs templates by this name.
-> Managed document. Must comply with template FEATURES.template.md.
-
-## 1. Template Contract Metadata
-
-- Template Name: `FEATURES.template.md`
-- Template Version: `1.4`
-- Last Updated: `2026-04-25`
-- Template Kind: `document`
-- Owning Module: `Features`
-- Generated Artifact: `FEATURES.md`
-
-## 2. Template Fill-In Slots
-
-- `{{PROJECT_NAME}}`
-
-## 3. Actual Template
-
-```md
 # FEATURES.md: {{PROJECT_NAME}}
 
 > Managed document. Must comply with template FEATURES.template.md.
+
+<!-- APM:DATA
+{
+  "docType": "features",
+  "version": {{DOC_VERSION:1}},
+  "features": {{FEATURES_JSON:0..N}},
+  "mermaid": "{{MERMAID_BODY:0..1}}"
+}
+-->
+
+## 1. Active Features
+
+<!-- REPEAT {{FEATURE_BLOCK:0..N}} -->
+### {{FEATURE_CODE}}: {{FEATURE_TITLE}}
+
+- Planning Bucket: {{PLANNING_BUCKET:considered|planned|phase}}
+- Status: {{FEATURE_STATUS:proposed|planned|in_progress|blocked|completed}}
+- Roadmap Phase: {{ROADMAP_PHASE_ID:0..1}}
+- Linked Task: {{TASK_ID:0..1}}
+- Summary: {{FEATURE_SUMMARY}}
+- Associated Document Ids: {{ASSOCIATED_DOCUMENT_IDS:0..N}}
+<!-- END REPEAT FEATURE_BLOCK -->
+
+## Mermaid
+
+```mermaid
+{{MERMAID_BODY}}
 ```
-
-## 4. Version / Migration Notes
-
-- Version `1.4` converts the template into a fill-in contract and moves construction guidance into the paired module AI file.
-- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.

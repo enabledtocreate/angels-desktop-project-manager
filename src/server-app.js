@@ -339,6 +339,24 @@ function createApp() {
     return false;
   }
 
+  function stripManagedBlockFromMarkdown(markdown) {
+    return String(markdown || '')
+      .replace(/^\uFEFF/, '')
+      .replace(/<!-- APM:DATA[\s\S]*?-->\s*/i, '')
+      .trim();
+  }
+
+  function extractTemplateBodyMarkdown(markdown) {
+    const lines = stripManagedBlockFromMarkdown(markdown).split(/\r?\n/);
+    const trimmedLines = lines.slice();
+    while (trimmedLines.length && !String(trimmedLines[0] || '').trim()) trimmedLines.shift();
+    if (trimmedLines.length && /^#\s+/.test(trimmedLines[0])) trimmedLines.shift();
+    while (trimmedLines.length && !String(trimmedLines[0] || '').trim()) trimmedLines.shift();
+    if (trimmedLines.length && /^>\s*Managed document\./i.test(trimmedLines[0])) trimmedLines.shift();
+    while (trimmedLines.length && !String(trimmedLines[0] || '').trim()) trimmedLines.shift();
+    return trimmedLines.join('\n').trim();
+  }
+
   async function importRoadmapDocumentFromFile(project, fileSnapshot) {
     if (!fileSnapshot || !fileSnapshot.managed || !Array.isArray(fileSnapshot.managed.phases)) {
       throw new Error('ROADMAP.md is missing its managed phase data.');
@@ -363,7 +381,10 @@ function createApp() {
 
   async function importRoadmapFragmentFromFile(project, existingFragment, fileSnapshot) {
     const managedFragment = fileSnapshot && fileSnapshot.managed && fileSnapshot.managed.fragment;
-    if (!managedFragment || typeof managedFragment.markdown !== 'string') {
+    const resolvedMarkdown = typeof managedFragment?.markdown === 'string' && managedFragment.markdown.trim()
+      ? managedFragment.markdown
+      : extractTemplateBodyMarkdown(fileSnapshot?.markdown || '');
+    if (!managedFragment || !resolvedMarkdown) {
       throw new Error('ROADMAP fragment file is missing its managed fragment data.');
     }
     await saveRoadmapFragment({
@@ -373,7 +394,7 @@ function createApp() {
       sourcePhaseId: managedFragment.sourcePhaseId !== undefined ? managedFragment.sourcePhaseId : (existingFragment && existingFragment.sourcePhaseId),
       code: managedFragment.code || (existingFragment && existingFragment.code),
       title: managedFragment.title || (existingFragment && existingFragment.title) || 'Roadmap fragment',
-      markdown: managedFragment.markdown,
+      markdown: resolvedMarkdown,
       mermaid: managedFragment.mermaid || '',
       payload: managedFragment.payload || null,
       status: managedFragment.status || (existingFragment && existingFragment.status) || 'draft',
@@ -447,11 +468,14 @@ function createApp() {
   }
 
   async function importPrdDocumentFromFile(project, fileSnapshot) {
-    if (!fileSnapshot || !fileSnapshot.managed || typeof fileSnapshot.managed.markdown !== 'string') {
+    const resolvedMarkdown = typeof fileSnapshot?.managed?.markdown === 'string' && fileSnapshot.managed.markdown.trim()
+      ? fileSnapshot.managed.markdown
+      : extractTemplateBodyMarkdown(fileSnapshot?.markdown || '');
+    if (!fileSnapshot || !fileSnapshot.managed || !resolvedMarkdown) {
       throw new Error('PRD.md is missing its managed PRD data.');
     }
     await saveProjectDocument(project.id, 'prd', {
-      markdown: fileSnapshot.managed.markdown,
+      markdown: resolvedMarkdown,
       mermaid: fileSnapshot.managed.mermaid || 'flowchart TD\n  product["Product"] --> value["Value"]',
       editorState: fileSnapshot.managed.editorState || null,
       filePath: fileSnapshot.docPath,
@@ -463,11 +487,14 @@ function createApp() {
   }
 
   async function importStructuredModuleDocumentFromFile(project, fileSnapshot, docType, defaultMermaidFactory) {
-    if (!fileSnapshot || !fileSnapshot.managed || typeof fileSnapshot.managed.markdown !== 'string') {
+    const resolvedMarkdown = typeof fileSnapshot?.managed?.markdown === 'string' && fileSnapshot.managed.markdown.trim()
+      ? fileSnapshot.managed.markdown
+      : extractTemplateBodyMarkdown(fileSnapshot?.markdown || '');
+    if (!fileSnapshot || !fileSnapshot.managed || !resolvedMarkdown) {
       throw new Error(`${String(docType).toUpperCase()}.md is missing its managed document data.`);
     }
     await saveProjectDocument(project.id, docType, {
-      markdown: fileSnapshot.managed.markdown,
+      markdown: resolvedMarkdown,
       mermaid: fileSnapshot.managed.mermaid || defaultMermaidFactory(project),
       editorState: fileSnapshot.managed.editorState || null,
       filePath: fileSnapshot.docPath,
@@ -1133,7 +1160,7 @@ function createApp() {
     const managedFragment = fileSnapshot && fileSnapshot.managed && fileSnapshot.managed.fragment;
     const resolvedMarkdown = typeof managedFragment?.markdown === 'string' && managedFragment.markdown.trim()
       ? managedFragment.markdown
-      : String(fileSnapshot?.markdown || '').trim();
+      : extractTemplateBodyMarkdown(fileSnapshot?.markdown || '');
     if (!managedFragment || !resolvedMarkdown) {
       throw new Error('PRD fragment file is missing its managed fragment data.');
     }

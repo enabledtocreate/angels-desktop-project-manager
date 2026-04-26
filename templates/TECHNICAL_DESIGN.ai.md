@@ -6,7 +6,7 @@
 ## 1. AI File Metadata
 
 - AI File Name: `TECHNICAL_DESIGN.ai.md`
-- AI File Version: `1.4`
+- AI File Version: `1.10`
 - Last Updated: `2026-04-25`
 - Owning Module: `Technical Design`
 - Document Template: `TECHNICAL_DESIGN.template.md`
@@ -53,84 +53,79 @@ Use Technical Design to capture implementation-facing structure, stack decisions
 
 ## 9. Template Construction Rules
 
-- Use token references where helpful: `@stable-id` for persisted targets, `#module-or-section` for document/module scope, `$work-item-code` for provenance, `/operation` for intended action, `?question` for review points, and `!guardrail` for constraints.
-- Token references supplement structured operations and target ids; they do not replace explicit fields such as operation, targetSection, targetItemId, sourceRefs, or managed payload data.
-- Keep this tied to implementation details for a specific capability or subsystem.
-- Note architecture, schema, and test impacts explicitly.
-- Use stable ids for persisted document items, fragment targets, graph nodes, graph edges, models, and projections.
-- Keep titles concise; put long detail in description or body fields.
-- Keep the scope narrower than architecture.
-- Explain how the design should be built, not just why it exists.
+### Placeholder Syntax
+
+- `{{NAME}}`: required single value.
+- `{{NAME:OPTION_A|OPTION_B}}`: select one allowed value.
+- `{{NAME:0..1}}`: optional value or optional block.
+- `{{NAME:0..N}}`: repeatable value, list, array, or repeated markdown block.
+- Placeholders used as full JSON values must be replaced with valid JSON objects, arrays, strings, numbers, booleans, or `null` that match the surrounding structure.
+- `<!-- REPEAT {{NAME:0..N}} --> ... <!-- END REPEAT {{NAME}} -->` marks a repeatable markdown region.
+- Keep the `APM:DATA` and `APM:OPERATIONS` blocks structurally valid after replacement.
 
 ### TECHNICAL_DESIGN.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: `{{PROJECT_NAME}}`
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
-
-#### Imported Artifact Shape Notes
-
-No extra artifact-shape notes were imported from the paired template.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `document`
+- Generated Artifact: `TECHNICAL_DESIGN.md`
+- Consumption Goal: A filled template should read like the final managed document body and keep the managed metadata block intact.
+- Fill-In Slots:
+  - `{{PROJECT_NAME}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{SOURCE_OF_TRUTH:database|generated|hybrid}}`: Select one allowed value: `database`, `generated`, `hybrid`.
+  - `{{EDITOR_STATE_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{EXECUTIVE_SUMMARY}}`: Required single fill-in.
+  - `{{DESIGN_SCOPE}}`: Required single fill-in.
+  - `{{INTERNAL_FLOW}}`: Required single fill-in.
+  - `{{DATA_AND_INTERFACE_IMPACT}}`: Required single fill-in.
+  - `{{RISK_AND_TRADEOFF_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{OPEN_QUESTION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
 
 ### TECHNICAL_DESIGN_FRAGMENT.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: none currently defined.
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- `open-questions`
-- `working-content`
-
-### Supported Operations
-
-For `APM:OPERATIONS`, supported first-pass operations are:
-
-- `add`
-- `update`
-- `remove`
-- `reorder`
-- `move`
-- `link`
-- `unlink`
-
-Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
-
-#### Imported Artifact Shape Notes
-
-No extra artifact-shape notes were imported from the paired template.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `fragment`
+- Fragment Merge Mode: `apm-operations`
+- Allowed Target Sections: `open-questions`, `working-content`
+- Consumption Goal: A filled template should preserve valid fragment metadata and a valid operations block for merge-time processing.
+- Fill-In Slots:
+  - `{{FRAGMENT_CODE}}`: Required single fill-in.
+  - `{{FRAGMENT_TITLE}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{FRAGMENT_ID}}`: Required single fill-in.
+  - `{{FRAGMENT_SUMMARY}}`: Required single fill-in.
+  - `{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}`: Select one allowed value: `draft`, `proposed`, `approved`, `rejected`, `merged`, `archived`.
+  - `{{FRAGMENT_REVISION:1}}`: Fill using `1` semantics.
+  - `{{LINEAGE_KEY}}`: Required single fill-in.
+  - `{{SOURCE_LABEL}}`: Required single fill-in.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{PAYLOAD_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{OPERATION:add|update|remove|reorder|move|link|unlink}}`: Select one allowed value: `add`, `update`, `remove`, `reorder`, `move`, `link`, `unlink`.
+  - `{{TARGET_SECTION:open-questions|working-content}}`: Select one allowed value: `open-questions`, `working-content`.
+  - `{{FROM_SECTION:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{TARGET_ITEM_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{BEFORE_ITEM_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{AFTER_ITEM_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ORDERED_IDS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{VERSION_DATE:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_STABLE_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_NAME:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_TITLE:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_SUMMARY:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_DESCRIPTION:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_TEXT:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_RISK:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_MITIGATION:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_TYPE:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{SOURCE_REFS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{ADDITIONAL_OPERATION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{EXECUTIVE_SUMMARY}}`: Required single fill-in.
+  - `{{SCOPE_AND_DESIGN_UPDATE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{INTERNAL_FLOW_CHANGE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{DATA_AND_INTERFACE_IMPACT_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{RISK_AND_OPEN_QUESTION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MERGE_GUIDANCE}}`: Required single fill-in.

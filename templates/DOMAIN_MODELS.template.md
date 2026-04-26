@@ -1,30 +1,43 @@
-# Domain Models
-
-> Template Contract. Keep filename `DOMAIN_MODELS.template.md`; APM discovers and syncs templates by this name.
-> Managed document. Must comply with template DOMAIN_MODELS.template.md.
-
-## 1. Template Contract Metadata
-
-- Template Name: `DOMAIN_MODELS.template.md`
-- Template Version: `1.4`
-- Last Updated: `2026-04-25`
-- Template Kind: `document`
-- Owning Module: `Domain Models`
-- Generated Artifact: `DOMAIN_MODELS.md`
-
-## 2. Template Fill-In Slots
-
-- `{{PROJECT_NAME}}`
-
-## 3. Actual Template
-
-```md
 # DOMAIN_MODELS.md: {{PROJECT_NAME}}
 
 > Managed document. Must comply with template DOMAIN_MODELS.template.md.
-```
 
-## 4. Version / Migration Notes
+<!-- APM:DATA
+{
+  "docType": "domain_models",
+  "version": {{DOC_VERSION:1}},
+  "templateName": "DOMAIN_MODELS.template.md",
+  "templateVersion": "{{TEMPLATE_VERSION}}",
+  "sourceOfTruth": "{{SOURCE_OF_TRUTH:database|generated|hybrid}}",
+  "editorState": {{EDITOR_STATE_JSON:0..1}}
+}
+-->
 
-- Version `1.4` converts the template into a fill-in contract and moves construction guidance into the paired module AI file.
-- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+## 1. Executive Summary
+
+{{EXECUTIVE_SUMMARY}}
+
+## 2. Models
+
+<!-- REPEAT {{MODEL_BLOCK:0..N}} -->
+### {{MODEL_NAME}}
+
+- Stable Id: {{MODEL_ID}}
+- Summary: {{MODEL_SUMMARY}}
+
+#### Fields
+
+{{FIELD_BLOCK:0..N}}
+<!-- END REPEAT MODEL_BLOCK -->
+
+## 3. Projections
+
+{{PROJECTION_BLOCK:0..N}}
+
+## 4. Shared Model Projections
+
+{{SHARED_PROJECTION_BLOCK:0..N}}
+
+## 5. Open Questions
+
+{{OPEN_QUESTION_BLOCK:0..N}}

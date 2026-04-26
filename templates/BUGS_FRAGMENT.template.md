@@ -1,38 +1,47 @@
-# BUGS_FRAGMENT.template.md
+# Bugs Fragment: {{FRAGMENT_CODE}} - {{FRAGMENT_TITLE}}
 
-> Template Contract. Keep filename `BUGS_FRAGMENT.template.md`; APM discovers and syncs templates by this name.
 > Managed document. Must comply with template BUGS_FRAGMENT.template.md.
 
-## 1. Template Contract Metadata
-
-- Template Name: `BUGS_FRAGMENT.template.md`
-- Template Version: `1.5`
-- Last Updated: `2026-04-25`
-- Template Kind: `fragment`
-- Owning Module: `Bugs`
-- Generated Artifact: `BUGS_FRAGMENT_*.md`
-
-## 2. Template Fill-In Slots
-
-- No uppercase mustache fill-in slots are currently defined in this template.
-
-## 3. Actual Template
-
-```json
-[
-  {
-    "operation": "add",
-    "targetSection": "open-questions",
-    "item": {
-      "title": "Example question",
-      "description": "Replace this with a module-specific unresolved question."
-    },
-    "sourceRefs": ["FEAT-000"]
+<!-- APM:DATA
+{
+  "docType": "bugs_fragment",
+  "version": {{DOC_VERSION:1}},
+  "fragment": {
+    "id": "{{FRAGMENT_ID}}",
+    "code": "{{FRAGMENT_CODE}}",
+    "title": "{{FRAGMENT_TITLE}}",
+    "summary": "{{FRAGMENT_SUMMARY}}",
+    "status": "{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}",
+    "revision": {{FRAGMENT_REVISION:1}},
+    "lineageKey": "{{LINEAGE_KEY}}",
+    "sourceLabel": "{{SOURCE_LABEL}}",
+    "templateName": "BUGS_FRAGMENT.template.md",
+    "templateVersion": "{{TEMPLATE_VERSION}}",
+    "payload": {{PAYLOAD_JSON:0..1}}
   }
-]
-```
+}
+-->
 
-## 4. Version / Migration Notes
+## Executive Summary
 
-- Version `1.5` converts the template into a fill-in contract and moves construction guidance into the paired module AI file.
-- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+{{EXECUTIVE_SUMMARY}}
+
+## Bug Updates
+
+{{BUG_UPDATE_BLOCK:0..N}}
+
+## Expected vs Current Behavior
+
+{{BEHAVIOR_UPDATE_BLOCK:0..N}}
+
+## Fix and Validation Notes
+
+{{FIX_AND_VALIDATION_NOTES}}
+
+## Open Questions
+
+{{OPEN_QUESTION_BLOCK:0..N}}
+
+## Merge Guidance
+
+{{MERGE_GUIDANCE}}

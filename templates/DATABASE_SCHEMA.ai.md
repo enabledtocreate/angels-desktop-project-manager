@@ -6,7 +6,7 @@
 ## 1. AI File Metadata
 
 - AI File Name: `DATABASE_SCHEMA.ai.md`
-- AI File Version: `1.4`
+- AI File Version: `1.10`
 - Last Updated: `2026-04-25`
 - Owning Module: `Database Schema`
 - Document Template: `DATABASE_SCHEMA.template.md`
@@ -55,116 +55,87 @@ Use Database Schema to describe persistence structure and schema narrative while
 
 ## 9. Template Construction Rules
 
-- Keep the `APM:DATA` managed block intact and valid JSON.
-- Keep the top compliance note intact.
-- Use stable IDs for entities, fields, indexes, constraints, and relationships whenever they are known.
-- Distinguish clearly between `observed`, `inferred`, and `unknown` information.
-- Put unresolved uncertainty in `Open Questions` instead of filling gaps with guessed schema structure.
-- Keep the DBML section valid and keep Mermaid text valid.
-- Use token references where helpful: `@stable-id` for persisted targets, `#module-or-section` for document/module scope, `$work-item-code` for provenance, `/operation` for intended action, `?question` for review points, and `!guardrail` for constraints.
-- Token references supplement structured operations and target ids; they do not replace explicit fields such as entity ids, field ids, relationship ids, sourceRefs, or managed payload data.
-- AI Agent instruction: Whenever this template is updated, update the template version and last updated date before changing anything else.
-- `DATABASE_SCHEMA_FRAGMENT_*.md` is a proposal/import document, not the canonical schema.
-- The application database is the source of truth after a fragment is reviewed and merged.
-- The purpose of this fragment is to safely move schema knowledge from an existing application, database, migration set, or AI-assisted analysis into the manager.
-- Prefer facts from a live database first, then migrations, then schema SQL, then ORM/model code, and only then AI inference.
-- If a value is not directly supported by the source, mark it as `inferred` or add an open question.
-- The application should be able to reconstruct `DATABASE_SCHEMA.dbml`, `DATABASE_SCHEMA.md`, and Mermaid ER output from the merged schema model.
-- If you are reading an existing application schema, prefer extraction and normalization over reinterpretation.
-- Preserve exact names for entities, fields, indexes, and constraints when they are observed directly.
-- Mark inferred items clearly and keep them minimal.
-- If you cannot prove a relationship, type, or default, put that uncertainty in `Open Questions`.
-- Generate valid DBML that the manager can later consume as a portable schema artifact.
-- The markdown explanation should help a human understand what was imported and where uncertainty remains.
-- Include token references in the markdown body when they help the AI agent or reviewer understand module scope, target ids, work item provenance, or intended merge action.
-- Use stable ids for persisted document items, fragment targets, graph nodes, graph edges, models, and projections.
-- Keep titles concise; put long detail in description or body fields.
-- Preserve the section order defined in this template.
-- Keep Mermaid text valid and aligned with the schema editor state in the application.
-- Treat `DATABASE_SCHEMA.md` as the schema design narrative; structural portability should be represented through generated DBML and schema fragments.
-- If this template structure changes, update the version section before making any other structural edits.
-- AI Agent instruction: Whenever this template is updated, update the template version and last updated date before changing any section definitions.
-- `DATABASE_SCHEMA.md` is a managed document generated from application state.
-- The application database is the source of truth for schema editor fields, generated markdown, and Mermaid content.
-- AI agents should preserve section headings and use the existing structure instead of inventing new top-level sections.
-- Schema changes should remain consistent with architecture decisions, work-item relationships, migrations, and source-of-truth rules.
-- Imported or AI-proposed schema changes should flow through `DATABASE_SCHEMA_FRAGMENT.template.md` rather than editing this narrative document directly.
-- If a disk file conflicts with database state, the application may regenerate this file from the database.
+### Placeholder Syntax
+
+- `{{NAME}}`: required single value.
+- `{{NAME:OPTION_A|OPTION_B}}`: select one allowed value.
+- `{{NAME:0..1}}`: optional value or optional block.
+- `{{NAME:0..N}}`: repeatable value, list, array, or repeated markdown block.
+- Placeholders used as full JSON values must be replaced with valid JSON objects, arrays, strings, numbers, booleans, or `null` that match the surrounding structure.
+- `<!-- REPEAT {{NAME:0..N}} --> ... <!-- END REPEAT {{NAME}} -->` marks a repeatable markdown region.
+- Keep the `APM:DATA` and `APM:OPERATIONS` blocks structurally valid after replacement.
 
 ### DATABASE_SCHEMA.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: `{{PROJECT_NAME}}`, `{{SCHEMA_PURPOSE}}`, `{{STORAGE_STRATEGY}}`, `{{ENTITY_DESCRIPTION}}`
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
-
-#### Imported Artifact Shape Notes
-
-This document defines the required structure for `DATABASE_SCHEMA.md`.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `document`
+- Generated Artifact: `DATABASE_SCHEMA.md`
+- Consumption Goal: A filled template should read like the final managed document body and keep the managed metadata block intact.
+- Fill-In Slots:
+  - `{{PROJECT_NAME}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{SOURCE_OF_TRUTH:database|generated|hybrid}}`: Select one allowed value: `database`, `generated`, `hybrid`.
+  - `{{MERMAID_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{EDITOR_STATE_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{SCHEMA_PURPOSE}}`: Required single fill-in.
+  - `{{STORAGE_STRATEGY}}`: Required single fill-in.
+  - `{{SYNC_STATUS_SUMMARY}}`: Required single fill-in.
+  - `{{ENTITY_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{ENTITY_NAME}}`: Required single fill-in.
+  - `{{ENTITY_KIND:table|view|index|constraint|trigger|other}}`: Select one allowed value: `table`, `view`, `index`, `constraint`, `trigger`, `other`.
+  - `{{ENTITY_DESCRIPTION}}`: Required single fill-in.
+  - `{{FIELD_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{RELATIONSHIP_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{INDEX_AND_CONSTRAINT_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MIGRATION_NOTE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{OPEN_QUESTION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{DBML_BODY}}`: Required single fill-in.
+  - `{{MERMAID_BODY}}`: Required single fill-in.
 
 ### DATABASE_SCHEMA_FRAGMENT.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: `{{SOURCE_LABEL}}`
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- `entities`
-- `relationships`
-- `constraints`
-- `indexes`
-- `migrations`
-- `open-questions`
-- `synchronization-rules`
-
-### Supported Operations
-
-For `APM:OPERATIONS`, supported first-pass operations are:
-
-- `add`
-- `update`
-- `remove`
-- `reorder`
-- `move`
-- `link`
-- `unlink`
-
-Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
-
-#### Imported Artifact Shape Notes
-
-This document defines the required structure for `DATABASE_SCHEMA_FRAGMENT_*.md`.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `fragment`
+- Fragment Merge Mode: `database-import`
+- Consumption Goal: A filled template should preserve valid fragment metadata and a complete schema payload suitable for import.
+- Fill-In Slots:
+  - `{{FRAGMENT_CODE}}`: Required single fill-in.
+  - `{{FRAGMENT_TITLE}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{FRAGMENT_ID}}`: Required single fill-in.
+  - `{{FRAGMENT_SUMMARY}}`: Required single fill-in.
+  - `{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}`: Select one allowed value: `draft`, `proposed`, `approved`, `rejected`, `merged`, `archived`.
+  - `{{FRAGMENT_REVISION:1}}`: Fill using `1` semantics.
+  - `{{LINEAGE_KEY}}`: Required single fill-in.
+  - `{{SOURCE_LABEL}}`: Required single fill-in.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{SOURCE_TYPE:sqlite_database|schema_sql|dbml|migration_files|orm_code|mixed}}`: Select one allowed value: `sqlite_database`, `schema_sql`, `dbml`, `migration_files`, `orm_code`, `mixed`.
+  - `{{SOURCE_LABEL_PAYLOAD}}`: Required single fill-in.
+  - `{{SOURCE_DIALECT}}`: Required single fill-in.
+  - `{{SOURCE_OBSERVED_AT:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{SCHEMA_FINGERPRINT}}`: Required single fill-in.
+  - `{{SOURCE_CONFIDENCE:observed|mixed|inferred}}`: Select one allowed value: `observed`, `mixed`, `inferred`.
+  - `{{PAYLOAD_SUMMARY}}`: Required single fill-in.
+  - `{{ENTITIES_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{RELATIONSHIPS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{INDEXES_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{CONSTRAINTS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MIGRATION_NOTES_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{OPEN_QUESTIONS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{DBML_JSON}}`: Required single fill-in.
+  - `{{MERMAID_JSON}}`: Required single fill-in.
+  - `{{IMPORT_MODE:full_schema|partial_schema|0..1}}`: Select one allowed value: `full_schema`, `partial_schema`, `0..1`.
+  - `{{EXECUTIVE_SUMMARY}}`: Required single fill-in.
+  - `{{SOURCE_METADATA_MARKDOWN}}`: Required single fill-in.
+  - `{{OBSERVED_SCHEMA_SUMMARY}}`: Required single fill-in.
+  - `{{ENTITY_MARKDOWN_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{RELATIONSHIP_MARKDOWN_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{INDEX_AND_CONSTRAINT_MARKDOWN_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MIGRATION_NOTES_MARKDOWN:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{OPEN_QUESTION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{DBML_BODY}}`: Required single fill-in.
+  - `{{MERMAID_BODY}}`: Required single fill-in.
+  - `{{MERGE_GUIDANCE}}`: Required single fill-in.

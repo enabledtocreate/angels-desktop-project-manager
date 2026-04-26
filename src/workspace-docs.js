@@ -6,7 +6,7 @@ const config = require('./config');
 const TEMPLATE_DIR = path.join(config.APP_DIR, 'templates');
 const STANDARDS_DIR = path.join(config.APP_DIR, 'standards');
 const SOFTWARE_STANDARDS_REFERENCE_REGISTRY_NAME = 'SOFTWARE_STANDARDS_REFERENCE_REGISTRY.md';
-const TEMPLATE_PLACEHOLDER_REGEX = /\{\{([A-Z0-9_]+)\}\}/g;
+const TEMPLATE_PLACEHOLDER_REGEX = /\{\{([^{}]+)\}\}/g;
 const DOC_TYPES = {
   project_brief: {
     fileName: 'PROJECT_BRIEF.md',
@@ -1193,22 +1193,96 @@ function formatDocTypeLabel(docType) {
 
 function getTemplateMetadata(templateName) {
   const templatePath = path.join(TEMPLATE_DIR, templateName);
+  const aiMetadata = readTemplateMetadataFromAiFile(templateName);
   if (!fs.existsSync(templatePath)) {
     return {
       templateName,
-      version: '',
-      lastUpdated: '',
+      version: aiMetadata.version || '',
+      lastUpdated: aiMetadata.lastUpdated || '',
       placeholders: [],
     };
   }
   const content = fs.readFileSync(templatePath, 'utf8');
-  const versionMatch = content.match(/(?:Template|AI File) Version:\s*`([^`]+)`/i);
-  const updatedMatch = content.match(/Last Updated:\s*`([^`]+)`/i);
   return {
     templateName,
+    version: aiMetadata.version || '',
+    lastUpdated: aiMetadata.lastUpdated || '',
+    placeholders: extractTemplatePlaceholders(content),
+  };
+}
+
+function getAiFileNameForTemplate(templateName) {
+  const raw = String(templateName || '').trim();
+  if (!raw) return '';
+  if (raw.endsWith('_FRAGMENT.template.md')) {
+    return raw.replace('_FRAGMENT.template.md', '.ai.md');
+  }
+  if (raw.endsWith('.template.md')) {
+    return raw.replace('.template.md', '.ai.md');
+  }
+  return '';
+}
+
+function readTemplateMetadataFromAiFile(templateName) {
+  const aiFileName = getAiFileNameForTemplate(templateName);
+  if (!aiFileName) return { version: '', lastUpdated: '' };
+  const aiPath = path.join(TEMPLATE_DIR, aiFileName);
+  if (!fs.existsSync(aiPath)) return { version: '', lastUpdated: '' };
+  const aiContent = fs.readFileSync(aiPath, 'utf8');
+  const lines = aiContent.split(/\r?\n/);
+  const heading = `### ${String(templateName || '').trim()}`;
+  let sectionStart = -1;
+  for (let index = 0; index < lines.length; index += 1) {
+    if (String(lines[index] || '').trim() === heading) {
+      sectionStart = index + 1;
+      break;
+    }
+  }
+  if (sectionStart === -1) return { version: '', lastUpdated: '' };
+  const sectionLines = [];
+  for (let index = sectionStart; index < lines.length; index += 1) {
+    const line = String(lines[index] || '');
+    if (/^##\s+/.test(line) || /^###\s+/.test(line)) break;
+    sectionLines.push(line);
+  }
+  const sectionBody = sectionLines.join('\n');
+  const versionMatch = sectionBody.match(/Template Version:\s*`([^`]+)`/i);
+  const updatedMatch = sectionBody.match(/Last Updated:\s*`([^`]+)`/i);
+  return {
     version: versionMatch ? versionMatch[1] : '',
     lastUpdated: updatedMatch ? updatedMatch[1] : '',
-    placeholders: extractTemplatePlaceholders(content),
+  };
+}
+
+function parseTemplatePlaceholderDefinition(value) {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return {
+      raw: '',
+      name: '',
+      descriptor: '',
+      options: [],
+    };
+  }
+  const separatorIndex = raw.indexOf(':');
+  if (separatorIndex === -1) {
+    return {
+      raw,
+      name: raw,
+      descriptor: '',
+      options: [],
+    };
+  }
+  const name = raw.slice(0, separatorIndex).trim();
+  const descriptor = raw.slice(separatorIndex + 1).trim();
+  const options = descriptor
+    ? descriptor.split('|').map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
+  return {
+    raw,
+    name,
+    descriptor,
+    options,
   };
 }
 
@@ -1218,10 +1292,10 @@ function extractTemplatePlaceholders(content) {
   const source = String(content || '');
   let match = TEMPLATE_PLACEHOLDER_REGEX.exec(source);
   while (match) {
-    const key = String(match[1] || '').trim();
-    if (key && !seen.has(key)) {
-      seen.add(key);
-      placeholders.push(key);
+    const placeholder = parseTemplatePlaceholderDefinition(match[1]);
+    if (placeholder.raw && !seen.has(placeholder.raw)) {
+      seen.add(placeholder.raw);
+      placeholders.push(placeholder.raw);
     }
     match = TEMPLATE_PLACEHOLDER_REGEX.exec(source);
   }
@@ -1229,13 +1303,20 @@ function extractTemplatePlaceholders(content) {
   return placeholders;
 }
 
-function renderTemplateFillIns(templateText, fillIns = {}) {
+function renderTemplateFillIns(templateText, fillIns = {}, options = {}) {
   const normalized = fillIns && typeof fillIns === 'object' ? fillIns : {};
+  const renderOptions = options && typeof options === 'object' ? options : {};
   return String(templateText || '').replace(TEMPLATE_PLACEHOLDER_REGEX, (fullMatch, key) => {
-    const slot = String(key || '').trim();
+    const placeholder = parseTemplatePlaceholderDefinition(key);
+    const slot = placeholder.name || placeholder.raw;
     if (!slot) return fullMatch;
-    if (!Object.prototype.hasOwnProperty.call(normalized, slot)) return fullMatch;
-    return String(normalized[slot] ?? '');
+    if (Object.prototype.hasOwnProperty.call(normalized, placeholder.raw)) {
+      return String(normalized[placeholder.raw] ?? '');
+    }
+    if (Object.prototype.hasOwnProperty.call(normalized, slot)) {
+      return String(normalized[slot] ?? '');
+    }
+    return renderOptions.blankMissing ? '' : fullMatch;
   });
 }
 
@@ -2114,6 +2195,8 @@ function defaultPrdMarkdown(project) {
     : '# Product Requirements Document\n';
   template = renderTemplateFillIns(template, {
     PROJECT_NAME: project.name,
+  }, {
+    blankMissing: true,
   }).replace(/Angel's Project Manager/g, project.name);
   return template.trim();
 }
@@ -5451,6 +5534,10 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
     '',
     'Module AI files remain authoritative for module-specific AI behavior. Read the module AI file first, then the paired document and fragment templates for literal artifact shape.',
     '',
+    'Document templates describe the final managed-document contract and reconciliation shape that APM writes or re-imports.',
+    '',
+    'Fragment templates are the normal AI write path. Fill the fragment template, save the fragment to the configured fragments path, and let APM consume it into the growing module state and generated document.',
+    '',
     ...renderAiEnvironmentDirectiveTemplateReferences(emittedModuleDirectiveGroups),
     ...(lockedSystemDirectives.length
       ? [
@@ -5462,6 +5549,8 @@ function renderAiEnvironmentEditorStateMarkdown(project, editorState, options = 
     '## 9. Module Directive Index',
     '',
     'Module AI files and artifact templates are authoritative in their owning module files. Follow the enabled directive references below, but read the referenced module AI file first for behavior and then the paired templates for exact document and fragment structure.',
+    '',
+    'Unless the task is to inspect or reconstruct the final managed-document shape, prefer writing a compliant fragment instead of editing or filling the non-fragment document template directly.',
     '',
     ...(emittedModuleDirectiveGroups.length
       ? emittedModuleDirectiveGroups.flatMap((group, groupIndex) => [

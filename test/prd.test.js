@@ -1573,22 +1573,26 @@ test('architecture and database schema modules are editable through the shared d
   assert.match(schemaDbmlFile, /Project "Software Designer Docs"/);
   const schemaFragmentTemplateFile = fs.readFileSync(schemaFragmentTemplatePath, 'utf8');
   assert.match(schemaFragmentTemplateFile, /DATABASE_SCHEMA_FRAGMENT\.template\.md/);
-  assert.match(schemaFragmentTemplateFile, /## 2\. Template Fill-In Slots/);
-  assert.match(schemaFragmentTemplateFile, /`{{SOURCE_LABEL}}`/);
+  assert.match(schemaFragmentTemplateFile, /^# Database Schema Fragment: \{\{FRAGMENT_CODE\}\} - \{\{FRAGMENT_TITLE\}\}/);
+  assert.match(schemaFragmentTemplateFile, /"sourceType": "\{\{SOURCE_TYPE:sqlite_database\|schema_sql\|dbml\|migration_files\|orm_code\|mixed\}\}"/);
+  assert.match(schemaFragmentTemplateFile, /"entities": \{\{ENTITIES_JSON:0\.\.N\}\}/);
+  assert.match(schemaFragmentTemplateFile, /## Observed Schema Summary/);
+  assert.match(schemaFragmentTemplateFile, /## DBML/);
   const schemaAiFile = fs.readFileSync(path.join(repoRoot, 'templates', 'DATABASE_SCHEMA.ai.md'), 'utf8');
   assert.match(schemaAiFile, /Do not invent tables, fields, keys, defaults, indexes, or constraints/);
   const architectureAiFile = fs.readFileSync(architectureAiPath, 'utf8');
   assert.match(architectureAiFile, /# Architecture Module AI/);
   assert.match(architectureAiFile, /Document Rules/);
   const architectureTemplateFile = fs.readFileSync(architectureTemplatePath, 'utf8');
-  assert.match(architectureTemplateFile, /## 2\. Template Fill-In Slots/);
-  assert.match(architectureTemplateFile, /`{{PROJECT_NAME}}`/);
-  assert.match(architectureTemplateFile, /Template Version: `2\.4`/);
+  assert.match(architectureTemplateFile, /^# ARCHITECTURE\.md: \{\{PROJECT_NAME\}\}/);
+  assert.match(architectureTemplateFile, /"sourceOfTruth": "\{\{SOURCE_OF_TRUTH:database\|generated\|hybrid\}\}"/);
+  assert.match(architectureTemplateFile, /## 3\. Technology Stack/);
+  assert.match(architectureTemplateFile, /## 5\. Workflows/);
 
   const adrTemplateFile = fs.readFileSync(path.join(repoRoot, 'templates', 'ADR.template.md'), 'utf8');
-  assert.match(adrTemplateFile, /## 2\. Template Fill-In Slots/);
-  assert.match(adrTemplateFile, /`{{PROJECT_NAME}}`/);
-  assert.match(adrTemplateFile, /Template Version: `2\.4`/);
+  assert.match(adrTemplateFile, /^# ADR\.md: \{\{PROJECT_NAME\}\}/);
+  assert.match(adrTemplateFile, /## 2\. Decision Metadata/);
+  assert.match(adrTemplateFile, /\{\{DECISION_STATUS:proposed\|accepted\|superseded\|deprecated\|rejected\}\}/);
 
   const architectureRow = await dbModule.dbGet(
     'SELECT module_key, template_name, source_of_truth, editor_state FROM project_md_documents WHERE project_id = ? AND doc_type = ?',
@@ -3210,22 +3214,23 @@ test('phase 5 workspace docs keep tasks as the source of truth while generating 
     assert.equal(fs.existsSync(path.join(alphaFragmentsDir, templateName)), true);
   }
   const generatedRoadmapTemplate = fs.readFileSync(path.join(alphaTemplatesDir, 'ROADMAP.template.md'), 'utf8');
-  assert.match(generatedRoadmapTemplate, /## 1\. Template Contract Metadata/);
-  assert.match(generatedRoadmapTemplate, /Template Version: `2\.5`/);
-  assert.match(generatedRoadmapTemplate, /## 2\. Template Fill-In Slots/);
-  assert.match(generatedRoadmapTemplate, /`{{PHASE_CODE}}`/);
-  assert.match(generatedRoadmapTemplate, /`{{FEATURE_ID}}`/);
+  assert.match(generatedRoadmapTemplate, /^# ROADMAP\.md: \{\{PROJECT_NAME\}\}/);
+  assert.match(generatedRoadmapTemplate, /"templateVersion": "\{\{TEMPLATE_VERSION\}\}"/);
+  assert.match(generatedRoadmapTemplate, /\{\{PHASE_CODE\}\}/);
+  assert.match(generatedRoadmapTemplate, /\{\{FEATURE_ID\}\}/);
   const generatedFunctionalSpecTemplate = fs.readFileSync(path.join(alphaTemplatesDir, 'FUNCTIONAL_SPEC.template.md'), 'utf8');
-  assert.match(generatedFunctionalSpecTemplate, /Template Version: `2\.5`/);
-  assert.match(generatedFunctionalSpecTemplate, /## 2\. Template Fill-In Slots/);
-  assert.match(generatedFunctionalSpecTemplate, /`{{PROJECT_NAME}}`/);
-  assert.match(generatedFunctionalSpecTemplate, /## 3\. Actual Template/);
+  assert.match(generatedFunctionalSpecTemplate, /^# FUNCTIONAL_SPEC\.md: \{\{PROJECT_NAME\}\}/);
+  assert.match(generatedFunctionalSpecTemplate, /\{\{FUNCTIONAL_AREA_BLOCK:0\.\.N\}\}/);
+  assert.match(generatedFunctionalSpecTemplate, /## 4\. Flow Nodes and Connections/);
 
   const templateRegistryRows = await dbModule.dbAll(
     'SELECT template_name, template_kind, template_version, source_md5, target_md5, target_path FROM project_template_files WHERE project_id = ?',
     [project.id]
   );
-  assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.template.md' && row.template_version === '2.5'));
+  assert(templateRegistryRows.some((row) => (
+    row.template_name === 'FUNCTIONAL_SPEC.template.md'
+    && row.template_version === workspaceDocs.getTemplateMetadata('FUNCTIONAL_SPEC.template.md').version
+  )));
   assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC.ai.md' && row.template_kind === 'ai'));
   assert(templateRegistryRows.some((row) => row.template_name === 'FUNCTIONAL_SPEC_FRAGMENT.template.md' && row.template_kind === 'fragment'));
   assert(templateRegistryRows.every((row) => row.source_md5 && row.target_md5 && row.target_path));
@@ -4129,6 +4134,9 @@ test('AI environment markdown always includes locked system directives for fragm
   assert.match(markdown, /## 1\. Mission/);
   assert.match(markdown, /## 4\. APM Term Dictionary/);
   assert.match(markdown, /## 7\. Module AI and Template References/);
+  assert.match(markdown, /Document templates describe the final managed-document contract and reconciliation shape/);
+  assert.match(markdown, /Fragment templates are the normal AI write path/);
+  assert.match(markdown, /save the fragment to the configured fragments path, and let APM consume it/);
   assert.match(markdown, /## 8\. Locked System Directives/);
   assert.match(markdown, /Use the configured fragments path/);
   assert.match(markdown, /live runtime SQLite database/);
@@ -4168,6 +4176,7 @@ test('AI environment markdown always includes locked system directives for fragm
   assert.match(markdown, /ai-environment-term-dictionary-apm/);
   assert.match(markdown, /apm\.module\.changelog\.traceability/);
   assert.match(markdown, /Module AI files and artifact templates are authoritative/);
+  assert.match(markdown, /prefer writing a compliant fragment instead of editing or filling the non-fragment document template directly/);
   assert.match(markdown, /## 12\. Project Family Read Order/);
   assert.match(markdown, /## 13\. Project Family Inheritance Rules/);
   assert.match(markdown, /app\.db/);
@@ -4639,29 +4648,71 @@ test('roadmap and features markdown only render active unfinished feature work',
 });
 
 test('template inventory includes document and fragment templates for every document-oriented module', () => {
+  const operationDrivenFragments = new Set([
+    'ARCHITECTURE_FRAGMENT.template.md',
+    'AI_ENVIRONMENT_FRAGMENT.template.md',
+    'FUNCTIONAL_SPEC_FRAGMENT.template.md',
+    'DOMAIN_MODELS_FRAGMENT.template.md',
+    'TECHNICAL_DESIGN_FRAGMENT.template.md',
+    'EXPERIENCE_DESIGN_FRAGMENT.template.md',
+    'ADR_FRAGMENT.template.md',
+    'TEST_STRATEGY_FRAGMENT.template.md',
+    'CHANGELOG_FRAGMENT.template.md',
+  ]);
+
   for (const definition of Object.values(workspaceDocs.DOC_TYPES)) {
     const templatePath = path.join(repoRoot, 'templates', definition.templateName);
     assert.equal(fs.existsSync(templatePath), true);
     const templateText = fs.readFileSync(templatePath, 'utf8');
-    assert.match(templateText, /Template Contract Metadata/);
-    assert.match(templateText, /Template Fill-In Slots/);
-    assert.match(templateText, /Actual Template/);
-    assert.match(templateText, /Version \/ Migration Notes/);
+    assert.match(templateText, /^# .+/);
+    assert.match(templateText, /Managed document\. Must comply with template/);
+    assert.match(templateText, /<!-- APM:DATA/);
   }
 
   for (const templateName of Object.values(workspaceDocs.FRAGMENT_TEMPLATE_NAMES)) {
     const templatePath = path.join(repoRoot, 'templates', templateName);
     assert.equal(fs.existsSync(templatePath), true);
     const templateText = fs.readFileSync(templatePath, 'utf8');
-    assert.match(templateText, /Template Contract Metadata/);
-    assert.match(templateText, /Template Fill-In Slots/);
-    assert.match(templateText, /Actual Template/);
-    assert.match(templateText, /Version \/ Migration Notes/);
+    assert.match(templateText, /^# .+ Fragment:/);
+    assert.match(templateText, /Managed document\. Must comply with template/);
+    assert.match(templateText, /<!-- APM:DATA/);
+    if (operationDrivenFragments.has(templateName)) {
+      assert.match(templateText, /<!-- APM:OPERATIONS/);
+    } else {
+      assert.doesNotMatch(templateText, /<!-- APM:OPERATIONS/);
+    }
   }
 
   const domainModelsFragmentTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'DOMAIN_MODELS_FRAGMENT.template.md'), 'utf8');
-  assert.match(domainModelsFragmentTemplate, /Template Fill-In Slots/);
-  assert.match(domainModelsFragmentTemplate, /No uppercase mustache fill-in slots are currently defined/);
+  assert.match(domainModelsFragmentTemplate, /^# Domain Models Fragment:/);
+  assert.match(domainModelsFragmentTemplate, /\{\{MODEL_UPDATE_BLOCK:0\.\.N\}\}/);
+  assert.match(domainModelsFragmentTemplate, /\{\{MODEL_FIELDS_JSON:0\.\.N\}\}/);
+
+  const functionalSpecFragmentTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'FUNCTIONAL_SPEC_FRAGMENT.template.md'), 'utf8');
+  assert.match(functionalSpecFragmentTemplate, /\{\{FLOW_NODES_JSON:0\.\.N\}\}/);
+  assert.match(functionalSpecFragmentTemplate, /\{\{ADDITIONAL_OPERATION_BLOCK:0\.\.N\}\}/);
+
+  const featuresFragmentTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'FEATURES_FRAGMENT.template.md'), 'utf8');
+  assert.doesNotMatch(featuresFragmentTemplate, /<!-- APM:OPERATIONS/);
+
+  const databaseSchemaFragmentTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'DATABASE_SCHEMA_FRAGMENT.template.md'), 'utf8');
+  assert.doesNotMatch(databaseSchemaFragmentTemplate, /<!-- APM:OPERATIONS/);
+  assert.match(databaseSchemaFragmentTemplate, /\{\{ENTITIES_JSON:0\.\.N\}\}/);
+  assert.match(databaseSchemaFragmentTemplate, /\{\{DBML_JSON\}\}/);
+  assert.match(databaseSchemaFragmentTemplate, /## Import Summary/);
+  assert.match(databaseSchemaFragmentTemplate, /## Observed Schema Summary/);
+
+  const roadmapTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'ROADMAP.template.md'), 'utf8');
+  assert.match(roadmapTemplate, /"phases": \{\{PHASES_JSON:0\.\.N\}\}/);
+  assert.match(roadmapTemplate, /"tasks": \{\{TASKS_JSON:0\.\.N\}\}/);
+  assert.match(roadmapTemplate, /"features": \{\{FEATURES_JSON:0\.\.N\}\}/);
+  assert.match(roadmapTemplate, /"bugs": \{\{BUGS_JSON:0\.\.N\}\}/);
+
+  const featuresTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'FEATURES.template.md'), 'utf8');
+  assert.match(featuresTemplate, /"features": \{\{FEATURES_JSON:0\.\.N\}\}/);
+
+  const bugsTemplate = fs.readFileSync(path.join(repoRoot, 'templates', 'BUGS.template.md'), 'utf8');
+  assert.match(bugsTemplate, /"bugs": \{\{BUGS_JSON:0\.\.N\}\}/);
 });
 
 test('module AI inventory includes a module AI file for every document-oriented module', () => {
@@ -4680,18 +4731,43 @@ test('module AI inventory includes a module AI file for every document-oriented 
   const domainModelsAi = fs.readFileSync(path.join(repoRoot, 'templates', 'DOMAIN_MODELS.ai.md'), 'utf8');
   assert.match(domainModelsAi, /Allowed `conceptualType` values/);
   assert.match(domainModelsAi, /`reference`/);
+  assert.match(domainModelsAi, /### DOMAIN_MODELS\.template\.md/);
+  assert.match(domainModelsAi, /### DOMAIN_MODELS_FRAGMENT\.template\.md/);
 });
 
 test('template metadata exposes uppercase mustache fill-in slots', () => {
   const roadmapMeta = workspaceDocs.getTemplateMetadata('ROADMAP.template.md');
-  assert.equal(roadmapMeta.version, '2.5');
+  assert.match(String(roadmapMeta.version || ''), /^\d+\.\d+$/);
   assert(roadmapMeta.placeholders.includes('PROJECT_NAME'));
   assert(roadmapMeta.placeholders.includes('PHASE_CODE'));
+  assert(roadmapMeta.placeholders.includes('PHASE_BLOCK:0..N'));
+  assert(roadmapMeta.placeholders.includes('PHASES_JSON:0..N'));
+  assert(roadmapMeta.placeholders.includes('TASKS_JSON:0..N'));
+  assert(roadmapMeta.placeholders.includes('FEATURES_JSON:0..N'));
+  assert(roadmapMeta.placeholders.includes('BUGS_JSON:0..N'));
+
+  const roadmapFragmentMeta = workspaceDocs.getTemplateMetadata('ROADMAP_FRAGMENT.template.md');
+  assert.match(String(roadmapFragmentMeta.version || ''), /^\d+\.\d+$/);
+  assert(roadmapFragmentMeta.placeholders.includes('MERMAID_BODY:0..1'));
+  assert(roadmapFragmentMeta.placeholders.includes('FRAGMENT_MARKDOWN_JSON:0..1'));
+  assert(roadmapFragmentMeta.placeholders.includes('PHASE_CHANGES_JSON:0..N'));
+  assert(roadmapFragmentMeta.placeholders.includes('FEATURE_ASSIGNMENTS_JSON:0..N'));
+  assert(roadmapFragmentMeta.placeholders.includes('TASK_ASSIGNMENTS_JSON:0..N'));
+
+  const functionalSpecFragmentMeta = workspaceDocs.getTemplateMetadata('FUNCTIONAL_SPEC_FRAGMENT.template.md');
+  assert.match(String(functionalSpecFragmentMeta.version || ''), /^\d+\.\d+$/);
+  assert(functionalSpecFragmentMeta.placeholders.includes('FLOW_NODES_JSON:0..N'));
+  assert(functionalSpecFragmentMeta.placeholders.includes('ADDITIONAL_OPERATION_BLOCK:0..N'));
 
   const rendered = workspaceDocs.renderTemplateFillIns('Hello {{PROJECT_NAME}} / {{UNKNOWN_SLOT}}', {
     PROJECT_NAME: 'Alpha',
   });
   assert.equal(rendered, 'Hello Alpha / {{UNKNOWN_SLOT}}');
+
+  const renderedSelect = workspaceDocs.renderTemplateFillIns('Status {{STATE:draft|approved}}', {
+    STATE: 'approved',
+  });
+  assert.equal(renderedSelect, 'Status approved');
 });
 
 test('software standards registry is available from the top-level standards directory', () => {
@@ -5346,6 +5422,268 @@ test('generic software document modules can discover and consume fragments', asy
   assert.equal(result.body.document?.editorState?.entries?.[0]?.targetItemId, 'prd-future-enhancement-reference');
   assert.equal(result.body.document?.editorState?.entries?.[0]?.targetSectionNumber, '10.1');
   assert.match(String(result.body.document?.editorState?.entries?.[0]?.workItemCodes || ''), /FEAT-001/);
+});
+
+test('functional spec fragment template can be filled and consumed end-to-end', async () => {
+  let result = await request('/api/roots');
+  const templateProjectFolder = 'FunctionalSpecTemplateProject';
+  fs.mkdirSync(path.join(result.body.projectsRoot, templateProjectFolder), { recursive: true });
+
+  result = await request('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Functional Spec Template Project',
+      path: templateProjectFolder,
+      projectType: 'software',
+      enabledModules: ['project_brief', 'roadmap', 'board', 'gantt', 'work_items', 'documents', 'integrations', 'functional_spec'],
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  const project = result.body;
+
+  const templateText = fs.readFileSync(path.join(repoRoot, 'templates', 'FUNCTIONAL_SPEC_FRAGMENT.template.md'), 'utf8');
+  const templateMeta = workspaceDocs.getTemplateMetadata('FUNCTIONAL_SPEC_FRAGMENT.template.md');
+  const renderedFragment = workspaceDocs.renderTemplateFillIns(templateText, {
+    FRAGMENT_CODE: 'FUNC-TEMPLATE-001',
+    FRAGMENT_TITLE: 'Review Fragment Workflow',
+    DOC_VERSION: '1',
+    FRAGMENT_ID: 'functional-spec-template-fragment-001',
+    FRAGMENT_SUMMARY: 'Define the review workflow before a pending fragment is merged.',
+    FRAGMENT_STATUS: 'draft',
+    FRAGMENT_REVISION: '1',
+    LINEAGE_KEY: 'FUNC-TEMPLATE-001',
+    SOURCE_LABEL: 'template-regression',
+    TEMPLATE_VERSION: templateMeta.version,
+    PAYLOAD_JSON: JSON.stringify({
+      testRun: true,
+      templateName: 'FUNCTIONAL_SPEC_FRAGMENT.template.md',
+    }, null, 2),
+    OPERATION: 'add',
+    TARGET_SECTION: 'logical-flows',
+    FROM_SECTION: '',
+    TARGET_ITEM_ID: '',
+    BEFORE_ITEM_ID: '',
+    AFTER_ITEM_ID: '',
+    ORDERED_IDS_JSON: '[]',
+    VERSION_DATE: '2026-04-25T00:00:00.000Z',
+    ITEM_ID: 'functional-flow-review-fragment',
+    ITEM_STABLE_ID: 'functional-spec-logical-flows-review-fragment',
+    ITEM_TITLE: 'Review Fragment Workflow',
+    ITEM_DESCRIPTION: 'Open a pending fragment, inspect its changes, and decide whether to approve it for merge.',
+    FLOW_ID: '',
+    FLOW_STABLE_ID: '',
+    ITEM_TYPE: 'system_action',
+    ITEM_LABEL: '',
+    ITEM_COMMAND: '',
+    ITEM_POSITION_JSON: 'null',
+    EDGE_SOURCE_ID: '',
+    EDGE_TARGET_ID: '',
+    EDGE_SOURCE_HANDLE: '',
+    EDGE_TARGET_HANDLE: '',
+    EDGE_CONDITION_TEXT: '',
+    FLOW_NODES_JSON: '[]',
+    FLOW_EDGES_JSON: '[]',
+    FLOW_OPEN_QUESTIONS_JSON: '[]',
+    SOURCE_REFS_JSON: JSON.stringify(['FEAT-TEMPLATE-001']),
+    ADDITIONAL_OPERATION_BLOCK: '',
+    EXECUTIVE_SUMMARY: 'Define the expected review behavior before a functional-spec fragment is accepted into the managed document.',
+    FUNCTIONAL_AREA_UPDATE_BLOCK: '- Fragment Review Area: Users can inspect pending fragments before merge.',
+    LOGICAL_FLOW_UPDATE_BLOCK: '- Review Fragment Workflow: Open fragment, inspect changes, validate metadata, approve or reject.',
+    FLOW_VISUAL_UPDATE_BLOCK: '- Review graph: Start -> Inspect -> Decision -> Return result.',
+    FLOW_ENDPOINT_UPDATE_BLOCK: '- Review result returned to the fragment browser.',
+    OPEN_QUESTION_BLOCK: '- Should high-impact fragment approvals require a second reviewer?',
+    MERGE_GUIDANCE: 'Apply the logical flow operation and keep the fragment code attached as a source reference.',
+  });
+
+  const projectFragmentsDir = workspaceDocs.ensureProjectFragmentsDir(project);
+  const fragmentPath = path.join(projectFragmentsDir, 'FUNCTIONAL_SPEC_FRAGMENT_20260425_010000000.md');
+  fs.writeFileSync(fragmentPath, renderedFragment, 'utf8');
+
+  const snapshot = workspaceDocs.readManagedFileSnapshot(fragmentPath);
+  assert.equal(snapshot.managed?.docType, 'functional_spec_fragment');
+  assert.equal(snapshot.managed?.fragment?.code, 'FUNC-TEMPLATE-001');
+  assert.equal(snapshot.managed?.fragment?.templateVersion, templateMeta.version);
+  assert.match(renderedFragment, /<!-- APM:OPERATIONS/);
+  assert.doesNotMatch(renderedFragment, /\{\{[^}]+\}\}/);
+
+  result = await request(`/api/projects/${project.id}/module-documents/functional_spec/fragments`);
+  assert.equal(result.response.status, 200);
+  assert(result.body.fragments.some((fragment) => fragment.fileName === path.basename(fragmentPath)));
+
+  result = await request(`/api/projects/${project.id}/module-documents/functional_spec/fragments/consume`, {
+    method: 'POST',
+    body: JSON.stringify({
+      fileName: path.basename(fragmentPath),
+      sourceScope: 'project',
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(fs.existsSync(fragmentPath), false);
+  assert.equal(result.body.document?.editorState?.logicalFlows?.length > 0, true);
+  assert.equal(result.body.document?.editorState?.logicalFlows?.[0]?.title, 'Review Fragment Workflow');
+  assert.match(String(result.body.document?.editorState?.logicalFlows?.[0]?.description || ''), /approve it for merge/i);
+  assert.match(String(result.body.document?.editorState?.overview?.summary || ''), /expected review behavior/i);
+  assert.equal(result.body.document?.editorState?.fragmentHistory?.[0]?.code, 'FUNC-TEMPLATE-001');
+  assert.deepEqual(
+    [...(result.body.document?.editorState?.logicalFlows?.[0]?.sourceRefs || [])].sort(),
+    ['FEAT-TEMPLATE-001', 'FUNC-TEMPLATE-001'].sort()
+  );
+});
+
+test('database schema fragment template can be filled and consumed end-to-end', async () => {
+  let result = await request('/api/roots');
+  const templateProjectFolder = 'DatabaseSchemaTemplateProject';
+  fs.mkdirSync(path.join(result.body.projectsRoot, templateProjectFolder), { recursive: true });
+
+  result = await request('/api/projects', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Database Schema Template Project',
+      path: templateProjectFolder,
+      projectType: 'software',
+      enabledModules: ['roadmap', 'board', 'gantt', 'work_items', 'documents', 'integrations', 'database_schema'],
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  const project = result.body;
+
+  const templateText = fs.readFileSync(path.join(repoRoot, 'templates', 'DATABASE_SCHEMA_FRAGMENT.template.md'), 'utf8');
+  const templateMeta = workspaceDocs.getTemplateMetadata('DATABASE_SCHEMA_FRAGMENT.template.md');
+  const renderedFragment = workspaceDocs.renderTemplateFillIns(templateText, {
+    FRAGMENT_CODE: 'DBFRAG-TEMPLATE-001',
+    FRAGMENT_TITLE: 'Observed Template Import',
+    DOC_VERSION: '1',
+    FRAGMENT_ID: 'database-schema-template-fragment-001',
+    FRAGMENT_SUMMARY: 'Import the current observed runtime schema through the literal fragment template.',
+    FRAGMENT_STATUS: 'draft',
+    FRAGMENT_REVISION: '1',
+    LINEAGE_KEY: 'DBFRAG-TEMPLATE-001',
+    SOURCE_LABEL: 'template-regression',
+    TEMPLATE_VERSION: templateMeta.version,
+    SOURCE_TYPE: 'sqlite_database',
+    SOURCE_LABEL_PAYLOAD: "Angel's Project Manager app.db",
+    SOURCE_DIALECT: 'sqlite',
+    SOURCE_OBSERVED_AT: '2026-04-25T02:00:00.000Z',
+    SCHEMA_FINGERPRINT: 'database-schema-template-fixture',
+    SOURCE_CONFIDENCE: 'observed',
+    PAYLOAD_SUMMARY: 'Observed runtime schema imported through the template regression fixture.',
+    ENTITIES_JSON: JSON.stringify([
+      {
+        id: 'projects',
+        name: 'projects',
+        kind: 'table',
+        status: 'observed',
+        notes: 'Stores project metadata.',
+        fields: [
+          {
+            id: 'projects.id',
+            name: 'id',
+            type: 'text',
+            nullable: false,
+            primaryKey: true,
+            unique: true,
+            defaultValue: '',
+            status: 'observed',
+            notes: 'Project identifier.',
+          },
+          {
+            id: 'projects.name',
+            name: 'name',
+            type: 'text',
+            nullable: false,
+            primaryKey: false,
+            unique: false,
+            defaultValue: '',
+            status: 'observed',
+            notes: 'Human-readable project name.',
+          },
+        ],
+      },
+    ], null, 2),
+    RELATIONSHIPS_JSON: '[]',
+    INDEXES_JSON: JSON.stringify([
+      {
+        id: 'idx_projects_name',
+        entityId: 'projects',
+        name: 'projects_name_idx',
+        fields: ['name'],
+        unique: false,
+        status: 'observed',
+        notes: 'Name lookup index.',
+      },
+    ], null, 2),
+    CONSTRAINTS_JSON: JSON.stringify([
+      {
+        id: 'pk_projects',
+        entityId: 'projects',
+        name: 'projects_pk',
+        type: 'primary_key',
+        definition: '(id)',
+        status: 'observed',
+        notes: 'Primary key on projects.',
+      },
+    ], null, 2),
+    MIGRATION_NOTES_JSON: JSON.stringify([
+      {
+        title: 'Template fixture import',
+        description: 'Used to verify the template matches the runtime database schema fragment consumer.',
+        status: 'observed',
+      },
+    ], null, 2),
+    OPEN_QUESTIONS_JSON: JSON.stringify([
+      {
+        id: 'schema-template-open-001',
+        question: 'Should later schema templates support additive observed-schema imports?',
+        impact: 'Would allow smaller observed snapshots in a future workflow.',
+        proposedFollowUp: 'Keep full-schema-only import until additive operations are implemented.',
+      },
+    ], null, 2),
+    DBML_JSON: JSON.stringify('Project "Template Fixture" {\\n  database_type: "SQLite"\\n}\\n\\nTable projects {\\n  id text [pk, unique, not null]\\n  name text [not null]\\n}', null, 2),
+    MERMAID_JSON: JSON.stringify('erDiagram\\n  PROJECTS {\\n    text id\\n    text name\\n  }', null, 2),
+    IMPORT_MODE: 'full_schema',
+    EXECUTIVE_SUMMARY: 'Observed runtime schema imported from the database schema fragment template.',
+    SOURCE_METADATA_MARKDOWN: '- Source Type: sqlite_database\n- Dialect: sqlite\n- Confidence: observed',
+    OBSERVED_SCHEMA_SUMMARY: '- 1 entity captured for the template regression.\n- 0 relationships captured.',
+    ENTITY_MARKDOWN_BLOCK: '### 1. projects\n\n- Status: observed\n- Fields: id, name',
+    RELATIONSHIP_MARKDOWN_BLOCK: '- None for this fixture.',
+    INDEX_AND_CONSTRAINT_MARKDOWN_BLOCK: '### 1. projects primary key\n\n- projects_pk',
+    MIGRATION_NOTES_MARKDOWN: '- Template fixture import recorded.',
+    OPEN_QUESTION_BLOCK: '- Should later schema templates support additive observed-schema imports?',
+    DBML_BODY: 'Project "Template Fixture" {\n  database_type: "SQLite"\n}\n\nTable projects {\n  id text [pk, unique, not null]\n  name text [not null]\n}',
+    MERMAID_BODY: 'erDiagram\n  PROJECTS {\n    text id\n    text name\n  }',
+    MERGE_GUIDANCE: 'Import this fragment into the Database Schema module.',
+  });
+
+  const projectFragmentsDir = workspaceDocs.ensureProjectFragmentsDir(project);
+  const fragmentPath = path.join(projectFragmentsDir, 'DATABASE_SCHEMA_FRAGMENT_20260425_020000000.md');
+  fs.writeFileSync(fragmentPath, renderedFragment, 'utf8');
+
+  const snapshot = workspaceDocs.readManagedFileSnapshot(fragmentPath);
+  assert.equal(snapshot.managed?.docType, 'database_schema_fragment');
+  assert.equal(snapshot.managed?.fragment?.code, 'DBFRAG-TEMPLATE-001');
+  assert.equal(snapshot.managed?.fragment?.templateVersion, templateMeta.version);
+  assert.doesNotMatch(renderedFragment, /\{\{[^}]+\}\}/);
+
+  result = await request(`/api/projects/${project.id}/database-schema/fragments`);
+  assert.equal(result.response.status, 200);
+  assert(result.body.fragments.some((fragment) => fragment.fileName === path.basename(fragmentPath)));
+
+  result = await request(`/api/projects/${project.id}/database-schema/fragments/consume`, {
+    method: 'POST',
+    body: JSON.stringify({
+      fileName: path.basename(fragmentPath),
+      sourceScope: 'project',
+    }),
+  });
+  assert.equal(result.response.status, 200);
+  assert.equal(fs.existsSync(fragmentPath), false);
+  assert.equal(result.body.editorState.importSource.sourceType, 'sqlite_database');
+  assert.equal(result.body.editorState.entities.length, 1);
+  assert.equal(result.body.editorState.schemaModel.entities.length, 1);
+  assert.equal(result.body.editorState.schemaModel.entities[0].name, 'projects');
+  assert.equal(result.body.editorState.syncTracking.syncStatus, 'in_sync');
+  assert.match(String(result.body.markdown || ''), /Template fixture import/);
+  assert.match(String(result.body.dbml || ''), /Table projects/);
 });
 
 test('functional spec module saves structured logical behavior with stable ids', async () => {

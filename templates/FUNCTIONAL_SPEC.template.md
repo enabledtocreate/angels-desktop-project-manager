@@ -1,30 +1,42 @@
-# Functional Spec Template
-
-> Template Contract. Keep filename `FUNCTIONAL_SPEC.template.md`; APM discovers and syncs templates by this name.
-> Managed document. Must comply with template FUNCTIONAL_SPEC.template.md.
-
-## 1. Template Contract Metadata
-
-- Template Name: `FUNCTIONAL_SPEC.template.md`
-- Template Version: `2.5`
-- Last Updated: `2026-04-25`
-- Template Kind: `document`
-- Owning Module: `Functional Spec`
-- Generated Artifact: `FUNCTIONAL_SPEC.md`
-
-## 2. Template Fill-In Slots
-
-- `{{PROJECT_NAME}}`
-
-## 3. Actual Template
-
-```md
 # FUNCTIONAL_SPEC.md: {{PROJECT_NAME}}
 
 > Managed document. Must comply with template FUNCTIONAL_SPEC.template.md.
-```
 
-## 4. Version / Migration Notes
+<!-- APM:DATA
+{
+  "docType": "functional_spec",
+  "version": {{DOC_VERSION:1}},
+  "templateName": "FUNCTIONAL_SPEC.template.md",
+  "templateVersion": "{{TEMPLATE_VERSION}}",
+  "sourceOfTruth": "{{SOURCE_OF_TRUTH:database|generated|hybrid}}",
+  "editorState": {{EDITOR_STATE_JSON:0..1}}
+}
+-->
 
-- Version `2.5` converts the template into a fill-in contract and moves construction guidance into the paired module AI file.
-- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+## 1. Executive Summary
+
+{{EXECUTIVE_SUMMARY}}
+
+## 2. Functional Areas
+
+{{FUNCTIONAL_AREA_BLOCK:0..N}}
+
+## 3. Logical Workflows
+
+{{LOGICAL_WORKFLOW_BLOCK:0..N}}
+
+## 4. Flow Nodes and Connections
+
+{{FLOW_VISUAL_BLOCK:0..N}}
+
+## 5. Flow Endpoints and Return Points
+
+{{FLOW_ENDPOINT_BLOCK:0..N}}
+
+## 6. Open Questions
+
+{{OPEN_QUESTION_BLOCK:0..N}}
+
+## 7. Applied Fragments
+
+{{APPLIED_FRAGMENT_BLOCK:0..N}}

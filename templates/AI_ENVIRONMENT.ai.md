@@ -6,7 +6,7 @@
 ## 1. AI File Metadata
 
 - AI File Name: `AI_ENVIRONMENT.ai.md`
-- AI File Version: `1.4`
+- AI File Version: `1.11`
 - Last Updated: `2026-04-25`
 - Owning Module: `AI Environment`
 - Document Template: `AI_ENVIRONMENT.template.md`
@@ -19,8 +19,8 @@ Use AI Environment as the first point of contact for outside AI agents so they u
 ## 3. Source Of Truth
 
 - Read `AI_ENVIRONMENT.md` first for global operating rules, fragment-path rules, stable-id rules, and standards references.
-- Read `AI_ENVIRONMENT.template.md` for the literal document shape that APM generates.
-- Read `AI_ENVIRONMENT_FRAGMENT.template.md` for the literal fragment shape that APM can consume.
+- Read `AI_ENVIRONMENT.template.md` for the literal final-document contract and reference shape that APM generates or re-imports.
+- Read `AI_ENVIRONMENT_FRAGMENT.template.md` for the literal fragment shape that APM can consume as the normal AI write path.
 - Treat generated markdown as an output of module state; prefer module saves or compliant fragments over direct edits.
 
 ## 4. Document Rules
@@ -28,18 +28,21 @@ Use AI Environment as the first point of contact for outside AI agents so they u
 - Generate AI_ENVIRONMENT.md as the top-level operating manual for agents.
 - Keep project-wide mission, operating model, communication style, dictionary, and enabled directive references readable and current.
 - Reference module AI files rather than duplicating all module-local rules here.
+- Treat normal document templates as contract and reconciliation artifacts that show the final managed document shape; they are not usually the file an AI agent should write to produce changes.
 
 ## 5. Fragment Rules
 
 - Use AI_ENVIRONMENT fragments to change top-level agent behavior, dictionary terms, project-wide guardrails, or shared profiles.
 - Module-local AI behavior belongs in the owning module AI file, not duplicated fragments here, unless the module emits a reference to AI Environment.
 - Keep fragment updates structured and stable-id addressable.
+- Default workflow for AI-authored change: read module AI -> read fragment template -> fill fragment -> save to configured fragments path -> let APM consume it into the growing document state.
 
 ## 6. Allowed Values / Contracts
 
 - AI Environment is project-wide guidance, not module-local artifact detail.
 - Keep references to module AI files, document templates, and fragment templates current.
 - Locked required directives remain code-owned and cannot be edited away.
+- Document templates define what the final managed artifact should look like. Fragment templates define what an AI agent should normally produce when proposing changes.
 
 ## 7. Cross-Module Rules
 
@@ -53,100 +56,90 @@ Use AI Environment as the first point of contact for outside AI agents so they u
 
 ## 9. Template Construction Rules
 
-- Use token references where helpful: `@stable-id` for persisted targets, `#module-or-section` for document/module scope, `$work-item-code` for provenance, `/operation` for intended action, `?question` for review points, and `!guardrail` for constraints.
-- Token references supplement structured operations and target ids; they do not replace explicit fields such as operation, targetSection, targetItemId, sourceRefs, or managed payload data.
-- Keep instructions human-readable and AI-readable.
-- Preserve locked directives and treat them as non-editable system rules.
-- Describe why the new directive is needed and which project or module workflow it affects.
-- For section-targeted changes, include an `APM:OPERATIONS` HTML comment block with JSON operations such as `add`, `update`, `remove`, `reorder`, `move`, `link`, and `unlink`.
-- Use stable ids for persisted document items, fragment targets, graph nodes, graph edges, models, and projections.
-- Keep titles concise; put long detail in description or body fields.
-- Token references supplement structured fragment operations and target ids; they do not replace explicit fields such as operation, targetSection, targetItemId, sourceRefs, or managed payload data.
-- Treat this as AI-readable operating context.
-- Put non-directive project context before directive sections so agents understand APM terminology, purpose, and operating model before reading rules.
-- Include a markdown table for the APM term dictionary with term, definition, stable ID, and source refs.
-- Include references to module AI files first, then the paired document and fragment templates.
-- Keep instructions deterministic, explicit, and safe for structured updates.
-- Prefer short titles with clear descriptions for repeatable rules.
-- For parent/child projects, preserve project autonomy, use rollups as read-only summaries, and reference cross-project work by project id plus module/item id.
-- When generating fragments, use token references where helpful: `@stable-id` for persisted targets, `#module-or-section` for document/module scope, `$work-item-code` for feature/bug/task provenance, `/operation` for intended actions, `?question` for unresolved review points, and `!guardrail` for constraints.
+### Placeholder Syntax
+
+- `{{NAME}}`: required single value.
+- `{{NAME:OPTION_A|OPTION_B}}`: select one allowed value.
+- `{{NAME:0..1}}`: optional value or optional block.
+- `{{NAME:0..N}}`: repeatable value, list, array, or repeated markdown block.
+- Placeholders used as full JSON values must be replaced with valid JSON objects, arrays, strings, numbers, booleans, or `null` that match the surrounding structure.
+- `<!-- REPEAT {{NAME:0..N}} --> ... <!-- END REPEAT {{NAME}} -->` marks a repeatable markdown region.
+- Keep the `APM:DATA` and `APM:OPERATIONS` blocks structurally valid after replacement.
 
 ### AI_ENVIRONMENT.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: `{{PROJECT_NAME}}`
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
-
-#### Imported Artifact Shape Notes
-
-No extra artifact-shape notes were imported from the paired template.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `document`
+- Generated Artifact: `AI_ENVIRONMENT.md`
+- Consumption Goal: A filled template should read like the final managed document body and keep the managed metadata block intact.
+- Fill-In Slots:
+  - `{{PROJECT_NAME}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{SOURCE_OF_TRUTH:database|generated|hybrid}}`: Select one allowed value: `database`, `generated`, `hybrid`.
+  - `{{EDITOR_STATE_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{MISSION}}`: Required single fill-in.
+  - `{{OPERATING_MODEL}}`: Required single fill-in.
+  - `{{COMMUNICATION_STYLE}}`: Required single fill-in.
+  - `{{TERM_DICTIONARY_ROW:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{CUSTOM_INSTRUCTIONS}}`: Required single fill-in.
+  - `{{SHARED_PROFILE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MODULE_REFERENCE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{LOCKED_DIRECTIVE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MODULE_DIRECTIVE_INDEX_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{REQUIRED_BEHAVIOR_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MODULE_UPDATE_RULE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{PROJECT_FAMILY_READ_ORDER_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{PROJECT_FAMILY_INHERITANCE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{DATA_PHRASING_RULE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{GUARDRAIL_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{HANDOFF_CHECKLIST_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
 
 ### AI_ENVIRONMENT_FRAGMENT.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: none currently defined.
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- `term-dictionary`
-- `required-behaviors`
-- `module-update-rules`
-- `project-family-read-order`
-- `project-family-inheritance-rules`
-- `data-phrasing-rules`
-- `avoid-rules`
-- `handoff-checklist`
-- `open-questions`
-
-### Supported Operations
-
-For `APM:OPERATIONS`, supported first-pass operations are:
-
-- `add`
-- `update`
-- `remove`
-- `reorder`
-- `move`
-- `link`
-- `unlink`
-
-Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
-
-#### Imported Artifact Shape Notes
-
-No extra artifact-shape notes were imported from the paired template.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `fragment`
+- Fragment Merge Mode: `apm-operations`
+- Allowed Target Sections: `term-dictionary`, `required-behaviors`, `module-update-rules`, `project-family-read-order`, `project-family-inheritance-rules`, `data-phrasing-rules`, `avoid-rules`, `handoff-checklist`, `open-questions`
+- Consumption Goal: A filled template should preserve valid fragment metadata and a valid operations block for merge-time processing.
+- Fill-In Slots:
+  - `{{FRAGMENT_CODE}}`: Required single fill-in.
+  - `{{FRAGMENT_TITLE}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{FRAGMENT_ID}}`: Required single fill-in.
+  - `{{FRAGMENT_SUMMARY}}`: Required single fill-in.
+  - `{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}`: Select one allowed value: `draft`, `proposed`, `approved`, `rejected`, `merged`, `archived`.
+  - `{{FRAGMENT_REVISION:1}}`: Fill using `1` semantics.
+  - `{{LINEAGE_KEY}}`: Required single fill-in.
+  - `{{SOURCE_LABEL}}`: Required single fill-in.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{PAYLOAD_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{OPERATION:add|update|remove|reorder|move|link|unlink}}`: Select one allowed value: `add`, `update`, `remove`, `reorder`, `move`, `link`, `unlink`.
+  - `{{TARGET_SECTION:term-dictionary|required-behaviors|module-update-rules|project-family-read-order|project-family-inheritance-rules|data-phrasing-rules|avoid-rules|handoff-checklist|open-questions}}`: Select one allowed value: `term-dictionary`, `required-behaviors`, `module-update-rules`, `project-family-read-order`, `project-family-inheritance-rules`, `data-phrasing-rules`, `avoid-rules`, `handoff-checklist`, `open-questions`.
+  - `{{FROM_SECTION:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{TARGET_ITEM_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{BEFORE_ITEM_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{AFTER_ITEM_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ORDERED_IDS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{VERSION_DATE:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_STABLE_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_NAME:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_TITLE:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_SUMMARY:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_DESCRIPTION:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_TEXT:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_RISK:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_MITIGATION:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{ITEM_TYPE:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{SOURCE_REFS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{ADDITIONAL_OPERATION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{EXECUTIVE_SUMMARY}}`: Required single fill-in.
+  - `{{MISSION_AND_OPERATING_MODEL_UPDATE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{REQUIRED_BEHAVIOR_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MODULE_UPDATE_RULE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{GUARDRAIL_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{OPEN_QUESTION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MERGE_GUIDANCE}}`: Required single fill-in.

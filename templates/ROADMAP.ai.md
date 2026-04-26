@@ -6,7 +6,7 @@
 ## 1. AI File Metadata
 
 - AI File Name: `ROADMAP.ai.md`
-- AI File Version: `1.4`
+- AI File Version: `1.10`
 - Last Updated: `2026-04-25`
 - Owning Module: `Roadmap`
 - Document Template: `ROADMAP.template.md`
@@ -54,111 +54,78 @@ Use Roadmap to plan phases, sequencing, and active future work without duplicati
 
 ## 9. Template Construction Rules
 
-- Keep the `APM:DATA` managed block intact and valid JSON.
-- Keep the top compliance note intact.
-- Use stable IDs when referring to existing features, phases, and tasks.
-- Keep Mermaid text valid.
-- AI Agent instruction: Whenever this template is updated, update the template version and last updated date before changing anything else.
-- `ROADMAP_FRAGMENT_*.md` is a proposal document, not the canonical roadmap.
-- The application database is the source of truth.
-- The application reads this fragment, stores it in SQLite, and can integrate the approved changes into roadmap phases, feature assignments, and task assignments.
-- Use feature IDs from `FEATURES.md`.
-- Use task IDs from the Kanban/Gantt task system.
-- Prefer existing phase IDs or phase codes when modifying an existing phase.
-- Use token references where helpful: `@stable-id` for persisted targets, `#module-or-section` for document/module scope, `$work-item-code` for provenance, `/operation` for intended action, `?question` for review points, and `!guardrail` for constraints.
-- Token references supplement structured operations and target ids; they do not replace explicit fields such as phaseChanges, featureAssignments, taskAssignments, sourceRefs, or managed payload data.
-- Create or update a roadmap fragment instead of editing `ROADMAP.md` directly.
-- Keep the fragment compliant with this template.
-- Put structural change intent in the managed payload.
-- Use the human-readable markdown body to explain why the roadmap changes are being proposed.
-- Include token references in the markdown body when they help the AI agent or reviewer understand the target scope, work item provenance, or intended merge action.
-- Use stable ids for persisted document items, fragment targets, graph nodes, graph edges, models, and projections.
-- Keep titles concise; put long detail in description or body fields.
-- Preserve the section order defined in this template.
-- Keep roadmap phases, linked task references, and feature references aligned with the application database.
-- Mermaid text must remain valid.
-- If the structure of this template changes, update the version section in both this template and the generated `ROADMAP.md` context that depends on it.
-- AI Agent instruction: Whenever this template is updated, update the template version and last updated date before making any other structural edits.
-- `ROADMAP.md` is a managed document generated from application state.
-- The application database is the source of truth for phases, linked tasks, planned features, and considered features.
-- The roadmap document must remain structurally readable by both the application and an AI agent.
-- Feature IDs in `ROADMAP.md` refer to active unfinished entries in `FEATURES.md`.
-- AI agents should use active feature IDs for planning and implementation context.
-- AI agents should ignore implemented, completed, resolved, closed, and archived work unless explicitly asked to review project history.
-- Tasks referenced in roadmap phases are linked to the Kanban board and Gantt/timeline scheduling.
-- If a document edit conflicts with application data, the application may regenerate the file from the database.
-- AI Agent instruction: Use feature IDs in this roadmap to cross-reference active planned entries in FEATURES.md. Implemented, completed, resolved, closed, and archived work is omitted unless explicitly asked to review history.
+### Placeholder Syntax
+
+- `{{NAME}}`: required single value.
+- `{{NAME:OPTION_A|OPTION_B}}`: select one allowed value.
+- `{{NAME:0..1}}`: optional value or optional block.
+- `{{NAME:0..N}}`: repeatable value, list, array, or repeated markdown block.
+- Placeholders used as full JSON values must be replaced with valid JSON objects, arrays, strings, numbers, booleans, or `null` that match the surrounding structure.
+- `<!-- REPEAT {{NAME:0..N}} --> ... <!-- END REPEAT {{NAME}} -->` marks a repeatable markdown region.
+- Keep the `APM:DATA` and `APM:OPERATIONS` blocks structurally valid after replacement.
 
 ### ROADMAP.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: `{{PROJECT_NAME}}`, `{{PHASE_CODE}}`, `{{PHASE_NAME}}`, `{{PHASE_GOAL}}`, `{{PHASE_STATUS}}`, `{{PHASE_TARGET_DATE}}`, `{{PHASE_SUMMARY}}`, `{{FEATURE_ID}}`, `{{FEATURE_TITLE}}`, `{{FEATURE_STATUS}}`, `{{EXECUTIVE_SUMMARY}}`, `{{TASK_TITLE}}`, `{{TASK_STATUS}}`
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
-
-#### Imported Artifact Shape Notes
-
-This document defines the required structure for `ROADMAP.md`.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `document`
+- Generated Artifact: `ROADMAP.md`
+- Consumption Goal: A filled template should read like the final managed document body and keep the managed metadata block intact.
+- Fill-In Slots:
+  - `{{PROJECT_NAME}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{PHASES_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{TASKS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{FEATURES_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{BUGS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{MERMAID_BODY:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{EXECUTIVE_SUMMARY}}`: Required single fill-in.
+  - `{{PHASE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{PHASE_CODE}}`: Required single fill-in.
+  - `{{PHASE_NAME}}`: Required single fill-in.
+  - `{{PHASE_GOAL}}`: Required single fill-in.
+  - `{{PHASE_STATUS:planned|in_progress|blocked|completed}}`: Select one allowed value: `planned`, `in_progress`, `blocked`, `completed`.
+  - `{{PHASE_TARGET_DATE}}`: Required single fill-in.
+  - `{{PHASE_SUMMARY}}`: Required single fill-in.
+  - `{{PHASE_FEATURE_LINE:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{PHASE_TASK_LINE:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{PLANNED_FEATURE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{FEATURE_ID}}`: Required single fill-in.
+  - `{{FEATURE_TITLE}}`: Required single fill-in.
+  - `{{FEATURE_STATUS:considered|planned|in_progress|blocked|completed}}`: Select one allowed value: `considered`, `planned`, `in_progress`, `blocked`, `completed`.
+  - `{{CONSIDERED_FEATURE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MERMAID_BODY}}`: Required single fill-in.
 
 ### ROADMAP_FRAGMENT.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: none currently defined.
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- `fragment.payload.phaseChanges`
-- `fragment.payload.featureAssignments`
-- `fragment.payload.taskAssignments`
-
-### Supported Operations
-
-For `APM:OPERATIONS`, supported first-pass operations are:
-
-- `add`
-- `update`
-- `remove`
-- `reorder`
-- `move`
-- `link`
-- `unlink`
-
-Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
-
-#### Imported Artifact Shape Notes
-
-This document defines the required structure for `ROADMAP_FRAGMENT_*.md`.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `fragment`
+- Fragment Merge Mode: `managed-body`
+- Consumption Goal: A filled template should preserve valid fragment metadata and body sections that the current fragment importer reads directly.
+- Fill-In Slots:
+  - `{{FRAGMENT_CODE}}`: Required single fill-in.
+  - `{{FRAGMENT_TITLE}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{FRAGMENT_ID}}`: Required single fill-in.
+  - `{{PROJECT_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{SOURCE_FEATURE_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{SOURCE_PHASE_ID:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{FRAGMENT_MARKDOWN_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{MERMAID_BODY:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{PHASE_CHANGES_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{FEATURE_ASSIGNMENTS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{TASK_ASSIGNMENTS_JSON:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}`: Select one allowed value: `draft`, `proposed`, `approved`, `rejected`, `merged`, `archived`.
+  - `{{MERGED_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{MERGED_AT_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{INTEGRATED_AT_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{FILE_NAME:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{CREATED_AT_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{UPDATED_AT_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{EXECUTIVE_SUMMARY}}`: Required single fill-in.
+  - `{{PHASE_CHANGES_MARKDOWN:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{FEATURE_ASSIGNMENTS_MARKDOWN:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{TASK_ASSIGNMENTS_MARKDOWN:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MERGE_GUIDANCE}}`: Required single fill-in.

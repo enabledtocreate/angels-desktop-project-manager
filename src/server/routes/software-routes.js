@@ -543,6 +543,13 @@ module.exports = function registerSoftwareRoutes(app, ctx) {
           };
       return {
         ...mergedState,
+        overview: {
+          ...(mergedState.overview || {}),
+          summary: !currentSummary || currentSummary === defaultSummary
+            ? (importedSummary || currentSummary || defaultSummary)
+            : currentSummary,
+          versionDate,
+        },
         fragmentHistory: [
           {
             id: importedFragment.id || importedFragment.fileName,

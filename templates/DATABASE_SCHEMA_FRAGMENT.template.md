@@ -1,38 +1,90 @@
-# Database Schema Fragment: {{SOURCE_LABEL}}
+# Database Schema Fragment: {{FRAGMENT_CODE}} - {{FRAGMENT_TITLE}}
 
-> Template Contract. Keep filename `DATABASE_SCHEMA_FRAGMENT.template.md`; APM discovers and syncs templates by this name.
 > Managed document. Must comply with template DATABASE_SCHEMA_FRAGMENT.template.md.
 
-## 1. Template Contract Metadata
-
-- Template Name: `DATABASE_SCHEMA_FRAGMENT.template.md`
-- Template Version: `1.5`
-- Last Updated: `2026-04-25`
-- Template Kind: `fragment`
-- Owning Module: `Database Schema`
-- Generated Artifact: `DATABASE_SCHEMA_FRAGMENT_*.md`
-
-## 2. Template Fill-In Slots
-
-- `{{SOURCE_LABEL}}`
-
-## 3. Actual Template
-
-```json
-[
-  {
-    "operation": "add",
-    "targetSection": "open-questions",
-    "item": {
-      "title": "Example question",
-      "description": "Replace this with a module-specific unresolved question."
-    },
-    "sourceRefs": ["FEAT-000"]
+<!-- APM:DATA
+{
+  "docType": "database_schema_fragment",
+  "version": {{DOC_VERSION:1}},
+  "fragment": {
+    "id": "{{FRAGMENT_ID}}",
+    "code": "{{FRAGMENT_CODE}}",
+    "title": "{{FRAGMENT_TITLE}}",
+    "summary": "{{FRAGMENT_SUMMARY}}",
+    "status": "{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}",
+    "revision": {{FRAGMENT_REVISION:1}},
+    "lineageKey": "{{LINEAGE_KEY}}",
+    "sourceLabel": "{{SOURCE_LABEL}}",
+    "templateName": "DATABASE_SCHEMA_FRAGMENT.template.md",
+    "templateVersion": "{{TEMPLATE_VERSION}}",
+    "payload": {
+      "source": {
+        "sourceType": "{{SOURCE_TYPE:sqlite_database|schema_sql|dbml|migration_files|orm_code|mixed}}",
+        "sourceLabel": "{{SOURCE_LABEL_PAYLOAD}}",
+        "dialect": "{{SOURCE_DIALECT}}",
+        "observedAt": "{{SOURCE_OBSERVED_AT:0..1}}",
+        "schemaFingerprint": "{{SCHEMA_FINGERPRINT}}",
+        "confidence": "{{SOURCE_CONFIDENCE:observed|mixed|inferred}}"
+      },
+      "summary": "{{PAYLOAD_SUMMARY}}",
+      "entities": {{ENTITIES_JSON:0..N}},
+      "relationships": {{RELATIONSHIPS_JSON:0..N}},
+      "indexes": {{INDEXES_JSON:0..N}},
+      "constraints": {{CONSTRAINTS_JSON:0..N}},
+      "migrationNotes": {{MIGRATION_NOTES_JSON:0..N}},
+      "openQuestions": {{OPEN_QUESTIONS_JSON:0..N}},
+      "dbml": {{DBML_JSON}},
+      "mermaid": {{MERMAID_JSON}},
+      "importMode": "{{IMPORT_MODE:full_schema|partial_schema|0..1}}"
+    }
   }
-]
+}
+-->
+
+## Import Summary
+
+{{EXECUTIVE_SUMMARY}}
+
+## Source Metadata
+
+{{SOURCE_METADATA_MARKDOWN}}
+
+## Observed Schema Summary
+
+{{OBSERVED_SCHEMA_SUMMARY}}
+
+## Entities
+
+{{ENTITY_MARKDOWN_BLOCK:0..N}}
+
+## Relationships
+
+{{RELATIONSHIP_MARKDOWN_BLOCK:0..N}}
+
+## Indexes and Constraints
+
+{{INDEX_AND_CONSTRAINT_MARKDOWN_BLOCK:0..N}}
+
+## Migration Notes
+
+{{MIGRATION_NOTES_MARKDOWN:0..N}}
+
+## Open Questions
+
+{{OPEN_QUESTION_BLOCK:0..N}}
+
+## DBML
+
+```dbml
+{{DBML_BODY}}
 ```
 
-## 4. Version / Migration Notes
+## Mermaid
 
-- Version `1.5` converts the template into a fill-in contract and moves construction guidance into the paired module AI file.
-- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+```mermaid
+{{MERMAID_BODY}}
+```
+
+## Merge Guidance
+
+{{MERGE_GUIDANCE}}

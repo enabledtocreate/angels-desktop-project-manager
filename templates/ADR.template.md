@@ -1,30 +1,66 @@
-# ADR Template
-
-> Template Contract. Keep filename `ADR.template.md`; APM discovers and syncs templates by this name.
-> Managed document. Must comply with template ADR.template.md.
-
-## 1. Template Contract Metadata
-
-- Template Name: `ADR.template.md`
-- Template Version: `2.4`
-- Last Updated: `2026-04-25`
-- Template Kind: `document`
-- Owning Module: `ADR`
-- Generated Artifact: `ADR.md`
-
-## 2. Template Fill-In Slots
-
-- `{{PROJECT_NAME}}`
-
-## 3. Actual Template
-
-```md
 # ADR.md: {{PROJECT_NAME}}
 
 > Managed document. Must comply with template ADR.template.md.
-```
 
-## 4. Version / Migration Notes
+<!-- APM:DATA
+{
+  "docType": "adr",
+  "version": {{DOC_VERSION:1}},
+  "templateName": "ADR.template.md",
+  "templateVersion": "{{TEMPLATE_VERSION}}",
+  "sourceOfTruth": "{{SOURCE_OF_TRUTH:database|generated|hybrid}}",
+  "editorState": {{EDITOR_STATE_JSON:0..1}}
+}
+-->
 
-- Version `2.4` converts the template into a fill-in contract and moves construction guidance into the paired module AI file.
-- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+## 1. Executive Summary
+
+{{EXECUTIVE_SUMMARY}}
+
+## 2. Decision Metadata
+
+- Decision Title: {{DECISION_TITLE}}
+- Status: {{DECISION_STATUS:proposed|accepted|superseded|deprecated|rejected}}
+- Scope: {{DECISION_SCOPE}}
+- Owners: {{DECISION_OWNERS}}
+- Decision Date: {{DECISION_DATE}}
+
+## 3. Context
+
+{{CONTEXT_BODY}}
+
+## 4. Decision
+
+{{DECISION_BODY}}
+
+## 5. Rationale
+
+{{RATIONALE_BODY}}
+
+## 6. Alternatives Considered
+
+{{ALTERNATIVE_BLOCK:0..N}}
+
+## 7. Consequences
+
+{{CONSEQUENCE_BLOCK:0..N}}
+
+## 8. Related Architecture Elements
+
+{{RELATED_ARCHITECTURE_BLOCK:0..N}}
+
+## 9. Related Modules and Workflows
+
+{{RELATED_MODULE_BLOCK:0..N}}
+
+## 10. Follow-Up Notes
+
+{{FOLLOW_UP_NOTES}}
+
+## 11. Applied Fragments
+
+{{APPLIED_FRAGMENT_BLOCK:0..N}}
+
+## 12. Open Questions
+
+{{OPEN_QUESTION_BLOCK:0..N}}

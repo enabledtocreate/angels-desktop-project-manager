@@ -1,38 +1,79 @@
-# AI_ENVIRONMENT_FRAGMENT.template.md
+# AI Environment Fragment: {{FRAGMENT_CODE}} - {{FRAGMENT_TITLE}}
 
-> Template Contract. Keep filename `AI_ENVIRONMENT_FRAGMENT.template.md`; APM discovers and syncs templates by this name.
 > Managed document. Must comply with template AI_ENVIRONMENT_FRAGMENT.template.md.
 
-## 1. Template Contract Metadata
+<!-- APM:DATA
+{
+  "docType": "ai_environment_fragment",
+  "version": {{DOC_VERSION:1}},
+  "fragment": {
+    "id": "{{FRAGMENT_ID}}",
+    "code": "{{FRAGMENT_CODE}}",
+    "title": "{{FRAGMENT_TITLE}}",
+    "summary": "{{FRAGMENT_SUMMARY}}",
+    "status": "{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}",
+    "revision": {{FRAGMENT_REVISION:1}},
+    "lineageKey": "{{LINEAGE_KEY}}",
+    "sourceLabel": "{{SOURCE_LABEL}}",
+    "templateName": "AI_ENVIRONMENT_FRAGMENT.template.md",
+    "templateVersion": "{{TEMPLATE_VERSION}}",
+    "payload": {{PAYLOAD_JSON:0..1}}
+  }
+}
+-->
 
-- Template Name: `AI_ENVIRONMENT_FRAGMENT.template.md`
-- Template Version: `1.5`
-- Last Updated: `2026-04-25`
-- Template Kind: `fragment`
-- Owning Module: `AI Environment`
-- Generated Artifact: `AI_ENVIRONMENT_FRAGMENT_*.md`
-
-## 2. Template Fill-In Slots
-
-- No uppercase mustache fill-in slots are currently defined in this template.
-
-## 3. Actual Template
-
-```json
+<!-- APM:OPERATIONS
 [
   {
-    "operation": "add",
-    "targetSection": "open-questions",
+    "operation": "{{OPERATION:add|update|remove|reorder|move|link|unlink}}",
+    "targetSection": "{{TARGET_SECTION:term-dictionary|required-behaviors|module-update-rules|project-family-read-order|project-family-inheritance-rules|data-phrasing-rules|avoid-rules|handoff-checklist|open-questions}}",
+    "fromSection": "{{FROM_SECTION:0..1}}",
+    "targetItemId": "{{TARGET_ITEM_ID:0..1}}",
+    "beforeItemId": "{{BEFORE_ITEM_ID:0..1}}",
+    "afterItemId": "{{AFTER_ITEM_ID:0..1}}",
+    "orderedIds": {{ORDERED_IDS_JSON:0..N}},
+    "versionDate": "{{VERSION_DATE:0..1}}",
     "item": {
-      "title": "Example question",
-      "description": "Replace this with a module-specific unresolved question."
+      "id": "{{ITEM_ID:0..1}}",
+      "stableId": "{{ITEM_STABLE_ID:0..1}}",
+      "name": "{{ITEM_NAME:0..1}}",
+      "title": "{{ITEM_TITLE:0..1}}",
+      "summary": "{{ITEM_SUMMARY:0..1}}",
+      "description": "{{ITEM_DESCRIPTION:0..1}}",
+      "text": "{{ITEM_TEXT:0..1}}",
+      "risk": "{{ITEM_RISK:0..1}}",
+      "mitigation": "{{ITEM_MITIGATION:0..1}}",
+      "type": "{{ITEM_TYPE:0..1}}"
     },
-    "sourceRefs": ["FEAT-000"]
-  }
+    "sourceRefs": {{SOURCE_REFS_JSON:0..N}}
+  }{{ADDITIONAL_OPERATION_BLOCK:0..N}}
 ]
-```
+-->
 
-## 4. Version / Migration Notes
+## Executive Summary
 
-- Version `1.5` converts the template into a fill-in contract and moves construction guidance into the paired module AI file.
-- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+{{EXECUTIVE_SUMMARY}}
+
+## Mission and Operating Model Updates
+
+{{MISSION_AND_OPERATING_MODEL_UPDATE_BLOCK:0..N}}
+
+## Required Behaviors
+
+{{REQUIRED_BEHAVIOR_BLOCK:0..N}}
+
+## Module Update Rules
+
+{{MODULE_UPDATE_RULE_BLOCK:0..N}}
+
+## Guardrails
+
+{{GUARDRAIL_BLOCK:0..N}}
+
+## Open Questions
+
+{{OPEN_QUESTION_BLOCK:0..N}}
+
+## Merge Guidance
+
+{{MERGE_GUIDANCE}}

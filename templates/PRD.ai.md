@@ -6,7 +6,7 @@
 ## 1. AI File Metadata
 
 - AI File Name: `PRD.ai.md`
-- AI File Version: `1.4`
+- AI File Version: `1.10`
 - Last Updated: `2026-04-25`
 - Owning Module: `PRD`
 - Document Template: `PRD.template.md`
@@ -53,91 +53,73 @@ Use PRD to describe what the product must do, for whom, and under what constrain
 
 ## 9. Template Construction Rules
 
-- AI agents should update this fragment instead of editing `PRD.md` directly.
-- Use token references where helpful: `@stable-id` for persisted targets, `#module-or-section` for document/module scope, `$work-item-code` for provenance, `/operation` for intended action, `?question` for review points, and `!guardrail` for constraints.
-- Token references supplement structured operations and target ids; they do not replace explicit fields such as operation, targetSection, targetItemId, sourceRefs, or managed payload data.
-- Use stable ids for persisted document items, fragment targets, graph nodes, graph edges, models, and projections.
-- Keep titles concise; put long detail in description or body fields.
+### Placeholder Syntax
+
+- `{{NAME}}`: required single value.
+- `{{NAME:OPTION_A|OPTION_B}}`: select one allowed value.
+- `{{NAME:0..1}}`: optional value or optional block.
+- `{{NAME:0..N}}`: repeatable value, list, array, or repeated markdown block.
+- Placeholders used as full JSON values must be replaced with valid JSON objects, arrays, strings, numbers, booleans, or `null` that match the surrounding structure.
+- `<!-- REPEAT {{NAME:0..N}} --> ... <!-- END REPEAT {{NAME}} -->` marks a repeatable markdown region.
+- Keep the `APM:DATA` and `APM:OPERATIONS` blocks structurally valid after replacement.
 
 ### PRD.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: `{{PROJECT_NAME}}`
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- This is a generated document contract; update module state or consume fragments instead of editing generated output directly.
-
-#### Imported Artifact Shape Notes
-
-No extra artifact-shape notes were imported from the paired template.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `document`
+- Generated Artifact: `PRD.md`
+- Consumption Goal: A filled template should read like the final managed document body and keep the managed metadata block intact.
+- Fill-In Slots:
+  - `{{PROJECT_NAME}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{SOURCE_OF_TRUTH:database|generated|hybrid}}`: Select one allowed value: `database`, `generated`, `hybrid`.
+  - `{{EDITOR_STATE_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{EXECUTIVE_SUMMARY}}`: Required single fill-in.
+  - `{{PRODUCT_NAME}}`: Required single fill-in.
+  - `{{PRODUCT_VISION}}`: Required single fill-in.
+  - `{{TARGET_AUDIENCE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{TARGET_AUDIENCE_ITEM}}`: Required single fill-in.
+  - `{{VALUE_PROPOSITION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{VALUE_PROPOSITION_ITEM}}`: Required single fill-in.
+  - `{{WORKFLOW_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{USER_ACTION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{SYSTEM_BEHAVIOR_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{DATA_REPORTING_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{NON_FUNCTIONAL_REQUIREMENT_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{TECHNICAL_ARCHITECTURE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{SEQUENCING_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{DEPENDENCY_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MILESTONE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{SUCCESS_METRIC_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{RISK_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{FUTURE_ENHANCEMENT_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{OPEN_QUESTION_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
 
 ### PRD_FRAGMENT.template.md
 
-- Template role: Fill-in contract only. Keep behavioral guidance in this AI file, not in the paired template.
-- Direct mappings: APM detects uppercase mustache placeholders from the template and treats them as fill-in slots.
-- Fill-in slots: `{{FEATURE_CODE}}`, `{{FEATURE_TITLE}}`
-
-#### Imported Construction Contract
-
-### Required Contract Rules
-
-- Keep `Template Name`, `Template Version`, and `Last Updated` present and current.
-- Keep the managed-document compliance note in generated artifacts.
-- Preserve `APM:DATA` managed blocks when present, and keep JSON valid.
-
-### Allowed Target Sections
-
-- `product-overview-target-audience`
-- `product-overview-key-value-propositions`
-- `functional-requirements-workflows`
-- `functional-requirements-user-actions`
-- `functional-requirements-system-behaviors`
-- `technical-architecture`
-- `implementation-plan-sequencing`
-- `implementation-plan-dependencies`
-- `implementation-plan-milestones`
-- `success-metrics`
-- `risks-and-mitigations`
-- `future-enhancements`
-
-### Supported Operations
-
-For `APM:OPERATIONS`, supported first-pass operations are:
-
-- `add`
-- `update`
-- `remove`
-- `reorder`
-- `move`
-- `link`
-- `unlink`
-
-Use explicit `targetSection`, `targetItemId`, `sourceRefs`, and `item` payloads. Token references supplement these fields; they do not replace them.
-
-#### Imported Artifact Shape Notes
-
-No extra artifact-shape notes were imported from the paired template.
-
-#### Imported Merge Notes
-
-- APM copies this template into the active project workspace and records its version/hash in the template registry.
-- If this is a fragment template, APM discovers matching fragment files from the configured project fragments folder and shared fragments folder.
-- The consuming module validates managed metadata and applies supported operations to structured module state.
-- After consumption, generated markdown is regenerated from module state; stale fragment files may be archived or deleted according to the module workflow.
+- Template Version: `1.4`
+- Last Updated: `2026-04-25`
+- Template Role: `fragment`
+- Fragment Merge Mode: `managed-body`
+- Consumption Goal: A filled template should preserve valid fragment metadata and body sections that the current fragment importer reads directly.
+- Fill-In Slots:
+  - `{{FRAGMENT_CODE}}`: Required single fill-in.
+  - `{{FRAGMENT_TITLE}}`: Required single fill-in.
+  - `{{DOC_VERSION:1}}`: Fill using `1` semantics.
+  - `{{FRAGMENT_ID}}`: Required single fill-in.
+  - `{{FRAGMENT_SUMMARY}}`: Required single fill-in.
+  - `{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}`: Select one allowed value: `draft`, `proposed`, `approved`, `rejected`, `merged`, `archived`.
+  - `{{FRAGMENT_REVISION:1}}`: Fill using `1` semantics.
+  - `{{LINEAGE_KEY}}`: Required single fill-in.
+  - `{{SOURCE_LABEL}}`: Required single fill-in.
+  - `{{TEMPLATE_VERSION}}`: Required single fill-in.
+  - `{{MERMAID_BODY:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{PAYLOAD_JSON:0..1}}`: Optional value or block. Remove the surrounding optional region when omitted.
+  - `{{EXECUTIVE_SUMMARY}}`: Required single fill-in.
+  - `{{PRODUCT_OVERVIEW_UPDATE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{FUNCTIONAL_REQUIREMENT_UPDATE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{TECHNICAL_AND_IMPLEMENTATION_UPDATE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{RISK_AND_FUTURE_UPDATE_BLOCK:0..N}}`: Repeatable block or collection. Replace with zero or more valid entries.
+  - `{{MERGE_GUIDANCE}}`: Required single fill-in.

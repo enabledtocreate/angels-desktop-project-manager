@@ -1,38 +1,58 @@
-# ROADMAP_FRAGMENT.template.md
+# Roadmap Fragment: {{FRAGMENT_CODE}} - {{FRAGMENT_TITLE}}
 
-> Template Contract. Keep filename `ROADMAP_FRAGMENT.template.md`; APM discovers and syncs templates by this name.
 > Managed document. Must comply with template ROADMAP_FRAGMENT.template.md.
 
-## 1. Template Contract Metadata
-
-- Template Name: `ROADMAP_FRAGMENT.template.md`
-- Template Version: `1.5`
-- Last Updated: `2026-04-25`
-- Template Kind: `fragment`
-- Owning Module: `Roadmap`
-- Generated Artifact: `ROADMAP_FRAGMENT_*.md`
-
-## 2. Template Fill-In Slots
-
-- No uppercase mustache fill-in slots are currently defined in this template.
-
-## 3. Actual Template
-
-```json
-[
-  {
-    "operation": "add",
-    "targetSection": "open-questions",
-    "item": {
-      "title": "Example question",
-      "description": "Replace this with a module-specific unresolved question."
+<!-- APM:DATA
+{
+  "docType": "roadmap_fragment",
+  "version": {{DOC_VERSION:1}},
+  "fragment": {
+    "id": "{{FRAGMENT_ID}}",
+    "projectId": "{{PROJECT_ID:0..1}}",
+    "sourceFeatureId": "{{SOURCE_FEATURE_ID:0..1}}",
+    "sourcePhaseId": "{{SOURCE_PHASE_ID:0..1}}",
+    "code": "{{FRAGMENT_CODE}}",
+    "title": "{{FRAGMENT_TITLE}}",
+    "markdown": {{FRAGMENT_MARKDOWN_JSON:0..1}},
+    "mermaid": "{{MERMAID_BODY:0..1}}",
+    "payload": {
+      "phaseChanges": {{PHASE_CHANGES_JSON:0..N}},
+      "featureAssignments": {{FEATURE_ASSIGNMENTS_JSON:0..N}},
+      "taskAssignments": {{TASK_ASSIGNMENTS_JSON:0..N}}
     },
-    "sourceRefs": ["FEAT-000"]
+    "status": "{{FRAGMENT_STATUS:draft|proposed|approved|rejected|merged|archived}}",
+    "merged": {{MERGED_JSON:0..1}},
+    "mergedAt": {{MERGED_AT_JSON:0..1}},
+    "integratedAt": {{INTEGRATED_AT_JSON:0..1}},
+    "fileName": "{{FILE_NAME:0..1}}",
+    "createdAt": {{CREATED_AT_JSON:0..1}},
+    "updatedAt": {{UPDATED_AT_JSON:0..1}}
   }
-]
+}
+-->
+
+## Executive Summary
+
+{{EXECUTIVE_SUMMARY}}
+
+## Phase Changes
+
+{{PHASE_CHANGES_MARKDOWN:0..N}}
+
+## Feature Assignments
+
+{{FEATURE_ASSIGNMENTS_MARKDOWN:0..N}}
+
+## Task Assignments
+
+{{TASK_ASSIGNMENTS_MARKDOWN:0..N}}
+
+## Mermaid
+
+```mermaid
+{{MERMAID_BODY:0..1}}
 ```
 
-## 4. Version / Migration Notes
+## Merge Guidance
 
-- Version `1.5` converts the template into a fill-in contract and moves construction guidance into the paired module AI file.
-- Fragment consumers must migrate older payload versions through explicit migrators before listing or consumption.
+{{MERGE_GUIDANCE}}
